@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>    
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\GameNet\GameNet.csproj" />
     <ProjectReference Include="..\UniLog\UniLog.csproj" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
 
 </Project>
