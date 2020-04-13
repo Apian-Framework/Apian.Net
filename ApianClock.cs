@@ -167,11 +167,16 @@ namespace Apian
             if (peerCount > 0)
             {
                 long localErrMs = localErrSum / peerCount;
+                
                 // Try to correct half of the error in kOffsetAnnounceBaseMs 
                 float newRate = 1.0f + (.5f * (float)localErrMs / kOffsetAnnounceBaseMs);
                 Set(CurrentTime, newRate);
                 logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");                
-            }            
+            } 
+            else
+            {
+                logger.Verbose($"Update: No other peers.");
+            }           
         }
 
     }

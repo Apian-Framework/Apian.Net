@@ -7,60 +7,57 @@ using UniLog;
 
 namespace Apian
 {
+    public class ApianClientMsg
+    {
+        // Client game or app messages derive from this
+        public string MsgType;
+        public long TimeStamp;
+        public ApianClientMsg(string t, long ts) {MsgType = t; TimeStamp = ts;}
+        public ApianClientMsg() {}
+
+    }
+
     public class ApianMessage
     {   
-        public const string kRequestGroups = "APrg";        
-        public const string kGroupAnnounce = "APga";
-        public const string kGroupJoinReq = "APgjr";        
-        public const string kGroupJoinVote = "APgjv";       
-        public const string kGroupMemberLeft = "APgml";
-        public const string kApianClockOffset = "APclk";  
-
+        public const string kCliRequest = "APapRq";         
+        public const string kCliObservation = "APapObs";
+        public const string kCliCommand = "APapCmd";    
+        public const string kApianClockOffset = "APclk"; 
+        public const string kGroupMessage = "APGrp";
+ 
         public string msgType;
         public ApianMessage(string t) => msgType = t;
     }
 
-    public class RequestGroupsMsg : ApianMessage // Send on main channel
+    public class ApianRequest : ApianMessage
     {
-        public RequestGroupsMsg() : base(kRequestGroups) {}  
-    } 
-    public class GroupAnnounceMsg : ApianMessage // Send on main channel
-    {
-        // Sent by group members. New members should use it to populate member list. TODO: BFT issue?
-        public string groupId;
-        public string creatorId;        
-        public List<string> memberIds;
-        public GroupAnnounceMsg(string gid, string cid, List<string> _members) : base(kGroupAnnounce) {groupId = gid; creatorId=cid; memberIds=_members;}  
-    }  
-
-    public class GroupJoinRequestMsg : ApianMessage // Send on main channel
-    {
-        public string groupId;
-        public string peerId;
-        public GroupJoinRequestMsg(string id, string pid) : base(kGroupJoinReq) {groupId = id; peerId=pid;}  
-    }    
-
-    public class GroupJoinVoteMsg : ApianMessage // Send on main channel
-    {
-        public string groupId;
-        public string peerId;
-        public bool approve;
-        public GroupJoinVoteMsg(string gid, string pid, bool doIt) : base(kGroupJoinVote) {groupId = gid; peerId=pid; approve=doIt;}  
+        // Requests (typically from frontend)
+        public string cliMsgType;
+        public ApianRequest(string clientMsgType) : base(kCliRequest) {cliMsgType=clientMsgType;}
+        public ApianRequest() : base(kCliRequest) {}         
     }
 
-    public class GroupMemberLefttMsg : ApianMessage // Send on main channel
+    public class ApianObservation : ApianMessage
     {
-        public string groupId;
-        public string peerId;
-        public GroupMemberLefttMsg(string gid, string pid) : base(kGroupMemberLeft) {groupId = gid; peerId=pid;}  
-    }  
+        public string cliMsgType;
+        public ApianObservation(string clientMsgType) : base(kCliObservation) {cliMsgType=clientMsgType;}
+        public ApianObservation() : base(kCliObservation) {}         
+    }
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
     {
         public string peerId;
         public long clockOffset;
         public ApianClockOffsetMsg(string pid, long offset) : base(kApianClockOffset) {peerId=pid; clockOffset=offset;}  
-    }  
+    } 
+
+    public class ApianGroupMessage : ApianMessage
+    {
+        public string groupMsgType;
+        public ApianGroupMessage(string _groupMsgType) : base(kGroupMessage) {groupMsgType=_groupMsgType;}
+        public ApianGroupMessage() : base(kGroupMessage) {}         
+    }
+ 
 
     public abstract class ApianAssertion 
     {
