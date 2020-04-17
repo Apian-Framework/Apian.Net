@@ -1,10 +1,6 @@
 
-using System.Text.RegularExpressions;
-using System.Reflection.Emit;
 using System;
-using System.Linq;
 using System.Collections.Generic;
-using GameNet;
 using UniLog;
 
 namespace Apian
@@ -12,17 +8,21 @@ namespace Apian
 
     public interface IApianClock
     {
-        long CurrentTime { get;} // This is the ApianTime 
-        void Set(long desiredTimeMs, float rate=1.0f );                
+        // ReSharper disable UnusedMemberInSuper.Global,UnusedMember.Global
+        long CurrentTime { get;} // This is the ApianTime
+        void Set(long desiredTimeMs, float rate=1.0f );
         bool IsIdle { get;}  // hasn't been set yet
-        long SystemTime { get;}  // system clock        
+        long SystemTime { get;}  // system clock
         long SysClockOffset {get; } // The current effective offset from system time
-        void OnPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs); // sys + offset = apian   
+        void OnPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs); // sys + offset = apian
         void SendApianClockOffset(); // Another part of Apian might want us to send this ( when member joins, for instance)
-        void OnApianClockOffset(string remotePeerId,  long apianOffset);          
-        void Update(); // loop 
+        void OnApianClockOffset(string remotePeerId,  long apianOffset);
+        void Update(); // loop
+        // ReSharper enable UnusedMemberInSuper.Global,UnusedMember.Global
+
     }
 
+    // ReSharper disable once UnusedType.Global
     public class DefaultApianClock : IApianClock
     {
         //
@@ -40,36 +40,37 @@ namespace Apian
 
         // TODO: should get notified of peerleft?
 
-        public UniLogger logger; 
+        public readonly UniLogger Logger;
 
         // Internal vars
-        protected ApianBase apian;
-        protected long SysMsBase {get; private set;}  // the system time last time the rate was set
-        protected long ApianTimeBase {get; private set;}  // this is the ApianTime when the clock wa last set
-        protected float CurrentRate {get; private set;} = 0.0f;
+        private readonly ApianBase _apian;
+
+        private long _sysMsBase;  // the system time last time the rate was set
+        private long _apianTimeBase;  // this is the ApianTime when the clock wa last set
+        private float _currentRate;
 
 
-        protected const int kOffsetAnnounceBaseMs = 10000; // 
-        protected long NewNextOffsetAnnounceTime {get =>  SystemTime + kOffsetAnnounceBaseMs + new Random().Next(kOffsetAnnounceBaseMs/4); } 
-        protected long nextOffsetAnnounceTime = 0;
+        private const int OffsetAnnounceBaseMs = 10000; //
+        private long NewNextOffsetAnnounceTime {get =>  SystemTime + OffsetAnnounceBaseMs + new Random().Next(OffsetAnnounceBaseMs/4); }
+        private long _nextOffsetAnnounceTime;
 
-        public DefaultApianClock(ApianBase _apian)
+        public DefaultApianClock(ApianBase apian)
         {
-            apian = _apian;
-            sysOffsetsByPeer = new Dictionary<string, long>();
-            apianOffsetsByPeer = new Dictionary<string, long>();   
-            logger = UniLogger.GetLogger("ApianClock");         
+            _apian = apian;
+            _sysOffsetsByPeer = new Dictionary<string, long>();
+            _apianOffsetsByPeer = new Dictionary<string, long>();
+            Logger = UniLogger.GetLogger("ApianClock");
         }
 
         // Keeping track of peers.
-        protected Dictionary<string, long> sysOffsetsByPeer;
-        protected Dictionary<string, long> apianOffsetsByPeer;    
+        private readonly Dictionary<string, long> _sysOffsetsByPeer;
+        private readonly Dictionary<string, long> _apianOffsetsByPeer;
 
-        // IApianClock public stuff                   
-        public bool IsIdle { get => (CurrentRate == 0.0f && ApianTimeBase == 0);}  // hasn't been set yet
-        public long SystemTime { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}  // system clock        
-        public long CurrentTime { get => (long)((SystemTime - SysMsBase) * CurrentRate) + ApianTimeBase;} // This is the ApianTime
-        public long SysClockOffset {get => CurrentTime - SystemTime; } // The current effective offset.  
+        // IApianClock public stuff
+        public bool IsIdle { get => (_currentRate == 0 && _apianTimeBase == 0);}  // hasn't been set yet
+        public long SystemTime { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}  // system clock
+        public long CurrentTime { get => (long)((SystemTime - _sysMsBase) * _currentRate) + _apianTimeBase;} // This is the ApianTime
+        public long SysClockOffset {get => CurrentTime - SystemTime; } // The current effective offset.
 
         public void Update()
         {
@@ -79,7 +80,7 @@ namespace Apian
             // Not the most sophisticated way. But easy to understand and implment in many languages.
             long nowMs = SystemTime;
 
-            if (nowMs > nextOffsetAnnounceTime)
+            if (nowMs > _nextOffsetAnnounceTime)
                 SendApianClockOffset();
 
         }
@@ -87,18 +88,18 @@ namespace Apian
         // Set the time
         public void Set(long desiredTimeMs, float rate=1.0f )
         {
-            logger.Verbose($"Set()");
-            ApianTimeBase = desiredTimeMs;
-            SysMsBase = SystemTime;
-            CurrentRate = rate;
+            Logger.Verbose("Set()");
+            _apianTimeBase = desiredTimeMs;
+            _sysMsBase = SystemTime;
+            _currentRate = rate;
         }
 
         public void OnPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
         {
             // This is a P2pNet sync ( lag and sys clock offset determination )
-            logger.Verbose($"OnPeerSync() from {remotePeerId}.");
+            Logger.Verbose($"OnPeerSync() from {remotePeerId}.");
             // save this
-            sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
+            _sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
         }
 
         public void OnApianClockOffset(string p2pId,  long remoteApianOffset)
@@ -110,73 +111,72 @@ namespace Apian
             // and by "infer" I mean "kinda guess sorta"
             // remoteAppClk = sysMs + peerOffSet + peerAppOffset
             //
-            logger.Verbose($"OnApianClockOffset() from peer {p2pId}");   
-            if (p2pId == apian.ApianGroup.LocalP2pId)
+            Logger.Verbose($"OnApianClockOffset() from peer {p2pId}");
+            if (p2pId == _apian.ApianGroup.LocalP2pId)
             {
-                logger.Verbose($"OnApianClockOffset(). Oops. It's me. Bailing"); 
+                Logger.Verbose("OnApianClockOffset(). Oops. It's me. Bailing");
                 return;
             }
 
-            apianOffsetsByPeer[p2pId] = remoteApianOffset;
+            _apianOffsetsByPeer[p2pId] = remoteApianOffset;
 
             if (IsIdle) // this is the first we've gotten. Set set ours to match theirs.
             {
-                if (sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
+                if (_sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
                 {
                     // CurrentTime = sysMs + peerOffset + peerAppOffset;
-                    Set( SystemTime + sysOffsetsByPeer[p2pId] + remoteApianOffset );
-                    logger.Verbose($"OnApianClockOffset() - Set clock to match {p2pId}"); 
+                    Set( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
+                    Logger.Verbose($"OnApianClockOffset() - Set clock to match {p2pId}");
                 }
             } else {
                 UpdateForOtherPeers();
             }
-        }        
+        }
 
         // Internals
 
 
         public void SendApianClockOffset()
         {
-            if (apian.ApianGroup != null) 
+            if (_apian.ApianGroup != null)
             {
-                logger.Verbose($"SendApianClockOffset() - Current Time: {CurrentTime}");                
-                apian.SendApianMessage(apian.ApianGroup.GroupId, new ApianClockOffsetMsg( apian.ApianGroup.LocalP2pId, SysClockOffset));
+                Logger.Verbose($"SendApianClockOffset() - Current Time: {CurrentTime}");
+                _apian.SendApianMessage(_apian.ApianGroup.GroupId, new ApianClockOffsetMsg( _apian.ApianGroup.LocalP2pId, SysClockOffset));
             }
-            nextOffsetAnnounceTime = NewNextOffsetAnnounceTime;
+            _nextOffsetAnnounceTime = NewNextOffsetAnnounceTime;
         }
 
-        protected void UpdateForOtherPeers()
+        private void UpdateForOtherPeers()
         {
             long localErrSum = 0;
             int peerCount = 0;
-            long localApOff = SysClockOffset;
-            foreach (string pid in sysOffsetsByPeer.Keys)
+            foreach (string pid in _sysOffsetsByPeer.Keys)
             {
                 try {
-                    if (pid != apian.ApianGroup.LocalP2pId)
+                    if (pid != _apian.ApianGroup.LocalP2pId)
                     {
-                        long peerSysOff = sysOffsetsByPeer[pid]; // ( ourTime + offset = peerTime)
-                        long peerAppOff = apianOffsetsByPeer[pid];
+                        long peerSysOff = _sysOffsetsByPeer[pid]; // ( ourTime + offset = peerTime)
+                        long peerAppOff = _apianOffsetsByPeer[pid];
                         // localErr = remoteAppClk - localAppClk = (sysMs + peerOffset + peerAppOffset) - CurrentTime
                         localErrSum += SystemTime + peerSysOff + peerAppOff - CurrentTime;
                         peerCount++;
                     }
                 } catch(KeyNotFoundException) {}
             }
-            
+
             if (peerCount > 0)
             {
                 long localErrMs = localErrSum / peerCount;
-                
-                // Try to correct half of the error in kOffsetAnnounceBaseMs 
-                float newRate = 1.0f + (.5f * (float)localErrMs / kOffsetAnnounceBaseMs);
+
+                // Try to correct half of the error in kOffsetAnnounceBaseMs
+                float newRate = 1.0f + (.5f * localErrMs / OffsetAnnounceBaseMs);
                 Set(CurrentTime, newRate);
-                logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");                
-            } 
+                Logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");
+            }
             else
             {
-                logger.Verbose($"Update: No other peers.");
-            }           
+                Logger.Verbose("Update: No other peers.");
+            }
         }
 
     }

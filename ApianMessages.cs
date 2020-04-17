@@ -1,73 +1,63 @@
 
-using System;
-using System.Linq;
-using System.Collections.Generic;
-using GameNet;
-using UniLog;
 
 namespace Apian
 {
+    // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
+    // (can;t be readonly because of NewtonSoft.JSON)
+
     public class ApianClientMsg
     {
+        // ReSharper disable MemberCanBePrivate.Global
         // Client game or app messages derive from this
         public string MsgType;
         public long TimeStamp;
         public ApianClientMsg(string t, long ts) {MsgType = t; TimeStamp = ts;}
         public ApianClientMsg() {}
-
+        // ReSharper enable MemberCanBePrivate.Global
     }
 
     public class ApianMessage
-    {   
-        public const string kCliRequest = "APapRq";         
-        public const string kCliObservation = "APapObs";
-        public const string kCliCommand = "APapCmd";    
-        public const string kApianClockOffset = "APclk"; 
-        public const string kGroupMessage = "APGrp";
- 
-        public string msgType;
-        public ApianMessage(string t) => msgType = t;
+    {
+        // ReSharper disable MemberCanBeProtected.Global
+        public const string CliRequest = "APapRq";
+        public const string CliObservation = "APapObs";
+        public const string CliCommand = "APapCmd";
+        public const string ApianClockOffset = "APclk";
+        public const string GroupMessage = "APGrp";
+
+        public string MsgType;
+       // ReSharper enable MemberCanBeProtected.Global
+
+        protected ApianMessage(string t) => MsgType = t;
     }
 
     public class ApianRequest : ApianMessage
     {
         // Requests (typically from frontend)
-        public string cliMsgType;
-        public ApianRequest(string clientMsgType) : base(kCliRequest) {cliMsgType=clientMsgType;}
-        public ApianRequest() : base(kCliRequest) {}         
+        public string CliMsgType;
+        public ApianRequest(string clientMsgType) : base(CliRequest) {CliMsgType=clientMsgType;}
+        public ApianRequest() : base(CliRequest) {}
     }
 
     public class ApianObservation : ApianMessage
     {
-        public string cliMsgType;
-        public ApianObservation(string clientMsgType) : base(kCliObservation) {cliMsgType=clientMsgType;}
-        public ApianObservation() : base(kCliObservation) {}         
+        public string CliMsgType;
+        public ApianObservation(string clientMsgType) : base(CliObservation) {CliMsgType=clientMsgType;}
+        public ApianObservation() : base(CliObservation) {}
     }
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
     {
-        public string peerId;
-        public long clockOffset;
-        public ApianClockOffsetMsg(string pid, long offset) : base(kApianClockOffset) {peerId=pid; clockOffset=offset;}  
-    } 
+        public string PeerId;
+        public long ClockOffset;
+        public ApianClockOffsetMsg(string pid, long offset) : base(ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
+    }
 
     public class ApianGroupMessage : ApianMessage
     {
-        public string groupMsgType;
-        public ApianGroupMessage(string _groupMsgType) : base(kGroupMessage) {groupMsgType=_groupMsgType;}
-        public ApianGroupMessage() : base(kGroupMessage) {}         
+        public string GroupMsgType;
+        public ApianGroupMessage(string groupMsgType) : base(GroupMessage) {GroupMsgType=groupMsgType;}
+        public ApianGroupMessage() : base(GroupMessage) {}
     }
- 
 
-    public abstract class ApianAssertion 
-    {
-        // TODO: WHile it looked good written down, it may be that "ApianAssertion" is a really bad name,
-        // given what "assertion" usually means in the world of programming.
-        public long SequenceNumber {get; private set;}
-
-        public ApianAssertion( long seq)
-        {
-            SequenceNumber = seq;
-        }
-    }
 }
