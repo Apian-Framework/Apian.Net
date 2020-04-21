@@ -41,7 +41,7 @@ namespace Apian
         // Apian Messages
         public abstract void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
         public abstract void SendApianMessage(string toChannel, ApianMessage msg);
-        public abstract ApianMessage DeserializeMessage(string msgType,string subType, string json);
+        public abstract ApianMessage DeserializeApianMessage(string apianMsgType, string json);
 
         // Group-related
         public void AddGroupChannel(string channel) => GameNet.AddChannel(channel); // IApianGroupManager uses this. Maybe it should use GameNet directly?
