@@ -14,7 +14,7 @@ namespace Apian
         bool IsIdle { get;}  // hasn't been set yet
         long SystemTime { get;}  // system clock
         long SysClockOffset {get; } // The current effective offset from system time
-        void OnPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs); // sys + offset = apian
+        void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs); // sys + offset = apian
         void SendApianClockOffset(); // Another part of Apian might want us to send this ( when member joins, for instance)
         void OnApianClockOffset(string remotePeerId,  long apianOffset);
         void Update(); // loop
@@ -94,7 +94,7 @@ namespace Apian
             _currentRate = rate;
         }
 
-        public void OnPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
+        public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
         {
             // This is a P2pNet sync ( lag and sys clock offset determination )
             Logger.Verbose($"OnPeerSync() from {remotePeerId}.");
@@ -112,7 +112,7 @@ namespace Apian
             // remoteAppClk = sysMs + peerOffSet + peerAppOffset
             //
             Logger.Verbose($"OnApianClockOffset() from peer {p2pId}");
-            if (p2pId == _apian.ApianGroup.LocalP2pId)
+            if (p2pId == _apian.ApianGroup.LocalPeerId)
             {
                 Logger.Verbose("OnApianClockOffset(). Oops. It's me. Bailing");
                 return;
@@ -141,7 +141,7 @@ namespace Apian
             if (_apian.ApianGroup != null)
             {
                 Logger.Verbose($"SendApianClockOffset() - Current Time: {CurrentTime}");
-                _apian.SendApianMessage(_apian.ApianGroup.GroupId, new ApianClockOffsetMsg( _apian.ApianGroup.LocalP2pId, SysClockOffset));
+                _apian.SendApianMessage(_apian.ApianGroup.GroupId, new ApianClockOffsetMsg( _apian.ApianGroup.GroupId, _apian.ApianGroup.LocalPeerId, SysClockOffset));
             }
             _nextOffsetAnnounceTime = NewNextOffsetAnnounceTime;
         }
@@ -153,7 +153,7 @@ namespace Apian
             foreach (string pid in _sysOffsetsByPeer.Keys)
             {
                 try {
-                    if (pid != _apian.ApianGroup.LocalP2pId)
+                    if (pid != _apian.ApianGroup.LocalPeerId)
                     {
                         long peerSysOff = _sysOffsetsByPeer[pid]; // ( ourTime + offset = peerTime)
                         long peerAppOff = _apianOffsetsByPeer[pid];

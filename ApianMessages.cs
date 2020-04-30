@@ -26,47 +26,43 @@ namespace Apian
         public const string ApianClockOffset = "APclk";
         public const string GroupMessage = "APGrp";
 
+        public string DestGroupId; // Can be empty
         public string MsgType;
        // ReSharper enable MemberCanBeProtected.Global
 
-        protected ApianMessage(string t) => MsgType = t;
+        protected ApianMessage(string gid, string typ) { DestGroupId = gid; MsgType = typ; }
     }
 
     public class ApianRequest : ApianMessage
     {
         // Requests (typically from frontend)
         public string CliMsgType;
-        public ApianRequest(string clientMsgType) : base(CliRequest) {CliMsgType=clientMsgType;}
-        public ApianRequest() : base(CliRequest) {}
+        public ApianRequest(string gid, string clientMsgType) : base(gid, CliRequest) {CliMsgType=clientMsgType;}
+        public ApianRequest() : base("", CliRequest) {}
     }
 
     public class ApianObservation : ApianMessage
     {
         public string CliMsgType;
-        public ApianObservation(string clientMsgType) : base(CliObservation) {CliMsgType=clientMsgType;}
-        public ApianObservation() : base(CliObservation) {}
+        public ApianObservation(string gid, string clientMsgType) : base(gid, CliObservation) {CliMsgType=clientMsgType;}
+        public ApianObservation() : base("", CliObservation) {}
     }
 
     public class ApianCommand : ApianMessage
     {
         public string CliMsgType;
-        public ApianCommand(string clientMsgType) : base(CliCommand) {CliMsgType=clientMsgType;}
-        public ApianCommand() : base(CliCommand) {}
+        public ApianCommand(string gid, string clientMsgType) : base(gid, CliCommand) {CliMsgType=clientMsgType;}
+        public ApianCommand() : base("", CliCommand) {}
     }
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
     {
         public string PeerId;
         public long ClockOffset;
-        public ApianClockOffsetMsg(string pid, long offset) : base(ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
+        public ApianClockOffsetMsg(string gid, string pid, long offset) : base(gid, ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
     }
 
-    public class ApianGroupMessage : ApianMessage
-    {
-        public string GroupMsgType;
-        public ApianGroupMessage(string groupMsgType) : base(GroupMessage) {GroupMsgType=groupMsgType;}
-        public ApianGroupMessage() : base(GroupMessage) {}
-    }
+
 
     static public class ApianMessageDeserializer
     {
@@ -84,10 +80,10 @@ namespace Apian
 
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()
         {
-            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CliMsgType },
+            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CliMsgType }, // Need to use App-level message deserializer to fully decode
             {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).CliMsgType },
             {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CliMsgType },
-            {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType },
+            {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType }, // Need to use ApianGroupMessageDeserializer to fully decode
             {ApianMessage.ApianClockOffset, (msg) => null },
         };
 

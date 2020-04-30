@@ -6,12 +6,6 @@ using UniLog;
 
 namespace Apian
 {
-    public interface IApianClient
-    {
-        void SetApianReference(ApianBase apian);
-
-    }
-
     public abstract class ApianBase
     {
 		// public API
@@ -23,11 +17,12 @@ namespace Apian
 
         public IApianGroupManager ApianGroup  {get; protected set;}
         public IApianClock ApianClock {get; protected set;}
-        protected IGameNet GameNet {get; private set;}
-        protected IApianClient Client {get; private set;}
+        public IApianGameNet GameNet {get; private set;}
+        public IApianClientApp Client {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
+        public string GroupId { get => ApianGroup.GroupId; }
 
-        protected ApianBase(IGameNet gn, IApianClient cl) {
+        protected ApianBase(IApianGameNet gn, IApianClientApp cl) {
             GameNet = gn;
             Client = cl;
             Client.SetApianReference(this);
@@ -38,15 +33,26 @@ namespace Apian
 
         public abstract void Update();
 
+        // Client
+
         // Apian Messages
         public abstract void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
         public abstract void SendApianMessage(string toChannel, ApianMessage msg);
-        public abstract ApianMessage DeserializeApianMessage(string apianMsgType, string json);
 
         // Group-related
-        public void AddGroupChannel(string channel) => GameNet.AddChannel(channel); // IApianGroupManager uses this. Maybe it should use GameNet directly?
-        public void RemoveGroupChannel(string channel) => GameNet.RemoveChannel(channel);
-        public abstract void OnMemberJoinedGroup(string peerId); // Any peer, including local. On getting this check with ApianGroup for details.
+
+        public void CreateGroup(string groupId, string groupName) => ApianGroup.CreateGroup(groupId, groupName);
+        public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
+
+        // FROM GroupManager
+        public abstract void OnGroupMemberJoined(string groupMemberJson); // App-specific Apian instance needs to field this
+
+        // Other stuff
+        public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
+        {
+            // TODO: This is awkward.
+            ApianClock?.OnP2pPeerSync( remotePeerId,  clockOffsetMs,  netLagMs);
+        }
 
 		// public API
 		// ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
