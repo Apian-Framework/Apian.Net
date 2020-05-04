@@ -7,4 +7,5 @@
 [Ll]ogs/
 srcassets/
 .vscode/
+*.meta
 inspectcode.xml
