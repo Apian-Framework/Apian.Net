@@ -29,30 +29,36 @@ namespace Apian
         public string DestGroupId; // Can be empty
         public string MsgType;
        // ReSharper enable MemberCanBeProtected.Global
-
         protected ApianMessage(string gid, string typ) { DestGroupId = gid; MsgType = typ; }
+        protected ApianMessage() {}
     }
 
-    public class ApianRequest : ApianMessage
+    public class ApianWrappedClientMessage : ApianMessage
     {
-        // Requests (typically from frontend)
         public string CliMsgType;
-        public ApianRequest(string gid, string clientMsgType) : base(gid, CliRequest) {CliMsgType=clientMsgType;}
-        public ApianRequest() : base("", CliRequest) {}
+        public ApianWrappedClientMessage(string gid, string apianMsgType, ApianClientMsg clientMsg) : base(gid, apianMsgType)
+        {
+            CliMsgType=clientMsg.MsgType;
+        }
+        public ApianWrappedClientMessage() : base() {}
     }
 
-    public class ApianObservation : ApianMessage
+
+    public class ApianRequest : ApianWrappedClientMessage
     {
-        public string CliMsgType;
-        public ApianObservation(string gid, string clientMsgType) : base(gid, CliObservation) {CliMsgType=clientMsgType;}
-        public ApianObservation() : base("", CliObservation) {}
+        public ApianRequest(string gid, ApianClientMsg clientMsg) : base(gid, CliRequest, clientMsg) {}
+        public ApianRequest() : base() {}
     }
 
-    public class ApianCommand : ApianMessage
+    public class ApianObservation : ApianWrappedClientMessage
     {
-        public string CliMsgType;
-        public ApianCommand(string gid, string clientMsgType) : base(gid, CliCommand) {CliMsgType=clientMsgType;}
-        public ApianCommand() : base("", CliCommand) {}
+        public ApianObservation(string gid,ApianClientMsg clientMsg) : base(gid, CliObservation, clientMsg) {}
+        public ApianObservation() : base() {}
+    }
+
+    public class ApianCommand : ApianWrappedClientMessage {
+        public ApianCommand(string gid, ApianClientMsg clientMsg) : base(gid, CliCommand, clientMsg) {}
+        public ApianCommand() : base() {}
     }
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
@@ -60,6 +66,8 @@ namespace Apian
         public string PeerId;
         public long ClockOffset;
         public ApianClockOffsetMsg(string gid, string pid, long offset) : base(gid, ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
+
+        public ApianClockOffsetMsg() : base() {}
     }
 
 
