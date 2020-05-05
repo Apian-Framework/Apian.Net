@@ -76,6 +76,22 @@ namespace Apian
                 Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");
         }
 
+        public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
+        {
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+        }
+
+        public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
+        {
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+        }
+
+        public bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        {
+            return true; // TODO: ok, even this one should at least check the source
+        }
+
+
         private void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // No need to validate source, since it;s local
