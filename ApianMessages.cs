@@ -41,6 +41,7 @@ namespace Apian
             CliMsgType=clientMsg.MsgType;
         }
         public ApianWrappedClientMessage() : base() {}
+
     }
 
 
@@ -48,17 +49,20 @@ namespace Apian
     {
         public ApianRequest(string gid, ApianClientMsg clientMsg) : base(gid, CliRequest, clientMsg) {}
         public ApianRequest() : base() {}
+        public virtual ApianCommand ToCommand() {return null;}
     }
 
     public class ApianObservation : ApianWrappedClientMessage
     {
         public ApianObservation(string gid,ApianClientMsg clientMsg) : base(gid, CliObservation, clientMsg) {}
         public ApianObservation() : base() {}
+        public virtual ApianCommand ToCommand() {return null;}
     }
 
     public class ApianCommand : ApianWrappedClientMessage {
         public ApianCommand(string gid, ApianClientMsg clientMsg) : base(gid, CliCommand, clientMsg) {}
         public ApianCommand() : base() {}
+
     }
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
