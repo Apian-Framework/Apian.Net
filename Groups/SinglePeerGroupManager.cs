@@ -15,8 +15,9 @@ namespace Apian
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private const string SinglePeerGroupType = "SinglePeerGroup";
 
-        public ApianGroupInfo GroupInfo {get; private set;}
         // IApianGroupManager
+        public ApianGroupInfo GroupInfo {get; private set;}
+        public bool Intialized {get => GroupInfo != null; }
         public string GroupType {get => SinglePeerGroupType;}
         public string GroupId {get => GroupInfo.GroupId;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
@@ -37,18 +38,18 @@ namespace Apian
             Members = new Dictionary<string, ApianGroupMember>();
          }
 
-        public void CreateGroup(string groupId, string groupName)
+        public void CreateNewGroup(string groupId, string groupName)
         {
             GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
         }
 
-        public void CreateGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
+        public void InitExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
         public void JoinGroup(string groupId, string localMemberJson)
         {
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
-            ApianGroupMember LocalMember =  new ApianGroupMember(LocalPeerId);
+            ApianGroupMember LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
             LocalMember.CurStatus = ApianGroupMember.Status.Active;
             Members[LocalPeerId] = LocalMember;
             ApianInst.GameNet.AddChannel(GroupId);
@@ -68,9 +69,7 @@ namespace Apian
             if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
             {
                 ApianGroupMessage gMsg = msg as ApianGroupMessage;
-                try {
-                    GroupMsgHandlers[gMsg.GroupMsgType](gMsg, msgSrc, msgChannel);
-                } catch (KeyNotFoundException){ }
+                GroupMsgHandlers[gMsg.GroupMsgType](gMsg, msgSrc, msgChannel);
             }
             else
                 Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");

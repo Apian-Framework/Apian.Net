@@ -10,6 +10,7 @@ namespace Apian
     public interface IApianGameNet : IGameNet
     {
         void AddApianInstance( ApianBase instance, string groupId);
+        void RequestGroups();
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
 
@@ -24,7 +25,7 @@ namespace Apian
         // This is the "core" or "backend" part of an Apian app
         // which sets up GameNet (and probably the GameInstance/Apian pairs)
         // and that handles any stuff (chat messages, etc)  not Apian-related
-        void OnGroupData(string groupId, string groupType, string creatorId, string groupName);
+        void OnGroupAnnounce(string groupId, string groupType, string creatorId, string groupName);
         void AddGameInstance(IApianClientApp gameInstance);
     }
 
@@ -151,6 +152,12 @@ namespace Apian
             ApianInstances[groupId] = instance;
         }
 
+        public void RequestGroups()
+        {
+            logger.Verbose($"RequestApianGroups()");
+            SendApianMessage( CurrentGameId(),  new GroupsRequestMsg());
+        }
+
         public void SendApianMessage(string toChannel, ApianMessage appMsg)
         {
             logger.Verbose($"SendApianMessage() - type: {appMsg.MsgType}, To: {toChannel}");
@@ -178,7 +185,7 @@ namespace Apian
         protected void _DispatchGroupMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             ApianGroupMessage apMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload) as ApianGroupMessage;
-            logger.Verbose($"_DispatchGroupMessage() Type: {apMsg.MsgType}, src: {(from==LocalP2pId()?"Local":from)}");
+            logger.Verbose($"_DispatchGroupMessage() Type: {apMsg.GroupMsgType}, Group: {apMsg.DestGroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (ApianInstances.ContainsKey(apMsg.DestGroupId))
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  apMsg,  msSinceSent);
@@ -189,7 +196,7 @@ namespace Apian
                 {
                 case ApianGroupMessage.GroupAnnounce:
                     GroupAnnounceMsg gaMsg = apMsg as GroupAnnounceMsg;
-                    gameManager.OnGroupData(gaMsg.GroupId, gaMsg.GroupType, gaMsg.GroupCreatorId, gaMsg.GroupName);
+                    gameManager.OnGroupAnnounce(gaMsg.GroupId, gaMsg.GroupType, gaMsg.GroupCreatorId, gaMsg.GroupName);
                     break;
 
                 case ApianGroupMessage.GroupsRequest: // Send to all instances

@@ -33,10 +33,13 @@ namespace Apian
         public string PeerId {get;}
         public Status CurStatus;
 
-        public ApianGroupMember(string peerId)
+        public string AppDataJson; // This is ApianClient-relevant data. It's Apian doesn;t read it
+
+        public ApianGroupMember(string peerId, string appDataJson)
         {
             CurStatus = Status.New;
             PeerId = peerId;
+            AppDataJson = appDataJson;
         }
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedAutoPropertyAccessor.Global,NotAccessedField.Global
     }
@@ -44,14 +47,16 @@ namespace Apian
     public interface IApianGroupManager
     {
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
+        bool Intialized {get;}
+        ApianGroupInfo GroupInfo {get;}
         string GroupType {get;}
         string GroupId {get;}
         string GroupCreatorId {get;}
         string LocalPeerId {get;}
         Dictionary<string, ApianGroupMember> Members {get;}
 
-        void CreateGroup(string groupId, string groupName); // does NOT imply join
-        void CreateGroup(ApianGroupInfo info);
+        void CreateNewGroup(string groupId, string groupName); // does NOT imply join
+        void InitExistingGroup(ApianGroupInfo info);
         void JoinGroup(string groupChannel, string localMemberJson);
         void Update();
         ApianMessage DeserializeGroupMessage(string subType, string json);

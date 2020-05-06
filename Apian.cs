@@ -21,6 +21,7 @@ namespace Apian
         public IApianClientApp Client {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
         public string GroupId { get => ApianGroup.GroupId; }
+        public string GameId { get => GameNet.CurrentGameId(); }
 
         protected ApianBase(IApianGameNet gn, IApianClientApp cl) {
             GameNet = gn;
@@ -41,11 +42,14 @@ namespace Apian
 
         // Group-related
 
-        public void CreateGroup(string groupId, string groupName) => ApianGroup.CreateGroup(groupId, groupName);
+        public void CreateNewGroup(string groupId, string groupName) => ApianGroup.CreateNewGroup(groupId, groupName);
+
+        public void InitExistingGroup(ApianGroupInfo info) => ApianGroup.InitExistingGroup(info);
         public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
 
         // FROM GroupManager
         public abstract void OnGroupMemberJoined(string groupMemberJson); // App-specific Apian instance needs to field this
+        public abstract void OnGroupMemberStatus(string peerId, ApianGroupMember.Status newStatus);
 
         // Other stuff
         public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian

@@ -23,6 +23,7 @@ namespace Apian
         // And subclass ApianGroupMember to do the same
         void SetApianReference(ApianBase apian);
         void OnMemberJoined( ApianClientMemberData member);
+        void OnMemberStatus(string peerId, ApianGroupMember.Status newStatus);
         void OnMemberLeft( string peerId);
     }
 

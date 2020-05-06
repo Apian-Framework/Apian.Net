@@ -32,6 +32,7 @@ namespace Apian
         public string GroupId; // The annouced group. DestGroupId is ""
         public string GroupCreatorId;
         public string GroupName;
+        public GroupAnnounceMsg() : base() {}
         public GroupAnnounceMsg(ApianGroupInfo info) : base("", GroupAnnounce)
         {
             GroupType = info.GroupType;
@@ -41,11 +42,11 @@ namespace Apian
         }
     }
 
-    public class GroupJoinRequest : ApianGroupMessage
+    public class GroupJoinRequestMsg : ApianGroupMessage
     {
         public string PeerId;
         public string ApianClientPeerJson;
-        public GroupJoinRequest(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerId=pid; ApianClientPeerJson = peerData;}
+        public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerId=pid; ApianClientPeerJson = peerData;}
     }
 
     public class GroupMemberJoinedMsg : ApianGroupMessage
@@ -87,6 +88,7 @@ namespace Apian
         {
             {ApianGroupMessage.GroupAnnounce, (s) => JsonConvert.DeserializeObject<GroupAnnounceMsg>(s) },
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
+            {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },
             {ApianGroupMessage.GroupMemberStatus, (s) => JsonConvert.DeserializeObject<GroupMemberStatusMsg>(s) },
             {ApianGroupMessage.GroupMemberJoined, (s) => JsonConvert.DeserializeObject<GroupMemberJoinedMsg>(s) },
         };
