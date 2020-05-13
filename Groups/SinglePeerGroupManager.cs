@@ -5,7 +5,7 @@ using UniLog;
 namespace Apian
 {
 
-    public class SinglePeerGroupManager : IApianGroupManager
+    public class SinglePeerGroupManager : ApianGroupManagerBase, IApianGroupManager
     {
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
 
@@ -13,6 +13,7 @@ namespace Apian
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentGameId();}
         public UniLogger Logger;
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
+        private ApianGroupMember _Member {get; set;}
         private const string SinglePeerGroupType = "SinglePeerGroup";
 
         // IApianGroupManager
@@ -23,6 +24,8 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public Dictionary<string, ApianGroupMember> Members {get;}
+        private long NextNewCommandSeqNum;
+        public override long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
 
         public SinglePeerGroupManager(ApianBase apianInst)
         {
@@ -50,10 +53,10 @@ namespace Apian
         {
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             ApianGroupMember LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
-            LocalMember.CurStatus = ApianGroupMember.Status.Active;
             Members[LocalPeerId] = LocalMember;
             ApianInst.GameNet.AddChannel(GroupId);
 
+            // Note that we aren't sending a request here - just a "Joined"
             ApianInst.GameNet.SendApianMessage(GroupId,
                 new GroupMemberJoinedMsg(groupId, LocalPeerId, localMemberJson));
 
@@ -77,12 +80,12 @@ namespace Apian
 
         public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
         public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
         public bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan)
@@ -95,9 +98,14 @@ namespace Apian
         {
             // No need to validate source, since it;s local
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-            ApianInst.OnGroupMemberJoined(joinedMsg.ApianClientPeerJson);
-        }
+            _Member = new ApianGroupMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+            _Member.CurStatus = ApianGroupMember.Status.Joining;
+               ApianInst.OnGroupMemberJoined(_Member);
 
+            // Go ahead an mark/announce "active"
+            _Member.CurStatus = ApianGroupMember.Status.Active;
+               ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
+        }
 
        public ApianMessage DeserializeGroupMessage(string subType, string json)
         {

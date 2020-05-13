@@ -64,10 +64,18 @@ namespace Apian
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan);
-
+        long GetNewCommandSequenceNumber();
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
 
-
+    public abstract class ApianGroupManagerBase
+    {
+        public abstract long GetNewCommandSequenceNumber(); // Use when creating a new command
+        // TODO: I hate that this is public, but currently it is application-specific when a group member becomes
+        // "ready to play" so the code to send the ApianCommand for "NewPlayer" or whatever has to live
+        // in application-specific ApianBase-derived code. And it needs to be able to ask for a Command sequence # in order to
+        // build the command
+        // Since in general ApianCommands ARE ClientMessageWrappers this is probably not the only situation when it'll happen
+    }
 
 }

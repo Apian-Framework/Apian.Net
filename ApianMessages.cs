@@ -38,6 +38,7 @@ namespace Apian
         public string CliMsgType;
         public ApianWrappedClientMessage(string gid, string apianMsgType, ApianClientMsg clientMsg) : base(gid, apianMsgType)
         {
+            // TODO: maybe rather than passing the ApianClientMessage we shou djust pass its type.
             CliMsgType=clientMsg.MsgType;
         }
         public ApianWrappedClientMessage() : base() {}
@@ -49,18 +50,19 @@ namespace Apian
     {
         public ApianRequest(string gid, ApianClientMsg clientMsg) : base(gid, CliRequest, clientMsg) {}
         public ApianRequest() : base() {}
-        public virtual ApianCommand ToCommand() {return null;}
+        public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianObservation : ApianWrappedClientMessage
     {
         public ApianObservation(string gid,ApianClientMsg clientMsg) : base(gid, CliObservation, clientMsg) {}
         public ApianObservation() : base() {}
-        public virtual ApianCommand ToCommand() {return null;}
+        public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianCommand : ApianWrappedClientMessage {
-        public ApianCommand(string gid, ApianClientMsg clientMsg) : base(gid, CliCommand, clientMsg) {}
+        public long SequenceNum;
+        public ApianCommand(long seqNum, string gid, ApianClientMsg clientMsg) : base(gid, CliCommand, clientMsg) {SequenceNum=seqNum;}
         public ApianCommand() : base() {}
 
     }

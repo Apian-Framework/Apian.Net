@@ -6,7 +6,7 @@ using UniLog;
 namespace Apian
 {
 
-    public class CreatorServerGroupManager : IApianGroupManager
+    public class CreatorServerGroupManager : ApianGroupManagerBase, IApianGroupManager
     {
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
 
@@ -23,6 +23,8 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public Dictionary<string, ApianGroupMember> Members {get;}
+        private long NextNewCommandSeqNum;
+        public override long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
         public bool Intialized {get => GroupInfo != null; }
 
 
@@ -42,6 +44,7 @@ namespace Apian
 
         public void CreateNewGroup(string groupId, string groupName)
         {
+            Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupId}");
             // Creating a new group
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
@@ -49,6 +52,7 @@ namespace Apian
 
         public void InitExistingGroup(ApianGroupInfo info)
         {
+            Logger.Info($"{this.GetType().Name}.InitExistingGroup(): {info.GroupId}");
             GroupInfo = info;
             ApianInst.GameNet.AddApianInstance(ApianInst, info.GroupId);
         }
@@ -56,15 +60,18 @@ namespace Apian
         public void JoinGroup(string groupId, string localMemberJson)
         {
             // Local call.
+            Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
             ApianInst.GameNet.AddChannel(GroupId);
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(groupId, LocalPeerId, localMemberJson));
         }
 
-        private void _AddMember(string peerId, string appDataJson)
+        private ApianGroupMember _AddMember(string peerId, string appDataJson)
         {
+            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
             ApianGroupMember newMember =  new ApianGroupMember(peerId, appDataJson);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
             Members[peerId] = newMember;
+            return newMember;
         }
 
         public void Update()
@@ -87,14 +94,14 @@ namespace Apian
         {
             // Creator sends out command
             if (GroupCreatorId == LocalPeerId)
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
         public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
             // Observations from the server are turned into commands by the server
             if ((GroupCreatorId == LocalPeerId) && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand());
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
         public bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan)
@@ -120,13 +127,17 @@ namespace Apian
             if (GroupCreatorId == LocalPeerId)
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
-                // Send info about current members to new joinee
+                Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
+
+                // Send current members to new joinee - do it bfore sending the new peers join msg
                 _SendMemberJoinedMessages(jreq.PeerId);
-                _SendMemberStatusUpdates(jreq.PeerId);
 
                 // Just approve. Don't add (happens in OnGroupMemberJoined())
                 GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
+
+                // Now send status updates (from "joined") for any member that has changed status
+                _SendMemberStatusUpdates(jreq.PeerId);
 
             }
         }
@@ -152,23 +163,38 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
+        // private void _DeclareAllJoinersActive()
+        // {
+        //     List<GroupMemberStatusMsg> statusMsgs = Members.Values
+        //         .Where( (m) => m.CurStatus == ApianGroupMember.Status.Joining)
+        //         .Select( (m) =>  new GroupMemberStatusMsg(GroupId, m.PeerId, ApianGroupMember.Status.Active)).ToList();
+        //     foreach (GroupMemberStatusMsg msg in statusMsgs)
+        //         ApianInst.SendApianMessage(GroupId, msg);
+        // }
+
         private void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // If from GroupCreator then it's valid
             if (msgSrc == GroupCreatorId)
             {
                 GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-               _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
-                ApianInst.OnGroupMemberJoined(joinedMsg.ApianClientPeerJson);
+                Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {joinedMsg.PeerId}");
 
-                // Are WE the group creator and is this OUR join message?
+                ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+
+                // Unless we are the group creator AND this is OUR join message
                 if (joinedMsg.PeerId == LocalPeerId && GroupCreatorId == LocalPeerId)
                 {
-                    // Yes, Which maens we're also the first. Mark us "Active" and tell our app
-                    // TODO: Make this less hackly-seeming.
-                    Members[LocalPeerId].CurStatus = ApianGroupMember.Status.Active;
-                    ApianInst.OnGroupMemberStatus(LocalPeerId, ApianGroupMember.Status.Active);
+                    // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
+                    ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
                 }
+
+                // // Super hack: if we are the Creator, and there a 2 memebers, then mark us both as 'active" and everything starts!
+                // if ( GroupCreatorId == LocalPeerId && Members.Count() == 2)
+                // {
+                //     _DeclareAllJoinersActive();
+                // }
+
             }
         }
 
@@ -177,9 +203,16 @@ namespace Apian
             if (msgSrc == GroupCreatorId) // If from GroupCreator then it's valid
             {
                 GroupMemberStatusMsg sMsg = (msg as GroupMemberStatusMsg);
-                ApianGroupMember m = Members[sMsg.PeerId];
-                m.CurStatus = sMsg.MemberStatus;
-                ApianInst.OnGroupMemberStatus(m.PeerId, m.CurStatus);
+                Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus():  {sMsg.PeerId} to {sMsg.MemberStatus}");
+                if (Members.Keys.Contains(sMsg.PeerId))
+                {
+                    ApianGroupMember m = Members[sMsg.PeerId];
+                    ApianGroupMember.Status old = m.CurStatus;
+                    m.CurStatus = sMsg.MemberStatus;
+                    ApianInst.OnGroupMemberStatusChange(m, old);
+                }
+                else
+                    Logger.Error($"{this.GetType().Name}.OnGroupMemberStatus(): Member not present" );
             }
         }
 
