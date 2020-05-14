@@ -48,6 +48,7 @@ namespace Apian
             // Creating a new group
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
+            ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
         }
 
         public void InitExistingGroup(ApianGroupInfo info)
@@ -181,6 +182,8 @@ namespace Apian
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {joinedMsg.PeerId}");
 
                 ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+
+                ApianInst.OnGroupMemberJoined(m); // inform local apian
 
                 // Unless we are the group creator AND this is OUR join message
                 if (joinedMsg.PeerId == LocalPeerId && GroupCreatorId == LocalPeerId)

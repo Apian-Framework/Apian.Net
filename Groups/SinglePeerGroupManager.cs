@@ -45,6 +45,7 @@ namespace Apian
         {
             GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
+            ApianInst.ApianClock.Set(0); // Need to start it running
         }
 
         public void InitExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
@@ -100,11 +101,11 @@ namespace Apian
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
             _Member = new ApianGroupMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
             _Member.CurStatus = ApianGroupMember.Status.Joining;
-               ApianInst.OnGroupMemberJoined(_Member);
+            ApianInst.OnGroupMemberJoined(_Member);
 
             // Go ahead an mark/announce "active"
             _Member.CurStatus = ApianGroupMember.Status.Active;
-               ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
+            ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
         }
 
        public ApianMessage DeserializeGroupMessage(string subType, string json)
