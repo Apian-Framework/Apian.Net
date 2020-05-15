@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Linq;
 using System.Net.Http;
 using System;
@@ -23,6 +24,10 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public Dictionary<string, ApianGroupMember> Members {get;}
+
+        //
+        public ApianGroupMember LocalMember {private set; get;}
+        private Dictionary<long, ApianCommand> CommandStash;
         private long NextNewCommandSeqNum;
         public override long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
         public bool Intialized {get => GroupInfo != null; }
@@ -40,6 +45,7 @@ namespace Apian
             Logger = UniLogger.GetLogger("ApianGroup");
             ApianInst = apianInst;
             Members = new Dictionary<string, ApianGroupMember>();
+            CommandStash = new Dictionary<long, ApianCommand>();
          }
 
         public void CreateNewGroup(string groupId, string groupName)
@@ -72,6 +78,8 @@ namespace Apian
             ApianGroupMember newMember =  new ApianGroupMember(peerId, appDataJson);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
             Members[peerId] = newMember;
+            if (peerId==LocalPeerId)
+                LocalMember = newMember;
             return newMember;
         }
 
@@ -105,10 +113,18 @@ namespace Apian
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
-        public bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
         {
             // Valid if from the creator
-            return msgSrc == GroupCreatorId;
+            if (msgSrc != GroupCreatorId)
+                return ApianCommandStatus.kBadSource;
+
+            if (LocalM)
+
+          //  Also - chec SeqNum
+          //  Need to put "stashing" status in here
+
+            return ApianCommandStatus.kShouldApply;
         }
 
       private void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)

@@ -89,9 +89,9 @@ namespace Apian
             ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
-        public bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
         {
-            return true; // TODO: ok, even this one should at least check the source
+            return ApianCommandStatus.kShouldApply; // TODO: ok, even this one should at least check the source
         }
 
 

@@ -44,6 +44,12 @@ namespace Apian
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedAutoPropertyAccessor.Global,NotAccessedField.Global
     }
 
+    public enum ApianCommandStatus {
+        kShouldApply, // It's good. Apply it to the state
+        kStashedForSync, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
+        kBadSource // Ignore it and complain about the source
+    }
+
     public interface IApianGroupManager
     {
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
@@ -63,7 +69,7 @@ namespace Apian
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
-        bool ValidateCommand(ApianCommand msg, string msgSrc, string msgChan);
+        ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
         long GetNewCommandSequenceNumber();
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
