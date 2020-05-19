@@ -103,6 +103,7 @@ namespace Apian
         private long LastProcessedCommandSeqNum; // init to -1
 
         private bool SyncCompleteRequested; // while this is true commands get handled as if we aren;t syncing (to prevent multiple requests)
+        // TODO: &&&& FIX THE ABOVE! Change to a timeout (couple seconds in the future) before which a sync request can't be issued.
 
         private ServerOnlyData ServerData;
         public bool LocalPeerIsServer {get => ServerData != null;}

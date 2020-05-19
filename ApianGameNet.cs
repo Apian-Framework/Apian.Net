@@ -13,6 +13,7 @@ namespace Apian
         void RequestGroups();
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
+        PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
 
         // TODO: Are these needed?
         //void CreateApianGroup(ApianGroupInfo groupInfo); // TODO: results in An ApianGroupData message on game ch
@@ -146,6 +147,11 @@ namespace Apian
         //
         // *** Additional ApianGameNet stuff
         //
+
+        public PeerClockSyncData GetP2pPeerClockSyncData(string p2pPeerId)
+        {
+            return p2p.GetPeerClockSyncData(p2pPeerId);
+        }
 
         public void AddApianInstance( ApianBase instance, string groupId)
         {

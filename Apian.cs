@@ -1,7 +1,7 @@
 
 using System;
 using System.Collections.Generic;
-using GameNet;
+using P2pNet;
 using UniLog;
 
 namespace Apian
@@ -52,9 +52,29 @@ namespace Apian
         public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
 
         // FROM GroupManager
-        public abstract void OnGroupMemberJoined(ApianGroupMember member); // App-specific Apian instance needs to field this
-        // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
-        // But it usually DOES care about the LOCAL peer's group membership status.
+        public virtual void OnGroupMemberJoined(ApianGroupMember member)
+        {
+            // By default just helps getting ApianClock set up.
+            // App-specific Apian instance needs to field this if it cares for any other reason.
+            // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
+            // But it usually DOES care about the LOCAL peer's group membership status.
+
+            if (ApianClock != null)
+            {
+                PeerClockSyncData syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
+                if (syncData == null)
+                    Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
+                else
+                {
+                    ApianClock.OnP2pPeerSync(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
+                    if (!ApianClock.IsIdle)
+                        ApianClock.SendApianClockOffset();
+
+                }
+            }
+
+        }
+
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyApianCommand(ApianCommand cmd);
 
