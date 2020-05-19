@@ -25,6 +25,7 @@ namespace Apian
         {
             New,  // just created
             Joining, // In the process of joining a group
+            Syncing, // In the process of syncing app state
             Active, // part of the gang
             Missing, // not currently present, but only newly so
             Removed, // has left, or was missing long enough to be removed
@@ -47,18 +48,19 @@ namespace Apian
     public enum ApianCommandStatus {
         kShouldApply, // It's good. Apply it to the state
         kStashedForSync, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
-        kBadSource // Ignore it and complain about the source
+        kBadSource, // Ignore it and complain about the source
+        kAlreadyReceived, // seqence nuber < that what we were expecting
+        kLocalPeerNotReady, // local peer hasn;t been accepted into group yet
     }
 
     public interface IApianGroupManager
     {
-        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
-        bool Intialized {get;}
-        ApianGroupInfo GroupInfo {get;}
+        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global        ApianGroupInfo GroupInfo {get;}
         string GroupType {get;}
         string GroupId {get;}
         string GroupCreatorId {get;}
         string LocalPeerId {get;}
+        ApianGroupMember LocalMember {get;}
         Dictionary<string, ApianGroupMember> Members {get;}
 
         void CreateNewGroup(string groupId, string groupName); // does NOT imply join
@@ -70,18 +72,13 @@ namespace Apian
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
-        long GetNewCommandSequenceNumber();
+
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
 
     public abstract class ApianGroupManagerBase
     {
-        public abstract long GetNewCommandSequenceNumber(); // Use when creating a new command
-        // TODO: I hate that this is public, but currently it is application-specific when a group member becomes
-        // "ready to play" so the code to send the ApianCommand for "NewPlayer" or whatever has to live
-        // in application-specific ApianBase-derived code. And it needs to be able to ask for a Command sequence # in order to
-        // build the command
-        // Since in general ApianCommands ARE ClientMessageWrappers this is probably not the only situation when it'll happen
+
     }
 
 }

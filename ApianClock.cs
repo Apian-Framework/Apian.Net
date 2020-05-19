@@ -50,8 +50,8 @@ namespace Apian
         private float _currentRate;
 
 
-        private const int OffsetAnnounceBaseMs = 10000; //
-        private long NewNextOffsetAnnounceTime {get =>  SystemTime + OffsetAnnounceBaseMs + new Random().Next(OffsetAnnounceBaseMs/4); }
+        private const int OffsetAnnouncementPeriodMs = 10000; //
+        private long NewNextOffsetAnnounceTime {get =>  SystemTime + OffsetAnnouncementPeriodMs + new Random().Next(OffsetAnnouncementPeriodMs/4); }
         private long _nextOffsetAnnounceTime;
 
         public DefaultApianClock(ApianBase apian)
@@ -169,7 +169,7 @@ namespace Apian
                 long localErrMs = localErrSum / peerCount;
 
                 // Try to correct half of the error in kOffsetAnnounceBaseMs
-                float newRate = 1.0f + (.5f * localErrMs / OffsetAnnounceBaseMs);
+                float newRate = 1.0f + (.5f * localErrMs / OffsetAnnouncementPeriodMs);
                 Set(CurrentTime, newRate);
                 Logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");
             }

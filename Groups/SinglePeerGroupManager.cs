@@ -23,9 +23,10 @@ namespace Apian
         public string GroupId {get => GroupInfo.GroupId;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
+        public ApianGroupMember LocalMember {private set; get;}
         public Dictionary<string, ApianGroupMember> Members {get;}
         private long NextNewCommandSeqNum;
-        public override long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
+        public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
 
         public SinglePeerGroupManager(ApianBase apianInst)
         {
@@ -53,7 +54,7 @@ namespace Apian
         public void JoinGroup(string groupId, string localMemberJson)
         {
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
-            ApianGroupMember LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
+            LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
             Members[LocalPeerId] = LocalMember;
             ApianInst.GameNet.AddChannel(GroupId);
 

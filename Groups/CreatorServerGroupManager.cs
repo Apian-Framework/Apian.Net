@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using System.Runtime.InteropServices;
 using System.Linq;
 using System.Net.Http;
@@ -9,7 +10,79 @@ namespace Apian
 
     public class CreatorServerGroupManager : ApianGroupManagerBase, IApianGroupManager
     {
-       // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
+        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
+
+        protected class SyncingPeerData
+        {
+            public string peerId;
+            public long nextCommandToSend;
+            public long lastCommandToSend;
+
+            public SyncingPeerData(string pid, long first, long last)
+            {
+                peerId = pid;
+                nextCommandToSend = first;
+                lastCommandToSend = last;
+            }
+        }
+
+        protected class ServerOnlyData
+        {
+            private ApianBase ApianInst {get; }
+            private long NextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
+            public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
+            public Dictionary<string, SyncingPeerData> syncingPeers;
+            public ServerOnlyData(ApianBase apInst)
+            {
+                ApianInst = apInst;
+                syncingPeers = new Dictionary<string, SyncingPeerData>();
+            }
+
+            private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long first, long last)
+            {
+                peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, first);
+                peerData.lastCommandToSend = Math.Max(peerData.lastCommandToSend, last);
+                return peerData;
+            }
+
+            public void AddSyncingPeer(string peerId, long firstNeededCmd, long firstStashedCmd )
+            {
+                SyncingPeerData peer = !syncingPeers.ContainsKey(peerId) ? new SyncingPeerData(peerId, firstNeededCmd, firstStashedCmd)
+                    : _UpdateSyncingPeer(syncingPeers[peerId], firstNeededCmd, firstStashedCmd);
+                syncingPeers[peerId] = peer;
+            }
+
+            public void SendSyncData( Dictionary<long, ApianCommand> commandStash)
+            {
+                List<string> donePeers = new List<string>();
+                foreach (SyncingPeerData speer in syncingPeers.Values )
+                {
+                    if (_SendOneSyncCmd(speer, commandStash) == false)
+                        donePeers.Add(speer.peerId);
+                }
+                foreach (string id in donePeers)
+                    syncingPeers.Remove(id);
+            }
+
+            private bool _SendOneSyncCmd(SyncingPeerData sPeer,  Dictionary<long, ApianCommand> commandStash)  // true means "keep going"
+            {
+                long cmdNum = sPeer.nextCommandToSend;
+                if (commandStash.ContainsKey(cmdNum))
+                {
+                    ApianCommand cmd =  commandStash[cmdNum];
+                    ApianInst.GameNet.SendApianMessage(sPeer.peerId, cmd);
+                    sPeer.nextCommandToSend++;
+                    if (sPeer.nextCommandToSend == sPeer.lastCommandToSend)
+                    {
+                        // &&&& No! We can;t mark the peer active. I has to tell US it is up-to-date
+                        // ApianInst.SendApianMessage(ApianInst.GroupId, new GroupMemberStatusMsg(ApianInst.GroupId, sPeer.peerId, ApianGroupMember.Status.Active));
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
 
         private ApianBase ApianInst {get; }
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentGameId();}
@@ -24,13 +97,15 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public Dictionary<string, ApianGroupMember> Members {get;}
-
-        //
+        public bool Intialized {get => GroupInfo != null; }
         public ApianGroupMember LocalMember {private set; get;}
         private Dictionary<long, ApianCommand> CommandStash;
-        private long NextNewCommandSeqNum;
-        public override long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
-        public bool Intialized {get => GroupInfo != null; }
+        private long LastProcessedCommandSeqNum; // init to -1
+
+        private bool SyncCompleteRequested; // while this is true commands get handled as if we aren;t syncing (to prevent multiple requests)
+
+        private ServerOnlyData ServerData;
+        public bool LocalPeerIsServer {get => ServerData != null;}
 
 
         public CreatorServerGroupManager(ApianBase apianInst)
@@ -39,19 +114,24 @@ namespace Apian
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
                 {ApianGroupMessage.GroupMemberJoined, OnGroupMemberJoined },
-                {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus }
+                {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
+                {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
+                {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
             };
 
             Logger = UniLogger.GetLogger("ApianGroup");
             ApianInst = apianInst;
             Members = new Dictionary<string, ApianGroupMember>();
             CommandStash = new Dictionary<long, ApianCommand>();
+            LastProcessedCommandSeqNum = -1; // this +1 is what we expect to see enxt
          }
 
         public void CreateNewGroup(string groupId, string groupName)
         {
             Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupId}");
+
             // Creating a new group
+            ServerData = new ServerOnlyData(ApianInst);
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
@@ -85,8 +165,30 @@ namespace Apian
 
         public void Update()
         {
+            if (LocalPeerIsServer)
+                ServerData.SendSyncData(CommandStash);
 
+            if (LocalMember?.CurStatus == ApianGroupMember.Status.Syncing)
+                _ApplyStashedCommand();
         }
+
+        private void _ApplyStashedCommand()
+        {
+            long expectedSeqNum = LastProcessedCommandSeqNum+1;
+            if (CommandStash.ContainsKey(expectedSeqNum))
+            {
+                ApianInst.ApplyApianCommand(CommandStash[expectedSeqNum]);
+                LastProcessedCommandSeqNum++;
+                CommandStash.Remove(expectedSeqNum);
+                if (CommandStash.Count == 0 && !SyncCompleteRequested)
+                {
+                    Logger.Info($"{this.GetType().Name}._ApplyStashedCommand(): Sending SyncCompletion request.");
+                    ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, expectedSeqNum, "hash"));
+                    SyncCompleteRequested = true;
+                }
+            }
+        }
+
 
         public void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
@@ -102,35 +204,85 @@ namespace Apian
         public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
             // Creator sends out command
-            if (GroupCreatorId == LocalPeerId)
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
+            if (LocalPeerIsServer)
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(ServerData.GetNewCommandSequenceNumber()));
         }
 
         public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
             // Observations from the server are turned into commands by the server
-            if ((GroupCreatorId == LocalPeerId) && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
+            if (LocalPeerIsServer && (msgSrc == LocalPeerId))
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(ServerData.GetNewCommandSequenceNumber()));
         }
 
         public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
         {
+            // Too early
+            if (LocalMember == null)
+                return ApianCommandStatus.kLocalPeerNotReady;
+
             // Valid if from the creator
             if (msgSrc != GroupCreatorId)
                 return ApianCommandStatus.kBadSource;
 
-            if (LocalM)
 
-          //  Also - chec SeqNum
-          //  Need to put "stashing" status in here
+            if (LocalPeerIsServer) // Server has to stash everything
+                CommandStash[msg.SequenceNum] = msg;// TODO: at least until there is checkpointing
 
+
+            // TODO: this is hideous with all the returns and convolution.
+            // Once it's working figure out how to make it elegant.
+            if (LocalMember.CurStatus == ApianGroupMember.Status.Active)
+            {
+                // If we received OnGroupJoined yet (null LocalMmeber) go ahead and anticipate it...
+                if (msg.SequenceNum <= LastProcessedCommandSeqNum)
+                    return ApianCommandStatus.kAlreadyReceived;
+                else if (msg.SequenceNum > LastProcessedCommandSeqNum+1)
+                {
+                    _RequestSync(msg.SequenceNum);
+                    CommandStash[msg.SequenceNum] = msg;
+                    return ApianCommandStatus.kStashedForSync;
+                }
+
+            } else {
+                if (LocalMember.CurStatus != ApianGroupMember.Status.Syncing)
+                    _RequestSync(msg.SequenceNum);
+
+                if (!SyncCompleteRequested) // if we've caugt up them apply the command now
+                {
+                    CommandStash[msg.SequenceNum] = msg;
+                    return ApianCommandStatus.kStashedForSync;
+                }
+            }
+
+            LastProcessedCommandSeqNum++;
             return ApianCommandStatus.kShouldApply;
+        }
+
+        private void _RequestSync(long lastCommandWeNeed)
+        {
+            // Here we actually set our own status and short-circuit the MeberStatusMsg
+            // process - we WILL recieve that message in a bit, but in the meantime we want to
+            // stop processing incoming commands and stash them instead.
+
+            long firstSeqNumWeNeed = LastProcessedCommandSeqNum + 1;  // Since LPCSN inits to -1, this is 0 if we haven't gotten any
+
+            GroupSyncRequestMsg syncRequest = new GroupSyncRequestMsg(GroupId, firstSeqNumWeNeed, lastCommandWeNeed);
+            Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} end: {syncRequest.FirstStashedCmdSeqNum}");
+            ApianInst.SendApianMessage(GroupCreatorId, syncRequest);
+
+            // the local short-circuit...
+            ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
+            LocalMember.CurStatus = ApianGroupMember.Status.Syncing;
+            ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
+
+            // when creator gets the sync request it'll broadcast an identical status change msg
         }
 
       private void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // Only the creator answers
-            if (GroupCreatorId == LocalPeerId)
+            if (LocalPeerIsServer)
             {
                 GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo);
                 ApianInst.SendApianMessage(msgSrc, amsg);
@@ -141,7 +293,7 @@ namespace Apian
         {
             // In this implementation the creator decides
             // Everyone else just ignores this.
-            if (GroupCreatorId == LocalPeerId)
+            if (LocalPeerIsServer)
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
                 Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
@@ -202,17 +354,11 @@ namespace Apian
                 ApianInst.OnGroupMemberJoined(m); // inform local apian
 
                 // Unless we are the group creator AND this is OUR join message
-                if (joinedMsg.PeerId == LocalPeerId && GroupCreatorId == LocalPeerId)
+                if (joinedMsg.PeerId == LocalPeerId && LocalPeerIsServer)
                 {
                     // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
                     ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
                 }
-
-                // // Super hack: if we are the Creator, and there a 2 memebers, then mark us both as 'active" and everything starts!
-                // if ( GroupCreatorId == LocalPeerId && Members.Count() == 2)
-                // {
-                //     _DeclareAllJoinersActive();
-                // }
 
             }
         }
@@ -234,6 +380,28 @@ namespace Apian
                     Logger.Error($"{this.GetType().Name}.OnGroupMemberStatus(): Member not present" );
             }
         }
+        private void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            if (LocalPeerIsServer) // Only creator handles this
+            {
+                GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
+                Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} end: {sMsg.FirstStashedCmdSeqNum}");
+
+                ServerData.AddSyncingPeer(msgSrc, sMsg.ExpectedCmdSeqNum, sMsg.FirstStashedCmdSeqNum );
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Syncing));
+            }
+        }
+
+        private void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            if (LocalPeerIsServer) // Only creator handles this
+            {
+                GroupSyncCompletionMsg sMsg = (msg as GroupSyncCompletionMsg);
+                Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Active));
+            }
+        }
+
 
        public ApianMessage DeserializeGroupMessage(string subType, string json)
         {
