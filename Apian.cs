@@ -59,7 +59,7 @@ namespace Apian
             // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
             // But it usually DOES care about the LOCAL peer's group membership status.
 
-            if (ApianClock != null)
+            if (member.PeerId != GameNet.LocalP2pId() &&  ApianClock != null)
             {
                 PeerClockSyncData syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
                 if (syncData == null)
@@ -72,11 +72,10 @@ namespace Apian
 
                 }
             }
-
         }
 
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
-        public abstract void ApplyApianCommand(ApianCommand cmd);
+        public abstract void ApplyStashedApianCommand(ApianCommand cmd);
 
         // Other stuff
         public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian

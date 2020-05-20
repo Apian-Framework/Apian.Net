@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UniLog;
 
 namespace Apian
 {
@@ -47,7 +48,7 @@ namespace Apian
 
     public enum ApianCommandStatus {
         kShouldApply, // It's good. Apply it to the state
-        kStashedForSync, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
+        kStashedInQueued, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
         kBadSource, // Ignore it and complain about the source
         kAlreadyReceived, // seqence nuber < that what we were expecting
         kLocalPeerNotReady, // local peer hasn;t been accepted into group yet
@@ -61,13 +62,13 @@ namespace Apian
         string GroupCreatorId {get;}
         string LocalPeerId {get;}
         ApianGroupMember LocalMember {get;}
-        Dictionary<string, ApianGroupMember> Members {get;}
+        ApianGroupMember GetMember(string peerId); // returns null if not there
 
         void CreateNewGroup(string groupId, string groupName); // does NOT imply join
         void InitExistingGroup(ApianGroupInfo info);
         void JoinGroup(string groupChannel, string localMemberJson);
         void Update();
-        ApianMessage DeserializeGroupMessage(string subType, string json);
+        //ApianMessage DeserializeGroupMessage(string subType, string json);
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
@@ -78,7 +79,23 @@ namespace Apian
 
     public abstract class ApianGroupManagerBase
     {
+        public UniLogger Logger;
+        protected Dictionary<string, ApianGroupMember> Members {get;}
+        protected ApianBase ApianInst {get; }
 
+        public ApianGroupManagerBase(ApianBase apianInst)
+        {
+            Logger = UniLogger.GetLogger("ApianGroup");
+            ApianInst = apianInst;
+            Members = new Dictionary<string, ApianGroupMember>();
+        }
+
+        public ApianGroupMember GetMember(string peerId)
+        {
+            if (!Members.ContainsKey(peerId))
+                return null;
+            return Members[peerId];
+        }
     }
 
 }

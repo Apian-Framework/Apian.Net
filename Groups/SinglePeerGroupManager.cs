@@ -9,9 +9,7 @@ namespace Apian
     {
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
 
-        private ApianBase ApianInst {get; }
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentGameId();}
-        public UniLogger Logger;
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private ApianGroupMember _Member {get; set;}
         private const string SinglePeerGroupType = "SinglePeerGroup";
@@ -24,11 +22,10 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public ApianGroupMember LocalMember {private set; get;}
-        public Dictionary<string, ApianGroupMember> Members {get;}
         private long NextNewCommandSeqNum;
         public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
 
-        public SinglePeerGroupManager(ApianBase apianInst)
+        public SinglePeerGroupManager(ApianBase apianInst) : base(apianInst)
         {
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 //{ApianGroupMessage.GroupAnnounce, OnGroupAnnounce },
@@ -36,10 +33,6 @@ namespace Apian
                 //{ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupMemberJoined, OnGroupMemberJoined },
             };
-
-            Logger = UniLogger.GetLogger("ApianGroup");
-            ApianInst = apianInst;
-            Members = new Dictionary<string, ApianGroupMember>();
          }
 
         public void CreateNewGroup(string groupId, string groupName)
