@@ -92,7 +92,12 @@ namespace Apian
 
         // void JoinGame(string gameP2pChannel); // calls OnPeerJoined() - override that
 
-        // void LeaveGame(); // calls OnPeerLeft*()
+        public override void LeaveGame()
+        {
+            // needs to clean up ApianInstances
+            ApianInstances.Clear();
+            base.LeaveGame();
+        }
 
         // void AddChannel(string subChannel);
 
