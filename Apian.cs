@@ -35,7 +35,7 @@ namespace Apian
             // Add any truly generic handlers here
         }
 
-        public abstract void Update();
+        public abstract bool Update(); // Returns TRUE is local peer is in active state
 
         // Client
 
