@@ -35,12 +35,15 @@ namespace Apian
 
     public class ApianWrappedClientMessage : ApianMessage
     {
-        public string CliMsgType;
-        public long CliMsgTimeStamp; // TODO: This is a hack and is a copy of the ApianClientMessage timestamp
+        public string CliMsgType; // TODO: This is a hack and is a copy of the ApianClientMessage MsgType
+                                  // It's related to deserializing from JSON into an ApianWrappedClientMessage
+                                  // and me not wanting to include the full derived class names in the data stream.
+
+        [JsonIgnore]
+        public virtual ApianClientMsg ClientMsg {get;}
         public ApianWrappedClientMessage(string gid, string apianMsgType, ApianClientMsg clientMsg) : base(gid, apianMsgType)
         {
             CliMsgType=clientMsg.MsgType;
-            CliMsgTimeStamp = clientMsg.TimeStamp;
         }
         public ApianWrappedClientMessage() : base() {}
 
