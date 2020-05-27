@@ -36,10 +36,9 @@ namespace Apian
     public class ApianWrappedClientMessage : ApianMessage
     {
         public string CliMsgType;
-        public long CliMsgTimeStamp; // TODO: This is a hack
+        public long CliMsgTimeStamp; // TODO: This is a hack and is a copy of the ApianClientMessage timestamp
         public ApianWrappedClientMessage(string gid, string apianMsgType, ApianClientMsg clientMsg) : base(gid, apianMsgType)
         {
-            // TODO: maybe rather than passing the ApianClientMessage we shou djust pass its type.
             CliMsgType=clientMsg.MsgType;
             CliMsgTimeStamp = clientMsg.TimeStamp;
         }
