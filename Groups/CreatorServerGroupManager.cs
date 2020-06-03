@@ -11,6 +11,14 @@ namespace Apian
     public class CreatorServerGroupManager : ApianGroupManagerBase, IApianGroupManager
     {
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
+        public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
+        {
+            {"CheckpointMs", "5000"},  // request a checkpoint this often
+            {"CheckpointLeadMs", "500"},  // request checkpoints this far in the future from the message
+            {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
+            {"StashedCommandsPerUpdate", "10"},
+            {"Server.MaxSyncCmdsPerUpdate", "10"},
+        };
 
         protected class SyncingPeerData
         {
@@ -32,11 +40,17 @@ namespace Apian
             private long NextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
             public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
             public Dictionary<string, SyncingPeerData> syncingPeers;
-            private readonly int  kMaxSentMsgsPerUpdate = 10; //
-            public ServerOnlyData(ApianBase apInst)
+            private int  MaxSyncCmdsPerUpdate; //
+            public ServerOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
                 ApianInst = apInst;
                 syncingPeers = new Dictionary<string, SyncingPeerData>();
+                _LoadConfig(config);
+            }
+
+            private void _LoadConfig(Dictionary<string,string> configDict)
+            {
+                MaxSyncCmdsPerUpdate = int.Parse(configDict["Server.MaxSyncCmdsPerUpdate"]);
             }
 
             private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long first, long firstPeerHas)
@@ -57,7 +71,7 @@ namespace Apian
             public void SendSyncData( Dictionary<long, ApianCommand> commandStash)
             {
                 List<string> donePeers = new List<string>();
-                int msgsLeft = kMaxSentMsgsPerUpdate;
+                int msgsLeft = MaxSyncCmdsPerUpdate;
                 foreach (SyncingPeerData sPeer in syncingPeers.Values )
                 {
                     msgsLeft -= _SendCmdsToOnePeer(sPeer, commandStash, msgsLeft);
@@ -107,19 +121,28 @@ namespace Apian
         public bool Intialized {get => GroupInfo != null; }
         public ApianGroupMember LocalMember {private set; get;}
         private Dictionary<long, ApianCommand> CommandStash;
-        private long MaxReceivedCmdSeqNum; // init to -1
-        private long MaxAppliedCmdSeqNum; // init to -1
-        private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
+        // State data
+        private long MaxReceivedCmdSeqNum; // inits to -1
+        private long MaxAppliedCmdSeqNum; // inits to -1
         private long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
-        private readonly long kSyncCompletionWaitMs = 2000; // wait this long for a sync completion request reply
-        private readonly int kStashedCommandsPerUpdate = 10;
+        private long NextCheckPointMs;
+
+        // Config params
+        Dictionary<string,string> ConfigDict;
+        private long SyncCompletionWaitMs; // wait this long for a sync completion request reply
+        private int StashedCommandsPerUpdate;
+        private long CheckpointMs;
+        private long CheckpointLeadMs;
 
         private ServerOnlyData ServerData;
         public bool LocalPeerIsServer {get => ServerData != null;}
+        private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
-
-        public CreatorServerGroupManager(ApianBase apianInst) : base(apianInst)
+        public CreatorServerGroupManager(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
+            _ParseConfig(config ?? DefaultConfig);
+
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
@@ -127,22 +150,34 @@ namespace Apian
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
+                {ApianGroupMessage.GroupCheckpointRequest, OnGroupCheckpointRequest },
             };
 
             CommandStash = new Dictionary<long, ApianCommand>();
             MaxAppliedCmdSeqNum = -1; // this +1 is what we expect to see enxt
             MaxReceivedCmdSeqNum = -1; // haven't received one yet
-         }
+
+        }
+
+        private void _ParseConfig( Dictionary<string,string> config)
+        {
+            ConfigDict = config; // ugly
+            SyncCompletionWaitMs = int.Parse(config["SyncCompletionWaitMs"]);
+            StashedCommandsPerUpdate = int.Parse(config["StashedCommandsPerUpdate"]);
+            CheckpointMs = int.Parse(config["CheckpointMs"]);
+            CheckpointLeadMs = int.Parse(config["CheckpointLeadMs"]);
+        }
 
         public void CreateNewGroup(string groupId, string groupName)
         {
             Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupId}");
 
             // Creating a new group
-            ServerData = new ServerOnlyData(ApianInst);
+            ServerData = new ServerOnlyData(ApianInst, ConfigDict);
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
+            NextCheckPointMs = CheckpointMs;
         }
 
         public void InitExistingGroup(ApianGroupInfo info)
@@ -174,14 +209,44 @@ namespace Apian
         public void Update()
         {
             if (LocalPeerIsServer)
-                ServerData.SendSyncData(CommandStash);
+                _ServerUpdate();
 
             _ApplyStashedCommands(); // always check the stash
         }
 
+        //
+        // TODO: move server stuff to the server class
+        //
+        private void _ServerUpdate()
+        {
+            ServerData.SendSyncData(CommandStash);
+            _DoCheckpointRequest();
+        }
+
+        private void _DoCheckpointRequest()
+        {
+            if (!ApianInst.ApianClock.IsIdle)
+            {
+                long apMs = ApianInst.ApianClock.CurrentTime;
+                if (apMs > NextCheckPointMs)
+                {
+                    _SendCheckpointRequest(apMs);
+                    NextCheckPointMs += CheckpointMs;
+                }
+            }
+        }
+
+        private void _SendCheckpointRequest(long curApainMs)
+        {
+            GroupCheckpointRequestMsg cpRequest = new GroupCheckpointRequestMsg(GroupId, NextCheckPointMs+CheckpointLeadMs);
+            Logger.Info($"{this.GetType().Name}._SendCheckpointRequest() sending req for time:  {NextCheckPointMs+CheckpointLeadMs} at {curApainMs}");
+            Logger.Info($"{this.GetType().Name}._SendCheckpointRequest() CheckPointMs: {CheckpointMs}, Lead MS: {CheckpointLeadMs}");
+            ApianInst.SendApianMessage(GroupId, cpRequest);
+        }
+
         private void _ApplyStashedCommands()
         {
-            for(int i=0; i<kStashedCommandsPerUpdate;i++)
+            for(int i=0; i<StashedCommandsPerUpdate;i++)
             {
                 long expectedSeqNum = MaxAppliedCmdSeqNum+1;
                 if (CommandStash.ContainsKey(expectedSeqNum))
@@ -195,7 +260,7 @@ namespace Apian
                         {
                             Logger.Info($"{this.GetType().Name}._ApplyStashedCommand(): Sending SyncCompletion request.");
                             ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, expectedSeqNum, "hash"));
-                            DontRequestSyncBeforeMs = SysMsNow + kSyncCompletionWaitMs;
+                            DontRequestSyncBeforeMs = SysMsNow + SyncCompletionWaitMs;
                         }
                         break; // don;t try any more
                     }
@@ -416,6 +481,14 @@ namespace Apian
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");
                 ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Active));
             }
+        }
+
+        private void OnGroupCheckpointRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            GroupCheckpointRequestMsg rMsg = msg as GroupCheckpointRequestMsg;
+            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointRequest() from {msgSrc} CheckpointTime: {rMsg.CheckpointTime}");
+            ApianInst.ScheduleStateCheckpoint(rMsg.CheckpointTime);
+
         }
 
     }

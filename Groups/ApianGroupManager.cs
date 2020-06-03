@@ -79,9 +79,9 @@ namespace Apian
 
     public abstract class ApianGroupManagerBase
     {
+        protected ApianBase ApianInst {get; }
         public UniLogger Logger;
         protected Dictionary<string, ApianGroupMember> Members {get;}
-        protected ApianBase ApianInst {get; }
 
         public ApianGroupManagerBase(ApianBase apianInst)
         {

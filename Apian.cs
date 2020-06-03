@@ -77,6 +77,9 @@ namespace Apian
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
 
+        public abstract void ScheduleStateCheckpoint(long whenMs); // called by groupMgr
+        public abstract void SendStateCheckpoint(long timeStamp, string stateHash); // called by client app
+
         // Other stuff
         public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
         {

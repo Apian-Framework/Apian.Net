@@ -23,6 +23,8 @@ namespace Apian
         // Most apps will subclass this to include app-relevant data
         // And subclass ApianGroupMember to do the same
         void SetApianReference(ApianBase apian);
+        void OnApianCommand(ApianCommand cmd);
+        void ScheduleStateCheckpoint(long whenMs);
 
     }
 

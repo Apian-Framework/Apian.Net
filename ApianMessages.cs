@@ -76,7 +76,6 @@ namespace Apian
         public string PeerId;
         public long ClockOffset;
         public ApianClockOffsetMsg(string gid, string pid, long offset) : base(gid, ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
-
         public ApianClockOffsetMsg() : base() {}
     }
 
@@ -103,6 +102,7 @@ namespace Apian
             {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CliMsgType },
             {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType }, // Need to use ApianGroupMessageDeserializer to fully decode
             {ApianMessage.ApianClockOffset, (msg) => null },
+
         };
 
         public static ApianMessage FromJSON(string msgType, string json)
