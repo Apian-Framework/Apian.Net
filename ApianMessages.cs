@@ -25,7 +25,8 @@ namespace Apian
         public const string CliCommand = "APapCmd";
         public const string ApianClockOffset = "APclk";
         public const string GroupMessage = "APGrp";
-
+        public const string CheckpointMsg = "APchk";
+        public const string ApianCheckpointReport = "APcpRpt";
         public string DestGroupId; // Can be empty
         public string MsgType;
        // ReSharper enable MemberCanBeProtected.Global
@@ -80,6 +81,39 @@ namespace Apian
     }
 
 
+    public class ApianCheckpointMsg : ApianClientMsg
+    {
+        // This is a "mock client command" for an ApianCheckpointCommand to "wrap"
+        public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
+    }
+
+    public class ApianCheckpointCommand : ApianCommand
+    {
+        // A checkpoint request is implemented as an ApianCommand so it can:
+        // - Explicitly specify an "epoch" for the checkpoint (its sequence number)
+        // - Be part of the serial command stream. Client commands are strictly evaluated
+        // and applied in order. By being a command the request can guarantee that it is processed
+        // by all peers on an app state that has the identical commands applied - and will take advantage
+        // of the ordering mechanism
+        public override ApianClientMsg ClientMsg {get => checkpointMsg;}
+        public ApianCheckpointMsg checkpointMsg;
+        public ApianCheckpointCommand(long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
+        public ApianCheckpointCommand() : base() {}
+    }
+
+    public class ApianCheckpointReport : ApianMessage
+    {
+        public long SeqNum;
+        public long TimeStamp; // ApianClock ms
+        public string StateHash; // this might want to be more complicated.
+        public ApianCheckpointReport(string gid, long seqNum, long checkpointTime, string stateHash) : base(gid, ApianCheckpointReport )
+        {
+            SeqNum = seqNum;
+            TimeStamp = checkpointTime;
+            StateHash = stateHash;
+        }
+        public ApianCheckpointReport() : base() {}
+    }
 
     static public class ApianMessageDeserializer
     {
@@ -93,6 +127,7 @@ namespace Apian
             {ApianMessage.CliCommand, (s) => JsonConvert.DeserializeObject<ApianCommand>(s) },
             {ApianMessage.GroupMessage, (s) => JsonConvert.DeserializeObject<ApianGroupMessage>(s) },
             {ApianMessage.ApianClockOffset, (s) => JsonConvert.DeserializeObject<ApianClockOffsetMsg>(s) },
+            {ApianMessage.ApianCheckpointReport, (s) => JsonConvert.DeserializeObject<ApianCheckpointReport>(s) },
         };
 
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()

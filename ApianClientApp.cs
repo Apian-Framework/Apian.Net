@@ -24,7 +24,8 @@ namespace Apian
         // And subclass ApianGroupMember to do the same
         void SetApianReference(ApianBase apian);
         void OnApianCommand(ApianCommand cmd);
-        void ScheduleStateCheckpoint(long whenMs);
+        void OnCheckpointCommand(long seqNum, long timeStamp);
+        //void ScheduleStateCheckpoint(long whenMs);
 
     }
 

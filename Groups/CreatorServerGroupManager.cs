@@ -150,7 +150,7 @@ namespace Apian
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
-                {ApianGroupMessage.GroupCheckpointRequest, OnGroupCheckpointRequest },
+                //{ApianGroupMessage.GroupCheckpointRequest, OnGroupCheckpointRequest },
             };
 
             CommandStash = new Dictionary<long, ApianCommand>();
@@ -230,18 +230,18 @@ namespace Apian
                 long apMs = ApianInst.ApianClock.CurrentTime;
                 if (apMs > NextCheckPointMs)
                 {
-                    _SendCheckpointRequest(apMs);
+                    _SendCheckpointCommand(apMs);
                     NextCheckPointMs += CheckpointMs;
                 }
             }
         }
 
-        private void _SendCheckpointRequest(long curApainMs)
+        private void _SendCheckpointCommand(long curApainMs)
         {
-            GroupCheckpointRequestMsg cpRequest = new GroupCheckpointRequestMsg(GroupId, NextCheckPointMs+CheckpointLeadMs);
-            Logger.Info($"{this.GetType().Name}._SendCheckpointRequest() sending req for time:  {NextCheckPointMs+CheckpointLeadMs} at {curApainMs}");
-            Logger.Info($"{this.GetType().Name}._SendCheckpointRequest() CheckPointMs: {CheckpointMs}, Lead MS: {CheckpointLeadMs}");
-            ApianInst.SendApianMessage(GroupId, cpRequest);
+            ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
+            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(ServerData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
+            ApianInst.SendApianMessage(GroupId, cpCmd);
         }
 
         private void _ApplyStashedCommands()
@@ -483,13 +483,13 @@ namespace Apian
             }
         }
 
-        private void OnGroupCheckpointRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
-        {
-            GroupCheckpointRequestMsg rMsg = msg as GroupCheckpointRequestMsg;
-            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointRequest() from {msgSrc} CheckpointTime: {rMsg.CheckpointTime}");
-            ApianInst.ScheduleStateCheckpoint(rMsg.CheckpointTime);
+        // private void OnGroupCheckpointRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        // {
+        //     GroupCheckpointRequestMsg rMsg = msg as GroupCheckpointRequestMsg;
+        //     Logger.Info($"{this.GetType().Name}.OnGroupCheckpointRequest() from {msgSrc} CheckpointTime: {rMsg.CheckpointTime}");
+        //     ApianInst.ScheduleStateCheckpoint(rMsg.CheckpointTime);
 
-        }
+        // }
 
     }
 }
