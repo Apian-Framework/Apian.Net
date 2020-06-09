@@ -33,10 +33,10 @@ namespace Apian
     public interface IApianStateData
     {
         //string ApianHash();
-        string ApianSerialized();
+        string ApianSerialized(object args);
 
         // Requires a paired:
-        // public static <DerivedClassType> FromApainSerial()
+        // public static <DerivedClassType> FromApainJson()
     }
 
 
