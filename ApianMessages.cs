@@ -26,7 +26,6 @@ namespace Apian
         public const string ApianClockOffset = "APclk";
         public const string GroupMessage = "APGrp";
         public const string CheckpointMsg = "APchk";
-        public const string ApianCheckpointReport = "APcpRpt";
         public string DestGroupId; // Can be empty
         public string MsgType;
        // ReSharper enable MemberCanBeProtected.Global
@@ -101,19 +100,7 @@ namespace Apian
         public ApianCheckpointCommand() : base() {}
     }
 
-    public class ApianCheckpointReport : ApianMessage
-    {
-        public long SeqNum;
-        public long TimeStamp; // ApianClock ms
-        public string StateHash; // this might want to be more complicated.
-        public ApianCheckpointReport(string gid, long seqNum, long checkpointTime, string stateHash) : base(gid, ApianCheckpointReport )
-        {
-            SeqNum = seqNum;
-            TimeStamp = checkpointTime;
-            StateHash = stateHash;
-        }
-        public ApianCheckpointReport() : base() {}
-    }
+
 
     static public class ApianMessageDeserializer
     {
@@ -127,7 +114,6 @@ namespace Apian
             {ApianMessage.CliCommand, (s) => JsonConvert.DeserializeObject<ApianCommand>(s) },
             {ApianMessage.GroupMessage, (s) => JsonConvert.DeserializeObject<ApianGroupMessage>(s) },
             {ApianMessage.ApianClockOffset, (s) => JsonConvert.DeserializeObject<ApianClockOffsetMsg>(s) },
-            {ApianMessage.ApianCheckpointReport, (s) => JsonConvert.DeserializeObject<ApianCheckpointReport>(s) },
         };
 
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()
@@ -137,7 +123,6 @@ namespace Apian
             {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CliMsgType },
             {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType }, // Need to use ApianGroupMessageDeserializer to fully decode
             {ApianMessage.ApianClockOffset, (msg) => null },
-
         };
 
         public static ApianMessage FromJSON(string msgType, string json)

@@ -14,6 +14,7 @@ namespace Apian
         public const string GroupMemberStatus = "APgms"; // joining, active, removed, etc
         public const string GroupSyncRequest = "APgsyr"; // request sync data
         public const string GroupSyncCompletion = "APgsyc"; // "I'm done with sync"
+        public const string GroupCheckpointReport = "APgcrp"; // "Here's my local checkpoint hash"
 
         // These next 2 may be premature - nothing depends on em yet to feel free to toss/change them
         //public const string GroupStateRequest = "APgsr"; // requesting serialized ApianStateData
@@ -110,6 +111,19 @@ namespace Apian
         }
     }
 
+    public class GroupCheckpointReportMsg : ApianGroupMessage
+    {
+        public long SeqNum;
+        public long TimeStamp; // ApianClock ms
+        public string StateHash; // this might want to be more complicated.
+        public GroupCheckpointReportMsg(string gid, long seqNum, long checkpointTime, string stateHash) : base(gid, GroupCheckpointReport )
+        {
+            SeqNum = seqNum;
+            TimeStamp = checkpointTime;
+            StateHash = stateHash;
+        }
+    }
+
     static public class ApianGroupMessageDeserializer
     {
        private static Dictionary<string, Func<string, ApianMessage>> deserializers = new  Dictionary<string, Func<string, ApianMessage>>()
@@ -121,6 +135,7 @@ namespace Apian
             {ApianGroupMessage.GroupMemberJoined, (s) => JsonConvert.DeserializeObject<GroupMemberJoinedMsg>(s) },
             {ApianGroupMessage.GroupSyncRequest, (s) => JsonConvert.DeserializeObject<GroupSyncRequestMsg>(s) },
             {ApianGroupMessage.GroupSyncCompletion, (s) => JsonConvert.DeserializeObject<GroupSyncCompletionMsg>(s) },
+            {ApianGroupMessage.GroupCheckpointReport, (s) => JsonConvert.DeserializeObject<GroupCheckpointReportMsg>(s) },
         };
 
         public static ApianGroupMessage FromJson(string msgSubType, string json)

@@ -150,7 +150,7 @@ namespace Apian
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
-                //{ApianGroupMessage.GroupCheckpointRequest, OnGroupCheckpointRequest },
+                {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
             };
 
             CommandStash = new Dictionary<long, ApianCommand>();
@@ -488,8 +488,13 @@ namespace Apian
         //     GroupCheckpointRequestMsg rMsg = msg as GroupCheckpointRequestMsg;
         //     Logger.Info($"{this.GetType().Name}.OnGroupCheckpointRequest() from {msgSrc} CheckpointTime: {rMsg.CheckpointTime}");
         //     ApianInst.ScheduleStateCheckpoint(rMsg.CheckpointTime);
-
         // }
+
+        private void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
+            Logger.Info($"***** {this.GetType().Name}.OnGroupCheckpointReport() from {msgSrc} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+        }
 
     }
 }
