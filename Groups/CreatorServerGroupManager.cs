@@ -14,7 +14,7 @@ namespace Apian
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
         {
             {"CheckpointMs", "5000"},  // request a checkpoint this often
-            {"CheckpointLeadMs", "500"},  // request checkpoints this far in the future from the message
+            {"CheckpointOffsetMs", "50"},  // Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
             {"StashedCommandsPerUpdate", "10"},
             {"Server.MaxSyncCmdsPerUpdate", "10"},
@@ -133,7 +133,7 @@ namespace Apian
         private long SyncCompletionWaitMs; // wait this long for a sync completion request reply
         private int StashedCommandsPerUpdate;
         private long CheckpointMs;
-        private long CheckpointLeadMs;
+        private long CheckpointOffsetMs;
 
         private ServerOnlyData ServerData;
         public bool LocalPeerIsServer {get => ServerData != null;}
@@ -165,7 +165,7 @@ namespace Apian
             SyncCompletionWaitMs = int.Parse(config["SyncCompletionWaitMs"]);
             StashedCommandsPerUpdate = int.Parse(config["StashedCommandsPerUpdate"]);
             CheckpointMs = int.Parse(config["CheckpointMs"]);
-            CheckpointLeadMs = int.Parse(config["CheckpointLeadMs"]);
+            CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
         public void CreateNewGroup(string groupId, string groupName)
@@ -177,7 +177,7 @@ namespace Apian
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
-            NextCheckPointMs = CheckpointMs;
+            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs;
         }
 
         public void InitExistingGroup(ApianGroupInfo info)
