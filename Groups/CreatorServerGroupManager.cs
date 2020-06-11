@@ -282,7 +282,7 @@ namespace Apian
 
         public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
-            // Creator sends out command
+            // Requests are assumed to be valid as long as source is Active
             if (LocalPeerIsServer && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(ServerData.GetNewCommandSequenceNumber()));
         }
@@ -308,7 +308,7 @@ namespace Apian
             if (LocalPeerIsServer) // Server has to stash everything
                 CommandStash[msg.SequenceNum] = msg;// TODO: at least until there is checkpointing
 
-            // if we are processing the cach (syncing) and get to this then we are done.
+            // if we are processing the cache (syncing) and get to this then we are done.
             // Keep in mind that after we've requested sync data we'll be getting both LIVE commands
             // (with bigger #s) and "we asked for em" commands.
             MaxReceivedCmdSeqNum = Math.Max(MaxReceivedCmdSeqNum, msg.SequenceNum);
@@ -347,7 +347,7 @@ namespace Apian
             // process - we WILL recieve that message in a bit, but in the meantime we want to
             // stop processing incoming commands and stash them instead.
 
-            long firstSeqNumWeNeed = MaxAppliedCmdSeqNum + 1;  // Since the cvariable inits to -1, this is 0 if we haven't applied any
+            long firstSeqNumWeNeed = MaxAppliedCmdSeqNum + 1;  // Since the variable inits to -1, this is 0 if we haven't applied any
 
             GroupSyncRequestMsg syncRequest = new GroupSyncRequestMsg(GroupId, firstSeqNumWeNeed, firstStashedSeqNum);
             Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} 1st Stashed: {syncRequest.FirstStashedCmdSeqNum}");
