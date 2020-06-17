@@ -104,10 +104,7 @@ namespace Apian
             ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
         }
 
-       public ApianMessage DeserializeGroupMessage(string subType, string json)
-        {
-            return null;
-        }
+        public void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
 
     }
 }

@@ -25,7 +25,7 @@ namespace Apian
         void SetApianReference(ApianBase apian);
         void OnApianCommand(ApianCommand cmd);
         void OnCheckpointCommand(long seqNum, long timeStamp);
-        //void ScheduleStateCheckpoint(long whenMs);
+        void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
     }
 

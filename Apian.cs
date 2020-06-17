@@ -50,6 +50,9 @@ namespace Apian
 
         public void InitExistingGroup(ApianGroupInfo info) => ApianGroup.InitExistingGroup(info);
         public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
+        public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
+
+        public abstract void SetFakeSyncApianTime(long newTime); // TODO:  &&&&& MAKE THIS GO AWAY!!! See implmentation in BeamApian for details.
 
         // FROM GroupManager
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
@@ -76,7 +79,7 @@ namespace Apian
 
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
-        public abstract void SendStateCheckpoint(long timeStamp, long seqNum, string serializedState); // called by client app
+        public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
 
         // Other stuff
         public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian

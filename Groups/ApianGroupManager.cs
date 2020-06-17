@@ -68,10 +68,10 @@ namespace Apian
         void InitExistingGroup(ApianGroupInfo info);
         void JoinGroup(string groupChannel, string localMemberJson);
         void Update();
-        //ApianMessage DeserializeGroupMessage(string subType, string json);
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
+        void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
 
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
