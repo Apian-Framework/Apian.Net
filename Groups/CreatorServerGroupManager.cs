@@ -526,7 +526,6 @@ namespace Apian
             ApianInst.ApplyCheckpointStateData(dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
             MaxAppliedCmdSeqNum = dMsg.StateSeqNum;
             MaxReceivedCmdSeqNum = dMsg.StateSeqNum;
-            ApianInst.SetFakeSyncApianTime(dMsg.StateTimeStamp);
         }
 
         private void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)

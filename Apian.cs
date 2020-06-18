@@ -52,8 +52,6 @@ namespace Apian
         public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
         public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
 
-        public abstract void SetFakeSyncApianTime(long newTime); // TODO:  &&&&& MAKE THIS GO AWAY!!! See implmentation in BeamApian for details.
-
         // FROM GroupManager
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
         {
