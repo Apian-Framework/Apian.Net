@@ -60,10 +60,12 @@ namespace Apian
             public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
             public Dictionary<string, SyncingPeerData> syncingPeers;
             public AppStateData stashedAppState; // Consider making this a dict
+            UniLogger Logger;
 
             private int  MaxSyncCmdsPerUpdate; //
             public ServerOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
+                Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
                 ApianInst = apInst;
                 syncingPeers = new Dictionary<string, SyncingPeerData>();
                 _LoadConfig(config);
@@ -96,7 +98,7 @@ namespace Apian
                 foreach (SyncingPeerData sPeer in syncingPeers.Values )
                 {
                     msgsLeft -= _SendCmdsToOnePeer(sPeer, commandStash, msgsLeft);
-                    if (sPeer.nextCommandToSend == sPeer.firstCommandPeerHas)
+                    if (sPeer.nextCommandToSend >= sPeer.firstCommandPeerHas) // might be greater than if checkpoint data ends after firstCommandPeerHas
                         donePeers.Add(sPeer.peerId);
                     if (msgsLeft <= 0)
                         break;
@@ -515,7 +517,9 @@ namespace Apian
                 {
                     ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.SequenceNumber, state.StateHash, state.SerializedStateData));
                     firstCmdToSend = state.SequenceNumber + 1;
+                    Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.SequenceNumber}");
                 }
+                Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending peer stashed commands from {firstCmdToSend} through {sMsg.FirstStashedCmdSeqNum-1}");
                 ServerData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
             }
         }
