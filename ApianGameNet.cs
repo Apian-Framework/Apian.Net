@@ -21,13 +21,13 @@ namespace Apian
         //void LeaveApianGroup(string groupId); // results in An Apian GroupMemberStatus message on group ch
     }
 
-    public interface IApianGameManager : IGameNetClient
+    public interface IApianApplication : IGameNetClient
     {
         // This is the "core" or "backend" part of an Apian app
         // which sets up GameNet (and probably the GameInstance/Apian pairs)
         // and that handles any stuff (chat messages, etc)  not Apian-related
         void OnGroupAnnounce(string groupId, string groupType, string creatorId, string groupName);
-        void AddGameInstance(IApianClientApp gameInstance);
+        void AddAppCore(IApianAppCore coreInstance);
     }
 
     public class ApianNetworkPeer
@@ -48,7 +48,7 @@ namespace Apian
     public abstract class ApianGameNetBase : GameNetBase, IApianGameNet
     {
         // This is the actual GameNet instance
-        public IApianGameManager gameManager; // This is the IGameNetClient
+        public IApianApplication gameManager; // This is the IGameNetClient
         public Dictionary<string,ApianNetworkPeer> Peers; // keyed by p2pid
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
@@ -79,7 +79,7 @@ namespace Apian
         public override void SetClient(IGameNetClient _client)
         {
             base.SetClient(_client);
-            gameManager = _client as IApianGameManager;
+            gameManager = _client as IApianApplication;
         }
 
         // void Disconnect();

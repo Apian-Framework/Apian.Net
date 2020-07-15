@@ -17,7 +17,7 @@ namespace Apian
         public IApianGroupManager ApianGroup  {get; protected set;}
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
-        public IApianClientApp Client {get; private set;}
+        public IApianAppCore Client {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
         public string GroupId { get => ApianGroup.GroupId; }
         public string GameId { get => GameNet.CurrentGameId(); }
@@ -26,7 +26,7 @@ namespace Apian
         // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state
         // protected long ExpectedCommandNum { get; set;} // starts at 0 - there should be no skipping unles a data checkpoint is loaded
 
-        protected ApianBase(IApianGameNet gn, IApianClientApp cl) {
+        protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             GameNet = gn;
             Client = cl;
             Client.SetApianReference(this);
@@ -36,8 +36,6 @@ namespace Apian
         }
 
         public abstract bool Update(); // Returns TRUE is local peer is in active state
-
-        // Client
 
         // Apian Messages
         public abstract void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);

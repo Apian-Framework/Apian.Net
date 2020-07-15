@@ -6,14 +6,14 @@ namespace Apian
     // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
     // (can;t be readonly because of NewtonSoft.JSON)
 
-    public class ApianClientMsg
+    public class ApianCoreMessage
     {
         // ReSharper disable MemberCanBePrivate.Global
         // Client game or app messages derive from this
         public string MsgType;
         public long TimeStamp;
-        public ApianClientMsg(string t, long ts) {MsgType = t; TimeStamp = ts;}
-        public ApianClientMsg() {}
+        public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
+        public ApianCoreMessage() {}
         // ReSharper enable MemberCanBePrivate.Global
     }
 
@@ -40,7 +40,7 @@ namespace Apian
                                   // and me not wanting to include the full derived class names in the data stream.
 
         [JsonIgnore]
-        public virtual ApianClientMsg ClientMsg {get;}
+        public virtual ApianCoreMessage ClientMsg {get;}
         public ApianWrappedClientMessage(string gid, string apianMsgType, string clientMsgType) : base(gid, apianMsgType)
         {
             CliMsgType=clientMsgType;
@@ -52,21 +52,21 @@ namespace Apian
 
     public class ApianRequest : ApianWrappedClientMessage
     {
-        public ApianRequest(string gid, ApianClientMsg clientMsg) : base(gid, CliRequest, clientMsg.MsgType) {}
+        public ApianRequest(string gid, ApianCoreMessage clientMsg) : base(gid, CliRequest, clientMsg.MsgType) {}
         public ApianRequest() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianObservation : ApianWrappedClientMessage
     {
-        public ApianObservation(string gid,ApianClientMsg clientMsg) : base(gid, CliObservation, clientMsg.MsgType) {}
+        public ApianObservation(string gid,ApianCoreMessage clientMsg) : base(gid, CliObservation, clientMsg.MsgType) {}
         public ApianObservation() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianCommand : ApianWrappedClientMessage {
         public long SequenceNum;
-        public ApianCommand(long seqNum, string gid, ApianClientMsg clientMsg) : base(gid, CliCommand, clientMsg.MsgType) {SequenceNum=seqNum;}
+        public ApianCommand(long seqNum, string gid, ApianCoreMessage clientMsg) : base(gid, CliCommand, clientMsg.MsgType) {SequenceNum=seqNum;}
         public ApianCommand() : base() {}
 
     }
@@ -80,7 +80,7 @@ namespace Apian
     }
 
 
-    public class ApianCheckpointMsg : ApianClientMsg
+    public class ApianCheckpointMsg : ApianCoreMessage
     {
         // This is a "mock client command" for an ApianCheckpointCommand to "wrap"
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
@@ -94,7 +94,7 @@ namespace Apian
         // and applied in order. By being a command the request can guarantee that it is processed
         // by all peers on an app state that has the identical commands applied - and will take advantage
         // of the ordering mechanism
-        public override ApianClientMsg ClientMsg {get => checkpointMsg;}
+        public override ApianCoreMessage ClientMsg {get => checkpointMsg;}
         public ApianCheckpointMsg checkpointMsg;
         public ApianCheckpointCommand(long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
         public ApianCheckpointCommand() : base() {}
