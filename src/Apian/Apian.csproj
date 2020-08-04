@@ -9,7 +9,7 @@
 
   <ItemGroup>
 
-    <PackageReference Include="P2pNet.Base"  Version="1.0.2" Condition="'$(P2pNetSource)' != 'local'" />
+    <PackageReference Include="P2pNet.Base"  Version="1.0.3" Condition="'$(P2pNetSource)' != 'local'" />
     <ProjectReference Include="..\..\..\P2pNet\src\P2pNet.Base\P2pNet.Base.csproj" Condition="'$(P2pNetSource)' == 'local'"/>
 
     <PackageReference Include="UniLog"  Version="1.0.0" Condition="'$(UniLogSource)' != 'local'" />
