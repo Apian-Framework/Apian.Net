@@ -1,0 +1,14 @@
+{
+  "name": "com.apian-framework.apian",
+  "displayName": "Apian",
+  "version": "1.0.4",
+  "unity": "2018.1",
+  "description": "Apian Framework",
+  "keywords": [
+    "unity"
+  ],
+  "category": "Unity",
+  "dependencies": {
+    "com.apian-framework.p2pnet.base": "1.0.2"
+  }
+}
