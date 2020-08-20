@@ -8,12 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="P2pNet.Base"  Version="1.0.3" Condition="'$(P2pNetSource)' == 'package'" />
+    <ProjectReference Include="..\..\..\P2pNet\src\P2pNet.Base\P2pNet.Base.csproj" Condition="'$(P2pNetSource)' != 'package'"/>
 
-    <PackageReference Include="P2pNet.Base"  Version="1.0.3" Condition="'$(P2pNetSource)' != 'local'" />
-    <ProjectReference Include="..\..\..\P2pNet\src\P2pNet.Base\P2pNet.Base.csproj" Condition="'$(P2pNetSource)' == 'local'"/>
-
-    <PackageReference Include="UniLog"  Version="1.0.0" Condition="'$(UniLogSource)' != 'local'" />
-    <ProjectReference Include="..\..\..\UniLog\src\UniLog\UniLog.csproj" Condition="'$(UniLogSource)' == 'local'" />
+    <PackageReference Include="UniLog"  Version="1.0.0" Condition="'$(UniLogSource)' == 'package'" />
+    <ProjectReference Include="..\..\..\UniLog\src\UniLog\UniLog.csproj" Condition="'$(UniLogSource)' != 'package'" />
 
   </ItemGroup>
 
