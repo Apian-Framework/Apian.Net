@@ -24,7 +24,7 @@ jobs:
     - name: Checkout Apian dependencies (UniLog)
       uses: actions/checkout@v2
       with:
-        repository: Apian-Framework/UniLog.Net
+        repository: Apian-Framework/UniLog
     - name: Install dependencies
       run: dotnet restore
     - name: Build
