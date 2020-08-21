@@ -9,6 +9,8 @@
   ],
   "category": "Unity",
   "dependencies": {
-    "com.apian-framework.p2pnet.base": "1.0.2"
-  }
+    "com.apian-framework.p2pnet.base": "1.0.2",
+    "com.apian-framework.unilog": "1.0.2"
+  },
+  "type": "library"
 }
