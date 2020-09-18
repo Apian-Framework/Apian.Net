@@ -111,8 +111,11 @@ namespace GameNet
 
         protected void _SyncTrivialNewGame()
         {
-            // The basics. Implementations *might* call this
-            string newGameId = "BEAMGAME" + System.Guid.NewGuid().ToString();
+            // The most basic thing you can in a CreateGame() implmentation.
+            // It actually does nothing at all except to make up a random name and then call back saying a game was created.
+            // This works because at its *absolute simplest* a "game" is just an agree-to p2p channel, and "joining" it
+            // just means subscribing to it.
+            string newGameId = "GAME" + System.Guid.NewGuid().ToString();
             callbacksForNextPoll.Enqueue( () => client.OnGameCreated(newGameId));
         }
 
