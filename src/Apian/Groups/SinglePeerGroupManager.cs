@@ -35,8 +35,9 @@ namespace Apian
             };
          }
 
-        public void CreateNewGroup(string groupId, string groupName)
+        public void CreateNewGroup(string groupName)
         {
+            string groupId = $"{ApianInst.GameId}/{groupName}";
             GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             ApianInst.ApianClock.Set(0); // Need to start it running
@@ -44,8 +45,9 @@ namespace Apian
 
         public void InitExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
-        public void JoinGroup(string groupId, string localMemberJson)
+        public void JoinGroup(string groupName, string localMemberJson)
         {
+            string groupId = $"{ApianInst.GameId}/{groupName}";
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
             Members[LocalPeerId] = LocalMember;

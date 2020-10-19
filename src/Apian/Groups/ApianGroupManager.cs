@@ -64,7 +64,7 @@ namespace Apian
         ApianGroupMember LocalMember {get;}
         ApianGroupMember GetMember(string peerId); // returns null if not there
 
-        void CreateNewGroup(string groupId, string groupName); // does NOT imply join
+        void CreateNewGroup(string groupName); // does NOT imply join
         void InitExistingGroup(ApianGroupInfo info);
         void JoinGroup(string groupChannel, string localMemberJson);
         void Update();

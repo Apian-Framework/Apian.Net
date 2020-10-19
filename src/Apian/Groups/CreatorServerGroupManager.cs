@@ -202,11 +202,12 @@ namespace Apian
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
-        public void CreateNewGroup(string groupId, string groupName)
+        public void CreateNewGroup(string groupName)
         {
-            Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupId}");
+            Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupName}");
 
             // Creating a new group
+            string groupId = $"{ApianInst.GameId}/{groupName}";
             ServerData = new ServerOnlyData(ApianInst, ConfigDict);
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
@@ -221,9 +222,10 @@ namespace Apian
             ApianInst.GameNet.AddApianInstance(ApianInst, info.GroupId);
         }
 
-        public void JoinGroup(string groupId, string localMemberJson)
+        public void JoinGroup(string groupName, string localMemberJson)
         {
             // Local call.
+            string groupId = $"{ApianInst.GameId}/{groupName}";
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
             ApianInst.GameNet.AddChannel(GroupId);
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(groupId, LocalPeerId, localMemberJson));

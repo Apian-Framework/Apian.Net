@@ -44,10 +44,9 @@ namespace Apian
 
         // Group-related
 
-        public void CreateNewGroup(string groupId, string groupName) => ApianGroup.CreateNewGroup(groupId, groupName);
-
+        public void CreateNewGroup( string groupName) => ApianGroup.CreateNewGroup(groupName);
         public void InitExistingGroup(ApianGroupInfo info) => ApianGroup.InitExistingGroup(info);
-        public void JoinGroup(string groupId, string localMemberJson) => ApianGroup.JoinGroup(groupId, localMemberJson);
+        public void JoinGroup(string groupName, string localMemberJson) => ApianGroup.JoinGroup(groupName, localMemberJson);
         public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
 
         // FROM GroupManager
