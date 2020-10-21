@@ -146,9 +146,7 @@ namespace Apian
         private const string CreatorServerGroupType = "CreatorServerGroup";
 
         // IApianGroupManager
-        public ApianGroupInfo GroupInfo {get; private set;}
         public string GroupType {get => CreatorServerGroupType;}
-        public string GroupId {get => GroupInfo.GroupId;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public bool Intialized {get => GroupInfo != null; }

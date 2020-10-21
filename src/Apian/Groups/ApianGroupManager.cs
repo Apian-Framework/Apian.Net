@@ -59,6 +59,7 @@ namespace Apian
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global        ApianGroupInfo GroupInfo {get;}
         string GroupType {get;}
         string GroupId {get;}
+        string GroupName {get;}
         string GroupCreatorId {get;}
         string LocalPeerId {get;}
         ApianGroupMember LocalMember {get;}
@@ -80,6 +81,11 @@ namespace Apian
     public abstract class ApianGroupManagerBase
     {
         protected ApianBase ApianInst {get; }
+
+        public ApianGroupInfo GroupInfo {get; protected set;}
+        public string GroupId {get => GroupInfo.GroupId;}
+        public string GroupName {get => GroupInfo.GroupName;}
+
         public UniLogger Logger;
         protected Dictionary<string, ApianGroupMember> Members {get;}
 

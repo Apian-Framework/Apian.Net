@@ -19,8 +19,9 @@ namespace Apian
         public IApianGameNet GameNet {get; private set;}
         public IApianAppCore Client {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
-        public string GroupId { get => ApianGroup.GroupId; }
+        public string GroupName { get => ApianGroup.GroupName; }
         public string GameId { get => GameNet.CurrentGameId(); }
+        public string GroupId { get => ApianGroup.GroupId; }
 
         // Command-related stuff
         // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state

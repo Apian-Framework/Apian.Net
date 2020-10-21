@@ -15,10 +15,8 @@ namespace Apian
         private const string SinglePeerGroupType = "SinglePeerGroup";
 
         // IApianGroupManager
-        public ApianGroupInfo GroupInfo {get; private set;}
         public bool Intialized {get => GroupInfo != null; }
         public string GroupType {get => SinglePeerGroupType;}
-        public string GroupId {get => GroupInfo.GroupId;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public ApianGroupMember LocalMember {private set; get;}
