@@ -9,7 +9,7 @@ namespace GameNet
     public interface IGameNet
     {
         void Connect( string p2pConectionString );
-        void SetClient(IGameNetClient _client);
+        void AddClient(IGameNetClient _client);
         void Disconnect();
         void CreateGame<T>(T createGameData);
         void JoinGame(string gameP2pChannel);
@@ -23,7 +23,6 @@ namespace GameNet
 
     public interface IGameNetClient
     {
-        void SetGameNetInstance(IGameNet iGameNetInstance);
         void OnGameCreated(string gameP2pChannel);
         void OnPeerJoinedGame(string peerId, string gameId, string helloData);
         void OnPeerLeftGame(string p2pId, string gameId);
@@ -62,10 +61,9 @@ namespace GameNet
             logger = UniLogger.GetLogger("GameNet");
         }
 
-        public virtual void SetClient(IGameNetClient _client)
+        public virtual void AddClient(IGameNetClient _client)
         {
             client = _client;
-            _client.SetGameNetInstance(this);
         }
 
         // Override this to account for P2pNet implementations you support

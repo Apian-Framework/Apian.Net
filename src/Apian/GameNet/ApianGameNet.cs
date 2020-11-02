@@ -76,9 +76,9 @@ namespace Apian
 
         // void Connect( string p2pConectionString );
 
-        public override void SetClient(IGameNetClient _client)
+        public override void AddClient(IGameNetClient _client)
         {
-            base.SetClient(_client);
+            base.AddClient(_client);
             gameManager = _client as IApianApplication;
         }
 
