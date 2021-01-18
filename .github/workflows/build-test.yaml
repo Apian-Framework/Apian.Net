@@ -49,12 +49,6 @@ jobs:
       run: dotnet restore
       working-directory: main
 
-    # - name: Default badges
-    #   run: |
-    #     cp -v ./.github/badges/badge_linecoverage_none.svg ./.github/badges${{env.SUBPROJECT}}_linecoverage.svg
-    #     cp -v ./.github/badges/badge_branchcoverage_none.svg ./.github/badges/${{env.SUBPROJECT}}_branchcoverage.svg
-    #   working-directory: main
-
     - name: Build
       run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release --no-restore
       working-directory: main
