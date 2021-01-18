@@ -5,6 +5,10 @@ VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Apian", "src\Apian\Apian.csproj", "{4E371F83-E9B3-4150-8039-D305061E48BB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B37413FC-8DD1-44C3-9E27-DF07A0120B58}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Apian.Net.Tests", "tests\Apian.Tests\Apian.Tests.csproj", "{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +34,20 @@ Global
 		{4E371F83-E9B3-4150-8039-D305061E48BB}.Release|x64.Build.0 = Release|Any CPU
 		{4E371F83-E9B3-4150-8039-D305061E48BB}.Release|x86.ActiveCfg = Release|Any CPU
 		{4E371F83-E9B3-4150-8039-D305061E48BB}.Release|x86.Build.0 = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|x64.Build.0 = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Debug|x86.Build.0 = Debug|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|x64.ActiveCfg = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|x64.Build.0 = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|x86.ActiveCfg = Release|Any CPU
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FB3CA141-8DCA-47A0-AE25-3C7427FFA8E9} = {B37413FC-8DD1-44C3-9E27-DF07A0120B58}
 	EndGlobalSection
 EndGlobal
