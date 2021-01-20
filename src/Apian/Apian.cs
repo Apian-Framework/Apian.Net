@@ -6,15 +6,23 @@ using UniLog;
 
 namespace Apian
 {
+    // ApianBase must (it IS abstract) be subclassed.
+    // The expectation is that it will usuall be subclassed twice.
+    // The first SubClass ( : ApianBase ) should provide all of the application-specific
+    // behavior and APIs
+    // The Second should be GroupManager-implmentation-dependant, and should create one
+    // and assign ApianBase.GroupMgr. I should also override virtual methods to provide
+    // any GroupManager-specific behavior.
+
+    // TODO: ApianBase should check to make sure GroupMgr is not null.
+
     public abstract class ApianBase
     {
 		// public API
-		// ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
-        // ReSharper disable UnusedAutoPropertyAccessor.Global,AutoPropertyCanBeMadeGetOnly.Local,NotAccessedField.Global
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
         // Args are fromId, toId, ApianMsg, msDelay
         public UniLogger Logger;
-        public IApianGroupManager GroupMgr  {get; protected set;}
+        public IApianGroupManager GroupMgr  {get; protected set;}  // set in a sublcass ctor
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
         public IApianAppCore Client {get; private set;}
