@@ -14,14 +14,14 @@ namespace Apian
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
         // Args are fromId, toId, ApianMsg, msDelay
         public UniLogger Logger;
-        public IApianGroupManager ApianGroup  {get; protected set;}
+        public IApianGroupManager GroupMgr  {get; protected set;}
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
         public IApianAppCore Client {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
-        public string GroupName { get => ApianGroup.GroupName; }
+        public string GroupName { get => GroupMgr.GroupName; }
         public string GameId { get => GameNet.CurrentGameId(); }
-        public string GroupId { get => ApianGroup.GroupId; }
+        public string GroupId { get => GroupMgr.GroupId; }
 
         // Command-related stuff
         // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state
@@ -45,9 +45,9 @@ namespace Apian
 
         // Group-related
 
-        public void CreateNewGroup( string groupName) => ApianGroup.CreateNewGroup(groupName);
-        public void InitExistingGroup(ApianGroupInfo info) => ApianGroup.InitExistingGroup(info);
-        public void JoinGroup(string groupName, string localMemberJson) => ApianGroup.JoinGroup(groupName, localMemberJson);
+        public void CreateNewGroup( string groupName) => GroupMgr.CreateNewGroup(groupName);
+        public void InitExistingGroup(ApianGroupInfo info) => GroupMgr.InitExistingGroup(info);
+        public void JoinGroup(string groupName, string localMemberJson) => GroupMgr.JoinGroup(groupName, localMemberJson);
         public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
 
         // FROM GroupManager
