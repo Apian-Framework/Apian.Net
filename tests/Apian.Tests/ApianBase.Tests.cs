@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Newtonsoft.Json;
 using Moq;
+using P2pNet;
 using Apian;
 using UniLog;
 
@@ -18,7 +19,10 @@ namespace ApianTests
 
         public class TestApianBase : ApianBase // We need a public ctor
         {
-            public TestApianBase(IApianGameNet gn, IApianAppCore cl) : base(gn, cl) {  }
+            public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
+            {
+                ApianClock = clock;
+            }
 
             public int MsgHandlerCount => ApMsgHandlers.Count;
 
@@ -62,6 +66,7 @@ namespace ApianTests
         public void ApianBase_ConstructorWorks()
         {
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
+
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
 
@@ -73,6 +78,48 @@ namespace ApianTests
             Assert.That(ap.Logger, Is.InstanceOf<UniLogger>());
             Assert.That(ap.MsgHandlerCount, Is.EqualTo(0)); // will also fail if dict isn't there
         }
+
+        [Test]
+        public void ApianBase_OnGroupMemberJoined()
+        {
+            const string localP2pId = "localP2pId";
+            const string remoteId = "remoteId";
+            PeerClockSyncData peerSyncData = new PeerClockSyncData(remoteId, 132, 17, 42);
+
+            mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
+            mockGameNet.Setup(p => p.LocalP2pId()).Returns(localP2pId);
+
+            // If peerId is "noSync" it returns null
+            mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>())).Returns(peerSyncData);
+            mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData("noSync")).Returns(null as PeerClockSyncData);
+
+            mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
+            mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
+
+            Mock<IApianClock> mClock = new Mock<IApianClock>(MockBehavior.Strict);
+            mClock.Setup(cl => cl.OnP2pPeerSync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>()));
+            mClock.Setup(cl => cl.IsIdle).Returns(false);
+            mClock.Setup(cl => cl.SendApianClockOffset());
+
+            ApianGroupMember member = new ApianGroupMember(remoteId, "[some json]");
+            TestApianBase ap =  new TestApianBase(mockGameNet.Object, mockAppCore.Object, mClock.Object);
+
+            ap.OnGroupMemberJoined(member);
+            mockGameNet.Verify(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>()), Times.Once);
+            mClock.Verify(cl => cl.OnP2pPeerSync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>()), Times.Once);
+            mClock.Verify(cl => cl.SendApianClockOffset(), Times.Once);
+
+            ApianGroupMember noSyncMember = new ApianGroupMember("noSync", "[other json]");
+            ap.OnGroupMemberJoined(noSyncMember);
+            mockGameNet.Verify(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>()), Times.Exactly(2));
+            mClock.Verify(cl => cl.OnP2pPeerSync(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>()), Times.Once); // Not called
+            mClock.Verify(cl => cl.SendApianClockOffset(), Times.Once);  // didn;t get called
+
+            ApianGroupMember localMember = new ApianGroupMember(localP2pId, "[other json]");
+            ap.OnGroupMemberJoined(localMember);
+            mockGameNet.Verify(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>()), Times.Exactly(2)); // Not called
+        }
+
     }
 
 }
