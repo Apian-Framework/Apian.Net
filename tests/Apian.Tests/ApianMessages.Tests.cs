@@ -186,6 +186,7 @@ namespace ApianTests
             Assert.That(errStr, Is.Null);
         }
 
+        [Test]
         public void Call_validator_not_found()
         {
             long ts1 = 100;
@@ -201,6 +202,7 @@ namespace ApianTests
             Assert.That(errStr, Is.Null);
         }
 
+        [Test]
         public void Call_validator_validated()
         {
             long ts1 = 100;
