@@ -15,6 +15,19 @@ namespace Apian
         public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
         public ApianCoreMessage() {}
         // ReSharper enable MemberCanBePrivate.Global
+
+        // dictionary of handlers for core message types that could potentially invalidate the current msg
+        // if they came first.
+
+        public enum ValidState { Validated, Invalidated, Unaffected }
+
+        protected Dictionary<string, Func<ApianCoreMessage, (ValidState, string)>> isValidAfterFuncs;
+        public virtual (ValidState stateAfter, string reasonTxt) IsValidAfter(ApianCoreMessage earlierMsg)
+        {
+            return (  (isValidAfterFuncs == null || !isValidAfterFuncs.ContainsKey(earlierMsg.MsgType))
+                ? (ValidState.Unaffected, null) // no dict or not found
+                : isValidAfterFuncs[earlierMsg.MsgType](earlierMsg) ); //  check for effect
+        }
     }
 
     public class ApianMessage
