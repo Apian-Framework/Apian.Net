@@ -31,6 +31,15 @@ namespace Apian
         public string GameId { get => GameNet.CurrentGameId(); }
         public string GroupId { get => GroupMgr.GroupId; }
 
+        // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
+        // To be batched-up and then ordered and checked for conflict before being sent out.
+        protected SortedList<long, ApianCoreMessage> batchedObservations;
+        private class AscendingLongComparer : IComparer<long> // for batchedObservations (is this already the default IComparer<long>? )
+        {
+            public int Compare(long x, long y) => (x>y) ? 1 : (x<y) ? -1 : 0;
+        }
+
+
         // Command-related stuff
         // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state
         // protected long ExpectedCommandNum { get; set;} // starts at 0 - there should be no skipping unles a data checkpoint is loaded
@@ -52,6 +61,52 @@ namespace Apian
         {
             Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgTYpe: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
             GameNet.SendApianMessage(toChannel, msg);
+        }
+
+        // CoreApp -> Apian API
+        // TODO: You know, these should be interfaces
+        protected virtual void SendRequest(string destCh, ApianMessage msg)
+        {
+            // Make sure these only get sent out if we are ACTIVE.
+            // It wouldn't cause any trouble, since the groupmgr would not make it into a command
+            // after seeing we aren't active - but there's a lot of message traffic between the 2
+
+            // Also - this func can be overridden in any derived Apian class which is able to
+            // be even more selctive (in a server-based group, for instance, if you're not the
+            // server then you should just return)
+            if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
+            {
+                Logger.Info($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
+                return;
+            }
+            GameNet.SendApianMessage(destCh, msg);
+        }
+
+        protected virtual void SendObservation(string destCh, ApianMessage msg)
+        {
+            // See comments in SendRequest
+            if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
+            {
+                Logger.Info($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
+                return;
+            }
+            GameNet.SendApianMessage(destCh, msg);
+        }
+
+        protected virtual void StartObservationSet()
+        {
+            if (batchedObservations == null)
+                batchedObservations = new SortedList<long, ApianCoreMessage>(new AscendingLongComparer());
+
+            if (batchedObservations.Count >0 ) {
+                Logger.Warn($"ApianBase.StartObservationSet(): batchedObservations not empty. Clearing it.");
+                batchedObservations.Clear();
+            }
+        }
+
+        protected virtual void EndObservationSet()
+        {
+
         }
 
         // Group-related
@@ -88,35 +143,7 @@ namespace Apian
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
         public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
 
-        // CoreApp -> Apian API
-        // TODO: You know, these should be interfaces
-        protected virtual void SendRequest(string destCh, ApianMessage msg)
-        {
-            // Make sure these only get sent out if we are ACTIVE.
-            // It wouldn't cause any trouble, since the groupmgr would not make it into a command
-            // after seeing we aren't active - but there's a lot of message traffic between the 2
 
-            // Also - this func can be overridden in any derived Apian class which is able to
-            // be even more selctive (in a server-based group, for instance, if you're not the
-            // server then you should just return)
-            if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
-            {
-                Logger.Info($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
-                return;
-            }
-            GameNet.SendApianMessage(destCh, msg);
-        }
-
-        protected virtual void SendObservation(string destCh, ApianMessage msg)
-        {
-            // See comments in SendRequest
-            if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
-            {
-                Logger.Info($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
-                return;
-            }
-            GameNet.SendApianMessage(destCh, msg);
-        }
 
         // Other stuff
         public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
