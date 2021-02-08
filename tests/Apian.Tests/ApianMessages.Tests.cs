@@ -208,7 +208,6 @@ namespace ApianTests
             Assert.That(acm.TimeStamp, Is.EqualTo(ts));
         }
 
-
         [Test]
         public void Call_validator_not_found()
         {

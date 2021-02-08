@@ -31,7 +31,7 @@ namespace Apian
         public IApianGroupManager GroupMgr  {get; protected set;}  // set in a sublcass ctor
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
-        public IApianAppCore Client {get; private set;} // TODO: &&&& rename this to AppCore, not client
+        public IApianAppCore AppCore {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
         public string GroupName { get => GroupMgr.GroupName; }
         public string GameId { get => GameNet.CurrentGameId(); }
@@ -47,8 +47,8 @@ namespace Apian
 
         protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             GameNet = gn;
-            Client = cl;
-            Client.SetApianReference(this);
+            AppCore = cl;
+            AppCore.SetApianReference(this);
             Logger = UniLogger.GetLogger("Apian");
             ApMsgHandlers = new Dictionary<string, Action<string, string, ApianMessage, long>>();
             // Add any truly generic handlers here
@@ -130,7 +130,7 @@ namespace Apian
                 foreach (ApianObservation prevObs in obsToSend)
                 {
                     ApianConflictResult effect = ApianConflictResult.Unaffected;
-                    (effect, _) = Client.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
+                    (effect, _) = AppCore.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
                     switch (effect)
                     {
                         case ApianConflictResult.Validated:
