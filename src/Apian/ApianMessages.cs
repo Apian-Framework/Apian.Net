@@ -6,28 +6,18 @@ namespace Apian
     // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
     // (can;t be readonly because of NewtonSoft.JSON)
 
+     public enum ApianConflictResult { Unaffected, Validated, Invalidated }
+
     public class ApianCoreMessage
     {
         // ReSharper disable MemberCanBePrivate.Global
         // Client game or app messages derive from this
         public string MsgType;
-        public long TimeStamp;
+        public long TimeStamp; // Apian time when core message happened or gets applied. Not related to network timing.
         public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
         public ApianCoreMessage() {}
         // ReSharper enable MemberCanBePrivate.Global
 
-        // dictionary of handlers for core message types that could potentially invalidate the current msg
-        // if they came first.
-
-        public enum ValidState { Validated, Invalidated, Unaffected }
-
-        protected Dictionary<string, Func<ApianCoreMessage, (ValidState, string)>> isValidAfterFuncs;
-        public virtual (ValidState stateAfter, string reasonTxt) IsValidAfter(ApianCoreMessage earlierMsg)
-        {
-            return (  (isValidAfterFuncs == null || !isValidAfterFuncs.ContainsKey(earlierMsg.MsgType))
-                ? (ValidState.Unaffected, null) // no dict or not found
-                : isValidAfterFuncs[earlierMsg.MsgType](earlierMsg) ); //  check for effect
-        }
     }
 
     public class ApianMessage

@@ -19,9 +19,9 @@ namespace ApianTests
         public const string kSeeThing = "disT";
         public const string kStupidMsg = "stpm";
 
+
         public class StupidTestMsg : ApianCoreMessage
         {
-            public Dictionary<string, Func<ApianCoreMessage, (ValidState, string)>> IsValidAfterFuncs { get => isValidAfterFuncs; }
             public StupidTestMsg(long ts) : base(kStupidMsg, ts) {}
             public StupidTestMsg() : base() {}
         }
@@ -35,36 +35,10 @@ namespace ApianTests
                 thingName = tn;
                 place = tp;
 
-                isValidAfterFuncs = new Dictionary<string, Func<ApianCoreMessage,(ApianCoreMessage.ValidState, string)>>()
-                {
-                    { kPutThing, ValidateAfterPutThing},
-                    { kGetThing, ValidateAfterGetThing}
-                };
-
             }
             public PutThingMsg() : base() {}
-
-            public (ApianCoreMessage.ValidState, string) ValidateAfterPutThing(ApianCoreMessage amsg)
-            {
-                PutThingMsg msg = amsg as PutThingMsg;
-                if (msg.place == place)
-                    return (ValidState.Invalidated, "Place full already" );
-                if (msg.thingName == thingName)
-                    return (ValidState.Invalidated, "Thing elsewhere" );
-                return (ValidState.Unaffected, null);
-            }
-
-            public (ApianCoreMessage.ValidState, string) ValidateAfterGetThing(ApianCoreMessage amsg)
-            {
-                GetThingMsg msg = amsg as GetThingMsg;
-                if (msg.thingName == thingName)
-                    return (ValidState.Invalidated, "Thing taken already" );
-                if (msg.place == place)
-                    return (ValidState.Invalidated, "Place emptied" );
-                return (ValidState.Unaffected, null);
-            }
-
         }
+
 
         public class GetThingMsg : ApianCoreMessage
         {
@@ -74,36 +48,8 @@ namespace ApianTests
             {
                 thingName = tn;
                 place = tp;
-                isValidAfterFuncs = new Dictionary<string, Func<ApianCoreMessage,(ApianCoreMessage.ValidState, string)>>()
-                {
-                    { kPutThing, ValidateAfterPutThing},
-                    { kGetThing, ValidateAfterGetThing}
-                };
             }
             public GetThingMsg() : base() {}
-            public (ApianCoreMessage.ValidState, string) ValidateAfterPutThing(ApianCoreMessage amsg)
-            {
-                PutThingMsg msg = amsg as PutThingMsg;
-                if (msg.place == place) // right place
-                {
-                    if (msg.thingName == thingName)
-                        return (ValidState.Validated, null);
-                    else
-                        return (ValidState.Invalidated, "Wrong thing in place" );
-                }
-                // Developer's question whether putting right thing in wrong place invalidates.
-                return (ValidState.Unaffected, null);
-            }
-
-            public (ApianCoreMessage.ValidState, string) ValidateAfterGetThing(ApianCoreMessage amsg)
-            {
-                GetThingMsg msg = amsg as GetThingMsg;
-                if (msg.thingName == thingName)
-                    return (ValidState.Invalidated, "Thing taken already" );
-                if (msg.place == place)
-                    return (ValidState.Invalidated, "Place emptied" );
-                return (ValidState.Unaffected, null);
-            }
 
         }
 
@@ -115,36 +61,130 @@ namespace ApianTests
             {
                 thingName = tn;
                 place = tp;
-                isValidAfterFuncs = new Dictionary<string, Func<ApianCoreMessage,(ApianCoreMessage.ValidState, string)>>()
-                {
-                    { kPutThing, ValidateAfterPutThing}, // same criteria as GetThingMsg
-                    { kGetThing, ValidateAfterGetThing}
-                };
             }
             public SeeThingMsg() : base() {}
-            public (ApianCoreMessage.ValidState, string) ValidateAfterPutThing(ApianCoreMessage amsg)
+        }
+
+        public class MockAppCore : IApianAppCore
+        {
+            public Dictionary<string,Func<ApianCoreMessage,ApianCoreMessage,(ApianConflictResult, string)>> conflictFuncs;
+            public MockAppCore()
             {
-                PutThingMsg msg = amsg as PutThingMsg;
-                if (msg.place == place) // right place
+                conflictFuncs = new Dictionary<string,Func<ApianCoreMessage,ApianCoreMessage,(ApianConflictResult, string)>>()
                 {
-                    if (msg.thingName == thingName)
-                        return (ValidState.Validated, null);
-                    else
-                        return (ValidState.Invalidated, "Wrong thing in place" );
-                }
-                // Developer's question whether putting right thing in wrong place invalidates.
-                return (ValidState.Unaffected, null);
+                    {kGetThing+kGetThing, GetAfterGet},
+                    {kPutThing+kGetThing, GetAfterPut},
+                    {kPutThing+kPutThing, PutAfterPut},
+                    {kGetThing+kPutThing, PutAfterGet},
+                };
             }
 
-            public (ApianCoreMessage.ValidState, string) ValidateAfterGetThing(ApianCoreMessage amsg)
+            public (ApianConflictResult, string) GetAfterPut(ApianCoreMessage amsg, ApianCoreMessage bmsg)
+            {
+                PutThingMsg msg = amsg as PutThingMsg;
+                GetThingMsg msg2 = bmsg as GetThingMsg;
+                if (msg.place == msg2.place) // right place
+                {
+                    if (msg.thingName == msg2.thingName)
+                        return (ApianConflictResult.Validated, null);
+                    else
+                        return (ApianConflictResult.Invalidated, "Wrong thing in place" );
+                }
+                // Developer's question whether putting right thing in wrong place invalidates.
+                return (ApianConflictResult.Unaffected, null);
+            }
+
+            public (ApianConflictResult, string) GetAfterGet(ApianCoreMessage amsg, ApianCoreMessage bmsg)
             {
                 GetThingMsg msg = amsg as GetThingMsg;
-                if (msg.place == place)
-                    return (ValidState.Invalidated, "Place empty" );
-                if (msg.thingName == thingName)
-                    return (ValidState.Invalidated, "Thing no longer there" );
-                return (ValidState.Unaffected, null);
+                GetThingMsg msg2 = bmsg as GetThingMsg;
+                if (msg.thingName == msg2.thingName)
+                    return (ApianConflictResult.Invalidated, "Thing taken already" );
+                if (msg.place == msg2.place)
+                    return (ApianConflictResult.Invalidated, "Place emptied" );
+                return (ApianConflictResult.Unaffected, null);
             }
+
+            public (ApianConflictResult, string) PutAfterPut(ApianCoreMessage amsg, ApianCoreMessage bmsg)
+            {
+                PutThingMsg msg = amsg as PutThingMsg;
+                PutThingMsg msg2 = bmsg as PutThingMsg;
+                if (msg.place == msg2.place)
+                    return (ApianConflictResult.Invalidated, "Place full already" );
+                if (msg.thingName == msg2.thingName)
+                    return (ApianConflictResult.Invalidated, "Thing already put elsewhere" );
+                return (ApianConflictResult.Unaffected, null);
+            }
+
+            public (ApianConflictResult, string) PutAfterGet(ApianCoreMessage amsg, ApianCoreMessage bmsg)
+            {
+                GetThingMsg msg = amsg as GetThingMsg;
+                PutThingMsg msg2 = bmsg as PutThingMsg;
+                if (msg.thingName == msg2.thingName)
+                    return (ApianConflictResult.Invalidated, "Thing taken already" );
+                if (msg.place == msg2.place)
+                    return (ApianConflictResult.Invalidated, "Place emptied" );
+                return (ApianConflictResult.Unaffected, null);
+            }
+
+            public (ApianConflictResult, string) SeeAfterPut(ApianCoreMessage amsg, ApianCoreMessage bmsg)
+            {
+                PutThingMsg msg = amsg as PutThingMsg;
+                SeeThingMsg msg2 = bmsg as SeeThingMsg;
+                if (msg.place == msg2.place) // right place
+                {
+                    if (msg.thingName == msg2.thingName)
+                        return (ApianConflictResult.Validated, null);
+                    else
+                        return (ApianConflictResult.Invalidated, "Wrong thing in place" );
+                }
+                // Developer's question whether putting right thing in wrong place invalidates.
+                return (ApianConflictResult.Unaffected, null);
+            }
+
+            public (ApianConflictResult, string) SeeAfterGet(ApianCoreMessage amsg, ApianCoreMessage bmsg)
+            {
+                GetThingMsg msg = amsg as GetThingMsg;
+                SeeThingMsg msg2 = bmsg as SeeThingMsg;
+                if (msg.place == msg2.place)
+                    return (ApianConflictResult.Invalidated, "Place empty" );
+                if (msg.thingName == msg2.thingName)
+                    return (ApianConflictResult.Invalidated, "Thing no longer there" );
+                return (ApianConflictResult.Unaffected, null);
+            }
+            public (ApianConflictResult result, string reason) ValidateCoreMessages(ApianCoreMessage prevMsg, ApianCoreMessage testMsg)
+            {
+                string key = prevMsg.MsgType + testMsg.MsgType;
+                return   !conflictFuncs.ContainsKey(key)
+                    ? (ApianConflictResult.Unaffected, null)
+                    : conflictFuncs[key](prevMsg, testMsg) ;
+
+            }
+            public void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string serializedData)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool CommandIsValid(ApianCoreMessage cmdMsg)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void OnApianCommand(ApianCommand cmd)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void OnCheckpointCommand(long seqNum, long timeStamp)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void SetApianReference(ApianBase apian)
+            {
+                throw new NotImplementedException();
+            }
+
         }
 
 
@@ -155,7 +195,6 @@ namespace ApianTests
             Assert.That(acm, Is.Not.Null);
             Assert.That(acm.MsgType, Is.Null);
             Assert.That(acm.TimeStamp, Is.Zero);
-            Assert.That(acm.IsValidAfterFuncs, Is.Null);
         }
 
         [Test]
@@ -167,24 +206,8 @@ namespace ApianTests
             Assert.That(acm, Is.Not.Null);
             Assert.That(acm.MsgType, Is.EqualTo(kStupidMsg));
             Assert.That(acm.TimeStamp, Is.EqualTo(ts));
-            Assert.That(acm.IsValidAfterFuncs, Is.Null);
         }
 
-        [Test]
-        public void Call_unititialzed_validator()
-        {
-            long ts1 = 100;
-            long ts2 = 200;
-
-            PutThingMsg ptm =  new PutThingMsg(ts1, "thing", 999);
-            StupidTestMsg acm =  new StupidTestMsg(ts2);
-
-            ApianCoreMessage.ValidState v;
-            string errStr;
-            (v,errStr) = acm.IsValidAfter(ptm);
-            Assert.That(v, Is.EqualTo(ApianCoreMessage.ValidState.Unaffected));
-            Assert.That(errStr, Is.Null);
-        }
 
         [Test]
         public void Call_validator_not_found()
@@ -192,13 +215,14 @@ namespace ApianTests
             long ts1 = 100;
             long ts2 = 200;
 
+            MockAppCore ac = new MockAppCore();
             StupidTestMsg stm =  new StupidTestMsg(ts1);
             PutThingMsg ptm =  new PutThingMsg(ts2, "thing", 999);
 
-            ApianCoreMessage.ValidState v;
+            ApianConflictResult v;
             string errStr;
-            (v,errStr) = ptm.IsValidAfter(stm);
-            Assert.That(v, Is.EqualTo(ApianCoreMessage.ValidState.Unaffected));
+            (v,errStr) = ac.ValidateCoreMessages(ptm, stm);
+            Assert.That(v, Is.EqualTo(ApianConflictResult.Unaffected));
             Assert.That(errStr, Is.Null);
         }
 
@@ -208,19 +232,16 @@ namespace ApianTests
             long ts1 = 100;
             long ts2 = 200;
 
+            MockAppCore ac = new MockAppCore();
             PutThingMsg ptm =  new PutThingMsg(ts1, "thing", 999);
             GetThingMsg gtm =  new GetThingMsg(ts2, "thing", 999);
 
-            ApianCoreMessage.ValidState v;
+            ApianConflictResult v;
             string errStr;
-            (v,errStr) = gtm.IsValidAfter(ptm);
-            Assert.That(v, Is.EqualTo(ApianCoreMessage.ValidState.Validated));
+            (v,errStr) = ac.ValidateCoreMessages(ptm, gtm); // get after put
+            Assert.That(v, Is.EqualTo(ApianConflictResult.Validated));
             Assert.That(errStr, Is.Null);
         }
-
-
     }
-
-
 
 }

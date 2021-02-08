@@ -15,8 +15,14 @@ namespace Apian
     // any GroupManager-specific behavior.
 
     // TODO: ApianBase should check to make sure GroupMgr is not null.
+    public interface IApianForAppCore
+    {
+        void SendObservation(ApianObservation msg);
+        void StartObservationSet();
+        void EndObservationSet();
+    }
 
-    public abstract class ApianBase
+    public abstract class ApianBase : IApianForAppCore
     {
 		// public API
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
@@ -25,7 +31,7 @@ namespace Apian
         public IApianGroupManager GroupMgr  {get; protected set;}  // set in a sublcass ctor
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
-        public IApianAppCore Client {get; private set;}
+        public IApianAppCore Client {get; private set;} // TODO: &&&& rename this to AppCore, not client
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
         public string GroupName { get => GroupMgr.GroupName; }
         public string GameId { get => GameNet.CurrentGameId(); }
@@ -33,12 +39,7 @@ namespace Apian
 
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
         // To be batched-up and then ordered and checked for conflict before being sent out.
-        protected SortedList<long, ApianCoreMessage> batchedObservations;
-        private class AscendingLongComparer : IComparer<long> // for batchedObservations (is this already the default IComparer<long>? )
-        {
-            public int Compare(long x, long y) => (x>y) ? 1 : (x<y) ? -1 : 0;
-        }
-
+        protected List<ApianObservation> batchedObservations;
 
         // Command-related stuff
         // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state
@@ -82,7 +83,9 @@ namespace Apian
             GameNet.SendApianMessage(destCh, msg);
         }
 
-        protected virtual void SendObservation(string destCh, ApianMessage msg)
+        // IApianAppCore - only the AppCore calls these
+
+        public virtual void SendObservation(ApianObservation msg) // alwas goes to current group
         {
             // See comments in SendRequest
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
@@ -90,22 +93,73 @@ namespace Apian
                 Logger.Info($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
                 return;
             }
-            GameNet.SendApianMessage(destCh, msg);
+
+            if (batchedObservations == null)
+                GameNet.SendApianMessage(GroupMgr.GroupId, msg);
+            else
+                batchedObservations.Add( msg);
         }
 
-        protected virtual void StartObservationSet()
+        public virtual void StartObservationSet()
         {
-            if (batchedObservations == null)
-                batchedObservations = new SortedList<long, ApianCoreMessage>(new AscendingLongComparer());
-
-            if (batchedObservations.Count >0 ) {
-                Logger.Warn($"ApianBase.StartObservationSet(): batchedObservations not empty. Clearing it.");
+            // Is recreating this list every frame wasteful?
+            if (batchedObservations != null)
+            {
+                Logger.Warn($"ApianBase.StartObservationSet(): batchedObservations not null. Clearing it. EndObservationSet() not called?");
                 batchedObservations.Clear();
             }
+            batchedObservations = new List<ApianObservation>();
         }
 
-        protected virtual void EndObservationSet()
+        public virtual void EndObservationSet()
         {
+            if (batchedObservations == null)
+            {
+                Logger.Warn($"ApianBase.EndObservationSet(): batchedObservations is unititialized. StartObservationSet() not called?");
+                return;
+            }
+
+            // Sort by timestamp
+            batchedObservations.Sort( (a,b) => a.ClientMsg.TimeStamp.CompareTo(b.ClientMsg.TimeStamp));
+
+            // TODO: run conflict resolution!!!
+            List<ApianObservation> obsToSend = new List<ApianObservation>();
+            foreach (ApianObservation obs in batchedObservations)
+            {
+                bool isValid = true; // TODO: should check against current CoreState
+                foreach (ApianObservation prevObs in obsToSend)
+                {
+                    ApianConflictResult effect = ApianConflictResult.Unaffected;
+                    (effect, _) = Client.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
+                    switch (effect)
+                    {
+                        case ApianConflictResult.Validated:
+                            Logger.Warn($"Observation Validated!");
+                            isValid = true;
+                            break;
+                        case ApianConflictResult.Invalidated:
+                            Logger.Warn($"Observation invalidated!");
+                            isValid = false;
+                            break;
+                        case ApianConflictResult.Unaffected:
+                        default:
+                            break;
+                    }
+                }
+                if (isValid)
+                    obsToSend.Add(obs);
+            }
+
+            //Logger.Warn($"vvvv - Start Obs batch send - vvvv");
+            foreach (ApianObservation obs in batchedObservations)
+            {
+                //Logger.Warn($"Type: {obs.ClientMsg.MsgType} TS: {obs.ClientMsg.TimeStamp}");
+                GameNet.SendApianMessage(GroupMgr.GroupId, obs); // send the in acsending time order
+            }
+            //Logger.Warn($"^^^^ -  End Obs batch send  - ^^^^");
+
+            batchedObservations.Clear();
+            batchedObservations = null;
 
         }
 
@@ -151,9 +205,6 @@ namespace Apian
             // TODO: This is awkward.
             ApianClock?.OnP2pPeerSync( remotePeerId,  clockOffsetMs,  netLagMs);
         }
-
-		// public API
-		// ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
     }
 
 
