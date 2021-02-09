@@ -6,15 +6,18 @@ namespace Apian
     // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
     // (can;t be readonly because of NewtonSoft.JSON)
 
+     public enum ApianConflictResult { Unaffected, Validated, Invalidated }
+
     public class ApianCoreMessage
     {
         // ReSharper disable MemberCanBePrivate.Global
         // Client game or app messages derive from this
         public string MsgType;
-        public long TimeStamp;
+        public long TimeStamp; // Apian time when core message happened or gets applied. Not related to network timing.
         public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
         public ApianCoreMessage() {}
         // ReSharper enable MemberCanBePrivate.Global
+
     }
 
     public class ApianMessage

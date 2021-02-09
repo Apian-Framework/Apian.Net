@@ -13,6 +13,11 @@ namespace Apian
         void OnCheckpointCommand(long seqNum, long timeStamp);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
+        // Validation
+        bool CommandIsValid(ApianCoreMessage cmdMsg);
+
+        // what effect does the previous msg have on the testMsg?
+        (ApianConflictResult result, string reason) ValidateCoreMessages(ApianCoreMessage prevMsg, ApianCoreMessage testMsg);
     }
 
 
