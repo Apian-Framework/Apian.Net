@@ -52,24 +52,26 @@ namespace Apian
 
     }
 
+    // The constructors for these wrapped messages are protected to ensure that they get subclasses into specific
+    // pre-message subclasses which override ClientMsg to return a types subclass of ApianCoreMessage
 
     public class ApianRequest : ApianWrappedClientMessage
     {
-        public ApianRequest(string gid, ApianCoreMessage clientMsg) : base(gid, CliRequest, clientMsg.MsgType) {}
+        protected ApianRequest(string gid, ApianCoreMessage clientMsg) : base(gid, CliRequest, clientMsg.MsgType) {}
         public ApianRequest() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianObservation : ApianWrappedClientMessage
     {
-        public ApianObservation(string gid,ApianCoreMessage clientMsg) : base(gid, CliObservation, clientMsg.MsgType) {}
+        protected ApianObservation(string gid,ApianCoreMessage clientMsg) : base(gid, CliObservation, clientMsg.MsgType) {}
         public ApianObservation() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
     public class ApianCommand : ApianWrappedClientMessage {
         public long SequenceNum;
-        public ApianCommand(long seqNum, string gid, ApianCoreMessage clientMsg) : base(gid, CliCommand, clientMsg.MsgType) {SequenceNum=seqNum;}
+        protected ApianCommand(long seqNum, string gid, ApianCoreMessage clientMsg) : base(gid, CliCommand, clientMsg.MsgType) {SequenceNum=seqNum;}
         public ApianCommand() : base() {}
 
     }
