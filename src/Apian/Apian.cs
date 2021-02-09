@@ -15,14 +15,14 @@ namespace Apian
     // any GroupManager-specific behavior.
 
     // TODO: ApianBase should check to make sure GroupMgr is not null.
-    public interface IApianForAppCore
+    public interface IApianAppCoreServices
     {
         void SendObservation(ApianObservation msg);
         void StartObservationSet();
         void EndObservationSet();
     }
 
-    public abstract class ApianBase : IApianForAppCore
+    public abstract class ApianBase : IApianAppCoreServices
     {
 		// public API
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
@@ -119,7 +119,7 @@ namespace Apian
                 return;
             }
 
-            // Sort by timestamp
+            // Sort by timestamp, earliest first
             batchedObservations.Sort( (a,b) => a.ClientMsg.TimeStamp.CompareTo(b.ClientMsg.TimeStamp));
 
             // TODO: run conflict resolution!!!
@@ -127,18 +127,19 @@ namespace Apian
             foreach (ApianObservation obs in batchedObservations)
             {
                 bool isValid = true; // TODO: should check against current CoreState
+                string reason;
                 foreach (ApianObservation prevObs in obsToSend)
                 {
                     ApianConflictResult effect = ApianConflictResult.Unaffected;
-                    (effect, _) = AppCore.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
+                    (effect, reason) = AppCore.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
                     switch (effect)
                     {
                         case ApianConflictResult.Validated:
-                            Logger.Warn($"Observation Validated!");
+                            Logger.Info($"{obs.ClientMsg.MsgType} Observation Validated by {prevObs.ClientMsg.MsgType}: {reason}");
                             isValid = true;
                             break;
                         case ApianConflictResult.Invalidated:
-                            Logger.Warn($"Observation invalidated!");
+                            Logger.Info($"{obs.ClientMsg.MsgType} Observation invalidated by {prevObs.ClientMsg.MsgType}: {reason}");
                             isValid = false;
                             break;
                         case ApianConflictResult.Unaffected:
@@ -146,12 +147,15 @@ namespace Apian
                             break;
                     }
                 }
+                // Still valid?
                 if (isValid)
                     obsToSend.Add(obs);
+                else
+                    Logger.Info($"{obs.ClientMsg.MsgType} Observation rejected.");
             }
 
             //Logger.Warn($"vvvv - Start Obs batch send - vvvv");
-            foreach (ApianObservation obs in batchedObservations)
+            foreach (ApianObservation obs in obsToSend)
             {
                 //Logger.Warn($"Type: {obs.ClientMsg.MsgType} TS: {obs.ClientMsg.TimeStamp}");
                 GameNet.SendApianMessage(GroupMgr.GroupId, obs); // send the in acsending time order

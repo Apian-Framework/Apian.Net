@@ -11,57 +11,65 @@ using UniLog;
 
 namespace ApianTests
 {
+
+    public class TestApianBase : ApianBase // We need a public ctor
+    {
+        public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
+        {
+            ApianGroupMember local = new ApianGroupMember("localPeerId", null);
+            local.CurStatus = ApianGroupMember.Status.Active;
+
+            Mock<IApianGroupManager> mGrpMgr = new Mock<IApianGroupManager>();
+            mGrpMgr.Setup( g => g.LocalMember).Returns( local );
+
+            ApianClock = clock;
+            GroupMgr = mGrpMgr.Object;
+
+        }
+
+        public int MsgHandlerCount => ApMsgHandlers.Count;
+
+        public override void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void ApplyStashedApianCommand(ApianCommand cmd)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SendApianMessage(string toChannel, ApianMessage msg)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SendCheckpointState(long timeStamp, long seqNum, string serializedState)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override bool Update()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     [TestFixture]
     public class ApianBaseTests
     {
         Mock<IApianGameNet> mockGameNet;
         Mock<IApianAppCore> mockAppCore;
-
-        public class TestApianBase : ApianBase // We need a public ctor
-        {
-            public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
-            {
-                ApianClock = clock;
-            }
-
-            public int MsgHandlerCount => ApMsgHandlers.Count;
-
-            public override void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void ApplyStashedApianCommand(ApianCommand cmd)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void SendApianMessage(string toChannel, ApianMessage msg)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void SendCheckpointState(long timeStamp, long seqNum, string serializedState)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override bool Update()
-            {
-                throw new NotImplementedException();
-            }
-        }
-
         [Test]
         public void ApianBase_ConstructorWorks()
         {
@@ -117,8 +125,43 @@ namespace ApianTests
 
             ApianGroupMember localMember = new ApianGroupMember(localP2pId, "[other json]");
             ap.OnGroupMemberJoined(localMember);
-            mockGameNet.Verify(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>()), Times.Exactly(2)); // Not called
+            mockGameNet.Verify(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>()), Times.Exactly(2));
         }
+
+    }
+
+    [TestFixture]
+    public class IApianAppCoreServicesTests
+    {
+
+        [Test]
+        public void ApianBase_ObservationSet_order()
+        {
+            Mock<IApianGameNet> mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
+            mockGameNet.Setup(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianMessage>()));
+
+            Mock<IApianAppCore> mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
+            mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
+            mockAppCore.Setup(p => p.ValidateCoreMessages(It.IsAny<ApianCoreMessage>(), It.IsAny<ApianCoreMessage>()))
+                .Returns( (ApianCoreMessage m1, ApianCoreMessage m2) => MockAppCoreValidator.ValidateCoreMessages(m1,m2));
+
+            TestApianBase apian = new TestApianBase(mockGameNet.Object, mockAppCore.Object);
+
+            apian.StartObservationSet();
+
+            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(200, "thing3", 12) ));
+            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(100, "thing1",  6) ));
+            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(150, "thing2",  10) ));
+
+            apian.EndObservationSet();
+
+            mockGameNet.Verify(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianMessage>()), Times.Exactly(3));
+
+        }
+
+
+
+
 
     }
 

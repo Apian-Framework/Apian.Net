@@ -34,11 +34,9 @@ namespace ApianTests
             {
                 thingName = tn;
                 place = tp;
-
             }
             public PutThingMsg() : base() {}
         }
-
 
         public class GetThingMsg : ApianCoreMessage
         {
@@ -184,7 +182,6 @@ namespace ApianTests
             {
                 throw new NotImplementedException();
             }
-
         }
 
 
@@ -241,6 +238,7 @@ namespace ApianTests
             Assert.That(v, Is.EqualTo(ApianConflictResult.Validated));
             Assert.That(errStr, Is.Null);
         }
+
     }
 
 }
