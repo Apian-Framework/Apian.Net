@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System;
 using System.Collections.Generic;
+using P2pNet;
 using UniLog;
 namespace Apian
 {
@@ -49,7 +50,13 @@ namespace Apian
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
             Members[LocalPeerId] = LocalMember;
-            ApianInst.GameNet.AddChannel(GroupId);
+
+            // TODO: clean this crap up!! &&&&&
+            long pingMs = 2500;
+            long dropMs = 5000;
+            long timingMs = 15000;
+            P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
+            ApianInst.GameNet.AddChannel(chan);
 
             // Note that we aren't sending a request here - just a "Joined"
             ApianInst.GameNet.SendApianMessage(GroupId,

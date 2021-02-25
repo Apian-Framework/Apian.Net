@@ -12,9 +12,9 @@ namespace GameNet
         void AddClient(IGameNetClient _client);
         void Disconnect();
         void CreateGame<T>(T createGameData);
-        void JoinGame(string gameP2pChannel);
-        void AddChannel(string subChannel);
-        void RemoveChannel(string subchannel);
+        void JoinGame(P2pNetChannelInfo gameP2pChannel);
+        void AddChannel(P2pNetChannelInfo subChannel);
+        void RemoveChannel(string subchannelId);
         void LeaveGame();
         string LocalP2pId();
         string CurrentGameId();
@@ -118,7 +118,7 @@ namespace GameNet
         }
 
 
-        public virtual void JoinGame(string gameP2pChannel)
+        public virtual void JoinGame(P2pNetChannelInfo gameP2pChannel)
         {
             p2p.Join(gameP2pChannel);
             callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( LocalP2pId(),  client.LocalPeerData()));
@@ -130,13 +130,13 @@ namespace GameNet
             p2p.Leave();
         }
 
-        public virtual void AddChannel(string subChannel)
+        public virtual void AddChannel(P2pNetChannelInfo subChannel)
         {
             p2p.AddSubchannel(subChannel);
         }
-        public virtual void RemoveChannel(string subChannel)
+        public virtual void RemoveChannel(string subChannelId)
         {
-            p2p.RemoveSubchannel(subChannel);
+            p2p.RemoveSubchannel(subChannelId);
         }
 
         public virtual void Loop()
@@ -160,7 +160,7 @@ namespace GameNet
         }
 
         public string LocalP2pId() => p2p?.GetId();
-        public string CurrentGameId() => p2p?.GetMainChannel();
+        public string CurrentGameId() => p2p?.GetMainChannel().id;
 
         //
         // IP2pNetClient

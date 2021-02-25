@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System;
 using System.Collections.Generic;
+using P2pNet;
 using UniLog;
 namespace Apian
 {
@@ -225,7 +226,15 @@ namespace Apian
             // Local call.
             string groupId = $"{ApianInst.GameId}/{groupName}";
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
-            ApianInst.GameNet.AddChannel(GroupId);
+
+            // TODO: clean this crap up!! &&&&&
+            long pingMs = 2500;
+            long dropMs = 5000;
+            long timingMs = 15000;
+            P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
+            ApianInst.GameNet.AddChannel(chan);
+
+            ApianInst.GameNet.AddChannel(chan);
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(groupId, LocalPeerId, localMemberJson));
         }
 
