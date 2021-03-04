@@ -44,7 +44,7 @@ namespace Apian
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
-        public class GameCreationData {}
+        public class BeamNetCreationData {}
 
         public ApianGameNetBase() : base()
         {
@@ -75,19 +75,19 @@ namespace Apian
 
         // void Disconnect();
 
-        public override void  CreateGame<GameCreationData>(GameCreationData data)
+        public override void  CreateNetwork<GameCreationData>(GameCreationData data)
         {
             logger.Verbose($"CreateGame()");
-            _SyncTrivialNewGame(); // Creates/sets an ID and enqueues OnGameCreated()
+            _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
         }
 
         // void JoinGame(string gameP2pChannel); // calls OnPeerJoined() - override that
 
-        public override void LeaveGame()
+        public override void LeaveNetwork()
         {
             // needs to clean up ApianInstances
             ApianInstances.Clear();
-            base.LeaveGame();
+            base.LeaveNetwork();
         }
 
         // void AddChannel(string subChannel);
@@ -96,7 +96,7 @@ namespace Apian
 
         // string LocalP2pId();
 
-        // string CurrentGameId();
+        // string CurrentNetworkId();
 
         // void Loop();
 
@@ -110,21 +110,23 @@ namespace Apian
 
         // string P2pHelloData(); // Hello data FOR remote peer. Probably JSON-encoded by the p2pnet client.
 
-        public override void OnPeerJoined(string p2pId, string helloData)
+        public override void OnPeerJoined(string channelId, string p2pId, string helloData)
         {
             // This means a peer joined the main Game channel.
             Peers[p2pId] = new ApianNetworkPeer(p2pId, helloData);
-            base.OnPeerJoined(p2pId, helloData); // inform GameManager
+            base.OnPeerJoined(channelId, p2pId, helloData); // inform GameManager
         }
 
-        public override void OnPeerLeft(string p2pId)
+        public override void OnPeerLeft(string channelId, string p2pId)
         {
             // P2pNet Peer left main game channel. Hopefully any Apian instances it was part of already know
             // Send that it's gone, just in case.
             foreach (ApianBase ap in ApianInstances.Values)
                 ap.OnApianMessage( LocalP2pId(), ap.GroupId, new GroupMemberStatusMsg(ap.GroupId, p2pId, ApianGroupMember.Status.Removed), 0);
 
-            base.OnPeerLeft(p2pId); // for gamemgr
+            base.OnPeerLeft(channelId, p2pId); // for gamemgr
+
+            // FIXME: I this this is all wrong.
 
             Peers.Remove(p2pId);
         }
@@ -157,7 +159,7 @@ namespace Apian
         public void RequestGroups()
         {
             logger.Verbose($"RequestApianGroups()");
-            SendApianMessage( CurrentGameId(),  new GroupsRequestMsg());
+            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
         public void SendApianMessage(string toChannel, ApianMessage appMsg)

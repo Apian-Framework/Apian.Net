@@ -34,7 +34,7 @@ namespace Apian
         public IApianAppCore AppCore {get; private set;}
         protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}
         public string GroupName { get => GroupMgr.GroupName; }
-        public string GameId { get => GameNet.CurrentGameId(); }
+        public string NetworkId { get => GameNet.CurrentNetworkId(); }
         public string GroupId { get => GroupMgr.GroupId; }
 
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)

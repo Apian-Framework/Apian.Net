@@ -142,7 +142,7 @@ namespace Apian
         }
 
 
-        public string MainP2pChannel {get => ApianInst.GameNet.CurrentGameId();}
+        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private const string CreatorServerGroupType = "CreatorServerGroup";
 
@@ -206,7 +206,7 @@ namespace Apian
             Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupName}");
 
             // Creating a new group
-            string groupId = $"{ApianInst.GameId}/{groupName}";
+            string groupId = $"{ApianInst.NetworkId}/{groupName}";
             ServerData = new ServerOnlyData(ApianInst, ConfigDict);
             ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
             InitExistingGroup(newGroupInfo);
@@ -224,13 +224,13 @@ namespace Apian
         public void JoinGroup(string groupName, string localMemberJson)
         {
             // Local call.
-            string groupId = $"{ApianInst.GameId}/{groupName}";
+            string groupId = $"{ApianInst.NetworkId}/{groupName}";
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
 
             // TODO: clean this crap up!! &&&&&
-            long pingMs = 2500;
-            long dropMs = 5000;
-            long timingMs = 15000;
+            int pingMs = 2500;
+            int dropMs = 5000;
+            int timingMs = 15000;
             P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
             ApianInst.GameNet.AddChannel(chan);
 

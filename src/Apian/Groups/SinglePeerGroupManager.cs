@@ -10,7 +10,7 @@ namespace Apian
     {
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
 
-        public string MainP2pChannel {get => ApianInst.GameNet.CurrentGameId();}
+        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private ApianGroupMember _Member {get; set;}
         private const string SinglePeerGroupType = "SinglePeerGroup";
@@ -36,7 +36,7 @@ namespace Apian
 
         public void CreateNewGroup(string groupName)
         {
-            string groupId = $"{ApianInst.GameId}/{groupName}";
+            string groupId = $"{ApianInst.NetworkId}/{groupName}";
             GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             ApianInst.ApianClock.Set(0); // Need to start it running
@@ -46,7 +46,7 @@ namespace Apian
 
         public void JoinGroup(string groupName, string localMemberJson)
         {
-            string groupId = $"{ApianInst.GameId}/{groupName}";
+            string groupId = $"{ApianInst.NetworkId}/{groupName}";
             ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
             LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
             Members[LocalPeerId] = LocalMember;

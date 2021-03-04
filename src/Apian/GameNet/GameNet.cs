@@ -11,23 +11,24 @@ namespace GameNet
         void Connect( string p2pConectionString );
         void AddClient(IGameNetClient _client);
         void Disconnect();
-        void CreateGame<T>(T createGameData);
-        void JoinGame(P2pNetChannelInfo gameP2pChannel);
-        void AddChannel(P2pNetChannelInfo subChannel);
+        void CreateNetwork<T>(T createNetData);
+        void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
+        void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
-        void LeaveGame();
+        void LeaveNetwork();
         string LocalP2pId();
-        string CurrentGameId();
+        string CurrentNetworkId();
         void Loop(); /// <summary> needs to be called periodically (drives message pump + group handling)</summary>
     }
 
     public interface IGameNetClient
     {
-        void OnGameCreated(string gameP2pChannel);
-        void OnPeerJoinedGame(string peerId, string gameId, string helloData);
-        void OnPeerLeftGame(string p2pId, string gameId);
-        void OnPeerSync(string p2pId, long clockOffsetMs, long netLagMs);
-        string LocalPeerData(); // client serializes this app-specific stuff
+        void OnNetworkCreated(string netP2pChannel);
+        void OnPeerJoinedNetwork(string peerId, string netId, string helloData);
+        void OnPeerLeftNetwork(string p2pId, string netId);
+        void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
+
+        // TODO: do we want PeerJoinedChannel-type notifications?
     }
 
     // used internally
@@ -105,34 +106,34 @@ namespace GameNet
 
         // TODO: need "Destroy() or Reset() or (Init)" to null out P2pNet instance? Don;t want to destroy instance immediately on Leave()
 
-        public abstract void CreateGame<T>(T t); // really can only be defined in the game-specific implmentation
+        public abstract void CreateNetwork<T>(T t); // really can only be defined in the game-specific implmentation
 
-        protected void _SyncTrivialNewGame()
+        protected void _SyncTrivialNewNetwork()
         {
             // The most basic thing you can in a CreateGame() implmentation.
             // It actually does nothing at all except to make up a random name and then call back saying a game was created.
             // This works because at its *absolute simplest* a "game" is just an agree-to p2p channel, and "joining" it
             // just means subscribing to it.
-            string newGameId = "GAME" + System.Guid.NewGuid().ToString();
-            callbacksForNextPoll.Enqueue( () => client.OnGameCreated(newGameId));
+            string newId = "APIANNET" + System.Guid.NewGuid().ToString();
+            callbacksForNextPoll.Enqueue( () => client.OnNetworkCreated(newId));
         }
 
 
-        public virtual void JoinGame(P2pNetChannelInfo gameP2pChannel)
+        public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
-            p2p.Join(gameP2pChannel);
-            callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( LocalP2pId(),  client.LocalPeerData()));
+            p2p.Join(netP2pChannel, netLocalData);
+            callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
 
         }
-        public virtual void LeaveGame()
+        public virtual void LeaveNetwork()
         {
-            callbacksForNextPoll.Enqueue( () => client.OnPeerLeftGame(LocalP2pId(), CurrentGameId()));
+            callbacksForNextPoll.Enqueue( () => client.OnPeerLeftNetwork(LocalP2pId(), CurrentNetworkId()));
             p2p.Leave();
         }
 
-        public virtual void AddChannel(P2pNetChannelInfo subChannel)
+        public virtual void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData)
         {
-            p2p.AddSubchannel(subChannel);
+            p2p.AddSubchannel(subChannel, channelLocalData);
         }
         public virtual void RemoveChannel(string subChannelId)
         {
@@ -160,30 +161,30 @@ namespace GameNet
         }
 
         public string LocalP2pId() => p2p?.GetId();
-        public string CurrentGameId() => p2p?.GetMainChannel().id;
+        public string CurrentNetworkId() => p2p?.GetMainChannel().Id;
 
         //
         // IP2pNetClient
         //
-        public virtual string P2pHelloData()
-        {
-            // TODO: might want to put localPlayerData into a larger GameNet-level object
-            return client.LocalPeerData(); // Client (which knows about the fnal class) serializes this
-        }
-        public virtual void OnPeerJoined(string p2pId, string helloData)
+        public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
         {
             // See P2pHelloData() comment regarding actual data struct
-            client.OnPeerJoinedGame(p2pId, CurrentGameId(), helloData);
+            if (channel == CurrentNetworkId())
+                client.OnPeerJoinedNetwork(p2pId, CurrentNetworkId(), helloData);
+
+            // FIXME: what about other channels?
         }
 
-        public virtual void OnPeerSync(string p2pId, long clockOffsetMs, long netLagMs)
+        public virtual void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
         {
-            client.OnPeerSync(p2pId, clockOffsetMs, netLagMs);
+            client.OnPeerSync(channelId, p2pId, clockOffsetMs, netLagMs);
         }
 
-        public virtual void OnPeerLeft(string p2pId)
+        public virtual void OnPeerLeft(string channelId, string p2pId)
         {
-            client.OnPeerLeftGame(p2pId, CurrentGameId());
+            // FIXME: what about other channels?
+            if (channelId == CurrentNetworkId())
+                client.OnPeerLeftNetwork(p2pId, CurrentNetworkId());
         }
 
         public void OnClientMsg(string from, string to, long msSinceSent, string payload)
