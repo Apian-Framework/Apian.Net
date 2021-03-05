@@ -34,7 +34,7 @@ namespace Apian
             };
          }
 
-        public void CreateNewGroup(string groupName)
+        public void SetupNewGroup(string groupName)
         {
             string groupId = $"{ApianInst.NetworkId}/{groupName}";
             GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
@@ -42,7 +42,7 @@ namespace Apian
             ApianInst.ApianClock.Set(0); // Need to start it running
         }
 
-        public void InitExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
+        public void SetGroupInfo(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
         public void JoinGroup(string groupName, string localMemberJson)
         {
@@ -58,7 +58,7 @@ namespace Apian
             P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
             ApianInst.GameNet.AddChannel(chan);
 
-            // Note that we aren't sending a request here - just a "Joined"
+            // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
                 new GroupMemberJoinedMsg(groupId, LocalPeerId, localMemberJson));
 

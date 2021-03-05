@@ -123,7 +123,6 @@ namespace GameNet
         {
             p2p.Join(netP2pChannel, netLocalData);
             callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
-
         }
         public virtual void LeaveNetwork()
         {

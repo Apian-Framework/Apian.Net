@@ -44,7 +44,6 @@ namespace Apian
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
-        public class BeamNetCreationData {}
 
         public ApianGameNetBase() : base()
         {
@@ -90,6 +89,13 @@ namespace Apian
             base.LeaveNetwork();
         }
 
+        void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localData)
+        {
+            ApianInstances[groupInfo.GroupName] = apian;
+            apian.InitExistingGroup(groupInfo);
+            apian.JoinGroup(groupInfo.GroupName, localData);
+        }
+
         // void AddChannel(string subChannel);
 
         // void RemoveChannel(string subchannel);
@@ -131,13 +137,15 @@ namespace Apian
             Peers.Remove(p2pId);
         }
 
-        public override void OnPeerSync(string p2pId, long clockOffsetMs, long netLagMs)
+        public override void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
         {
             // Should not go to gamenet client (gameManager - it will have to implement a stub handler anyway
             // since its part of IGameNetClient. Maybe it shouldn't be?)
             // Instead should go to ApianInstances
-            foreach (ApianBase ap in ApianInstances.Values)
-                ap.OnP2pPeerSync(p2pId, clockOffsetMs, netLagMs);
+
+            // P2pNet sends this for each channel that wants it
+            if (ApianInstances.ContainsKey(channelId))
+               ApianInstances[channelId].OnP2pPeerSync(p2pId, clockOffsetMs, netLagMs);
         }
 
         // void OnClientMsg(string from, string to, long msSinceSent, string payload);
@@ -200,7 +208,7 @@ namespace Apian
                 {
                 case ApianGroupMessage.GroupAnnounce:
                     GroupAnnounceMsg gaMsg = apMsg as GroupAnnounceMsg;
-                    gameManager.OnGroupAnnounce(gaMsg.GroupId, gaMsg.GroupType, gaMsg.GroupCreatorId, gaMsg.GroupName);
+                    gameManager.OnGroupAnnounce(gaMsg.GroupInfo);
                     break;
 
                 case ApianGroupMessage.GroupsRequest: // Send to all instances

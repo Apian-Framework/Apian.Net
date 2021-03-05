@@ -36,6 +36,7 @@ namespace Apian
         public string GroupName { get => GroupMgr.GroupName; }
         public string NetworkId { get => GameNet.CurrentNetworkId(); }
         public string GroupId { get => GroupMgr.GroupId; }
+        public string GroupType { get => GroupMgr.GroupType; }
 
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
         // To be batched-up and then ordered and checked for conflict before being sent out.
@@ -169,8 +170,8 @@ namespace Apian
 
         // Group-related
 
-        public void CreateNewGroup( string groupName) => GroupMgr.CreateNewGroup(groupName);
-        public void InitExistingGroup(ApianGroupInfo info) => GroupMgr.InitExistingGroup(info);
+        public void CreateNewGroup( string groupName) => GroupMgr.SetupNewGroup(groupName);
+        public void InitExistingGroup(ApianGroupInfo info) => GroupMgr.SetGroupInfo(info);
         public void JoinGroup(string groupName, string localMemberJson) => GroupMgr.JoinGroup(groupName, localMemberJson);
         public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
 

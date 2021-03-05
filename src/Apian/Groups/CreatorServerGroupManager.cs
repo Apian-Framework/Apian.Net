@@ -144,10 +144,10 @@ namespace Apian
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-        private const string CreatorServerGroupType = "CreatorServerGroup";
+        public const string groupType = "CreatorServerGroup";
 
         // IApianGroupManager
-        public string GroupType {get => CreatorServerGroupType;}
+        public string GroupType {get => groupType;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public bool Intialized {get => GroupInfo != null; }
@@ -201,28 +201,28 @@ namespace Apian
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
-        public void CreateNewGroup(string groupName)
+        public void SetupNewGroup(string groupName)
         {
             Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupName}");
 
             // Creating a new group
             string groupId = $"{ApianInst.NetworkId}/{groupName}";
             ServerData = new ServerOnlyData(ApianInst, ConfigDict);
-            ApianGroupInfo newGroupInfo = new ApianGroupInfo(CreatorServerGroupType, groupId, LocalPeerId, groupName);
-            InitExistingGroup(newGroupInfo);
+            ApianGroupInfo newGroupInfo = new ApianGroupInfo(groupType, groupId, LocalPeerId, groupName);
+            SetGroupInfo(newGroupInfo);
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
             NextCheckPointMs = CheckpointMs + CheckpointOffsetMs;
         }
 
-        public void InitExistingGroup(ApianGroupInfo info)
+        public void SetGroupInfo(ApianGroupInfo info)
         {
-            Logger.Info($"{this.GetType().Name}.InitExistingGroup(): {info.GroupId}");
+            Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
             GroupInfo = info;
-            ApianInst.GameNet.AddApianInstance(ApianInst, info.GroupId);
         }
 
-        public void JoinGroup(string groupName, string localMemberJson)
+        public void JoinGroup(P2pNetChannelInfo channel, string localMemberJson)
         {
+            // Assumes group is initialized. ChannelInfo name ad Id  get overwritten
             // Local call.
             string groupId = $"{ApianInst.NetworkId}/{groupName}";
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
@@ -232,8 +232,6 @@ namespace Apian
             int dropMs = 5000;
             int timingMs = 15000;
             P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
-            ApianInst.GameNet.AddChannel(chan);
-
             ApianInst.GameNet.AddChannel(chan);
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(groupId, LocalPeerId, localMemberJson));
         }

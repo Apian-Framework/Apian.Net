@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using P2pNet;
 using UniLog;
 
 namespace Apian
@@ -6,17 +8,21 @@ namespace Apian
     public class ApianGroupInfo
     {
         public string GroupType;
-        public string GroupId; // channel
+        P2pNetChannelInfo GroupChannelInfo;
+        public string GroupId { get => GroupChannelInfo?.id;} // channel
         public string GroupCreatorId;
         public string GroupName;
 
-        public ApianGroupInfo(string groupType, string groupId, string creatorId, string groupName)
+        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorId, string groupName)
         {
             GroupType = groupType;
-            GroupId = groupId;
+            GroupChannelInfo = groupChannel;
             GroupCreatorId = creatorId;
             GroupName = groupName;
         }
+
+        public string Serialized() =>  JsonConvert.SerializeObject(this);
+        public static ApianGroupInfo Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupInfo>(jsonString);
     }
 
     public class ApianGroupMember
@@ -65,8 +71,8 @@ namespace Apian
         ApianGroupMember LocalMember {get;}
         ApianGroupMember GetMember(string peerId); // returns null if not there
 
-        void CreateNewGroup(string groupName); // does NOT imply join
-        void InitExistingGroup(ApianGroupInfo info);
+        void SetupNewGroup(string groupName); // does NOT imply join
+        void SetGroupInfo(ApianGroupInfo info);
         void JoinGroup(string groupChannel, string localMemberJson);
         void Update();
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
