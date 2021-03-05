@@ -30,18 +30,15 @@ namespace Apian
 
     public class GroupAnnounceMsg : ApianGroupMessage // Send on main channel - no DestGroupId
     {
-        public string GroupType;
-        public string GroupId; // The annouced group. DestGroupId is ""
-        public string GroupCreatorId;
-        public string GroupName;
+        public string groupInfoJson;
+        public ApianGroupInfo GroupInfo {get => ApianGroupInfo.Deserialize(groupInfoJson);}
         public GroupAnnounceMsg() : base() {}
         public GroupAnnounceMsg(ApianGroupInfo info) : base("", GroupAnnounce)
         {
-            GroupType = info.GroupType;
-            GroupId = info.GroupId;
-            GroupCreatorId = info.GroupCreatorId;
-            GroupName = info.GroupName;
+            groupInfoJson = info.Serialized();
         }
+
+
     }
 
     public class GroupJoinRequestMsg : ApianGroupMessage
