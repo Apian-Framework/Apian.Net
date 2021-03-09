@@ -201,39 +201,33 @@ namespace Apian
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
-        public void SetupNewGroup(string groupName)
+        public void SetupNewGroup(ApianGroupInfo info)
         {
-            Logger.Info($"{this.GetType().Name}.CreateNewGroup(): {groupName}");
+            Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
-            // Creating a new group
-            string groupId = $"{ApianInst.NetworkId}/{groupName}";
-            ServerData = new ServerOnlyData(ApianInst, ConfigDict);
-            ApianGroupInfo newGroupInfo = new ApianGroupInfo(groupType, groupId, LocalPeerId, groupName);
-            SetGroupInfo(newGroupInfo);
+            if (!info.GroupType.Equals(GroupType))
+                Logger.Error($"SetupNewGroup(): incorrect GroupType: {info.GroupType} in info. SHould be: GroupType");
+
+            // Creating a new groupIfop with us as creator
+            GroupInfo = info;
+            ServerData = new ServerOnlyData(ApianInst, ConfigDict);   // since we're server we need serverdata
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
-            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs;
+            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another server thing
         }
 
-        public void SetGroupInfo(ApianGroupInfo info)
+        public void SetupExistingGroup(ApianGroupInfo info)
         {
             Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
             GroupInfo = info;
         }
 
-        public void JoinGroup(P2pNetChannelInfo channel, string localMemberJson)
+        public void JoinGroup(string localMemberJson)
         {
-            // Assumes group is initialized. ChannelInfo name ad Id  get overwritten
-            // Local call.
-            string groupId = $"{ApianInst.NetworkId}/{groupName}";
-            Logger.Info($"{this.GetType().Name}.JoinGroup(): {groupId}");
+            if (GroupInfo == null)
+                Logger.Error($"GroupMgr.JoinGroup() - group uninitialized."); // TODO: once again - this should probably throw.
 
-            // TODO: clean this crap up!! &&&&&
-            int pingMs = 2500;
-            int dropMs = 5000;
-            int timingMs = 15000;
-            P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
-            ApianInst.GameNet.AddChannel(chan);
-            ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(groupId, LocalPeerId, localMemberJson));
+            // Because of the group type send the request directly to the creator
+            ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
         }
 
         private ApianGroupMember _AddMember(string peerId, string appDataJson)

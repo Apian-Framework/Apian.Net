@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using P2pNet;
@@ -8,7 +9,7 @@ namespace Apian
     public class ApianGroupInfo
     {
         public string GroupType;
-        P2pNetChannelInfo GroupChannelInfo;
+        public P2pNetChannelInfo GroupChannelInfo;
         public string GroupId { get => GroupChannelInfo?.id;} // channel
         public string GroupCreatorId;
         public string GroupName;
@@ -21,8 +22,17 @@ namespace Apian
             GroupName = groupName;
         }
 
+        public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
+
         public string Serialized() =>  JsonConvert.SerializeObject(this);
         public static ApianGroupInfo Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupInfo>(jsonString);
+        public bool IsEquivalentTo(ApianGroupInfo agi2)
+        {
+            return ( GroupType.Equals(agi2.GroupType)
+                && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
+                && GroupCreatorId.Equals(agi2.GroupCreatorId)
+                && GroupName.Equals(agi2.GroupName) );
+        }
     }
 
     public class ApianGroupMember
@@ -71,9 +81,9 @@ namespace Apian
         ApianGroupMember LocalMember {get;}
         ApianGroupMember GetMember(string peerId); // returns null if not there
 
-        void SetupNewGroup(string groupName); // does NOT imply join
-        void SetGroupInfo(ApianGroupInfo info);
-        void JoinGroup(string groupChannel, string localMemberJson);
+        void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
+        void SetupExistingGroup(ApianGroupInfo info);
+        void JoinGroup(string localMemberJson);
         void Update();
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);

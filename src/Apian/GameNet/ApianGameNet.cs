@@ -80,7 +80,7 @@ namespace Apian
             _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
         }
 
-        // void JoinGame(string gameP2pChannel); // calls OnPeerJoined() - override that
+        // void JoinNetwork(string gameP2pChannel); Not overridden at this level
 
         public override void LeaveNetwork()
         {
@@ -89,14 +89,23 @@ namespace Apian
             base.LeaveNetwork();
         }
 
-        void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localData)
+        public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
-            ApianInstances[groupInfo.GroupName] = apian;
-            apian.InitExistingGroup(groupInfo);
-            apian.JoinGroup(groupInfo.GroupName, localData);
+            // need to set the groupMgr's "groupInfo" and open/join the p2pNet group channel
+            apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
+            ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
+            AddChannel(groupInfo.GroupChannelInfo, null); // FIXME: should send some peer data for the channel?
+            apian.JoinGroup(localGroupData); //
+        }
+        public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        {
+            apian.SetupNewGroup(groupInfo); // create the group
+            ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
+            AddChannel(groupInfo.GroupChannelInfo, null); // FIXME: should send some peer data for the channel?
+            apian.JoinGroup(localGroupData); //
         }
 
-        // void AddChannel(string subChannel);
+        // void AddChannel(string subChannel); // not overridden here
 
         // void RemoveChannel(string subchannel);
 

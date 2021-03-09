@@ -34,34 +34,26 @@ namespace Apian
             };
          }
 
-        public void SetupNewGroup(string groupName)
+
+        public void SetupNewGroup(ApianGroupInfo info)
         {
-            string groupId = $"{ApianInst.NetworkId}/{groupName}";
-            GroupInfo = new ApianGroupInfo(SinglePeerGroupType, groupId, LocalPeerId, groupName);
-            ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
-            ApianInst.ApianClock.Set(0); // Need to start it running
+            Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
+
+            if (!info.GroupType.Equals(GroupType))
+                Logger.Error($"SetupNewGroup(): incorrect GroupType: {info.GroupType} in info. Should be: GroupType");
+
+            GroupInfo = info;
+            ApianInst.ApianClock.Set(0); // Need to start it running - we're the only peer
         }
 
-        public void SetGroupInfo(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
+        public void SetupExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
-        public void JoinGroup(string groupName, string localMemberJson)
+        public void JoinGroup(string localMemberJson)
         {
-            string groupId = $"{ApianInst.NetworkId}/{groupName}";
-            ApianInst.GameNet.AddApianInstance(ApianInst, groupId);
-            LocalMember =  new ApianGroupMember(LocalPeerId, localMemberJson);
-            Members[LocalPeerId] = LocalMember;
-
-            // TODO: clean this crap up!! &&&&&
-            long pingMs = 2500;
-            long dropMs = 5000;
-            long timingMs = 15000;
-            P2pNetChannelInfo chan = new P2pNetChannelInfo(groupName, groupId, dropMs, pingMs, timingMs);
-            ApianInst.GameNet.AddChannel(chan);
 
             // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
-                new GroupMemberJoinedMsg(groupId, LocalPeerId, localMemberJson));
-
+                new GroupMemberJoinedMsg(GroupId, LocalPeerId, localMemberJson));
         }
 
         public void Update()
