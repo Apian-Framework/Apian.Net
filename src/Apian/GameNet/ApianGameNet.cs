@@ -80,7 +80,7 @@ namespace Apian
             _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
         }
 
-        // void JoinNetwork(string gameP2pChannel); Not overridden at this level
+        // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
 
         public override void LeaveNetwork()
         {
