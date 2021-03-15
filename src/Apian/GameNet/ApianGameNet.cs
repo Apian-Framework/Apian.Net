@@ -74,11 +74,11 @@ namespace Apian
 
         // void Disconnect();
 
-        public override void  CreateNetwork<GameCreationData>(GameCreationData data)
-        {
-            logger.Verbose($"CreateGame()");
-            _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
-        }
+        // public override void  CreateNetwork<GameCreationData>(GameCreationData data)
+        // {
+        //     logger.Verbose($"CreateGame()");
+        //     _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
+        // }
 
         // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
 

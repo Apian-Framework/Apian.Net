@@ -11,7 +11,6 @@ namespace GameNet
         void Connect( string p2pConectionString );
         void AddClient(IGameNetClient _client);
         void Disconnect();
-        void CreateNetwork<T>(T createNetData);
         void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
         void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
@@ -23,7 +22,7 @@ namespace GameNet
 
     public interface IGameNetClient
     {
-        void OnNetworkCreated(string netP2pChannel);
+       // void OnNetworkCreated(string netP2pChannel);
         void OnPeerJoinedNetwork(string peerId, string netId, string helloData);
         void OnPeerLeftNetwork(string p2pId, string netId);
         void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
@@ -106,17 +105,17 @@ namespace GameNet
 
         // TODO: need "Destroy() or Reset() or (Init)" to null out P2pNet instance? Don;t want to destroy instance immediately on Leave()
 
-        public abstract void CreateNetwork<T>(T t); // really can only be defined in the game-specific implmentation
+        // public abstract void CreateNetwork<T>(T t); // really can only be defined in the game-specific implmentation
 
-        protected void _SyncTrivialNewNetwork()
-        {
-            // The most basic thing you can in a CreateGame() implmentation.
-            // It actually does nothing at all except to make up a random name and then call back saying a game was created.
-            // This works because at its *absolute simplest* a "game" is just an agree-to p2p channel, and "joining" it
-            // just means subscribing to it.
-            string newId = "APIANNET" + System.Guid.NewGuid().ToString();
-            callbacksForNextPoll.Enqueue( () => client.OnNetworkCreated(newId));
-        }
+        // protected void _SyncTrivialNewNetwork()
+        // {
+        //     // The most basic thing you can in a CreateGame() implmentation.
+        //     // It actually does nothing at all except to make up a random name and then call back saying a game was created.
+        //     // This works because at its *absolute simplest* a "game" is just an agree-to p2p channel, and "joining" it
+        //     // just means subscribing to it.
+        //     string newId = "APIANNET" + System.Guid.NewGuid().ToString();
+        //     callbacksForNextPoll.Enqueue( () => client.OnNetworkCreated(newId));
+        // }
 
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
