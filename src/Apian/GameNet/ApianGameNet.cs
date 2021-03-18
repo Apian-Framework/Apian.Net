@@ -84,8 +84,13 @@ namespace Apian
 
         public override void LeaveNetwork()
         {
+            foreach (ApianBase ap in ApianInstances.Values)
+            {
+                ap.LeaveGroup(); // post leaveGroup requests. Even tho we aren't waiting around for them.
+            }
             // needs to clean up ApianInstances
             ApianInstances.Clear();
+            Peers.Clear();
             base.LeaveNetwork();
         }
 
@@ -103,6 +108,15 @@ namespace Apian
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo, null); // FIXME: should send some peer data for the channel?
             apian.JoinGroup(localGroupData); //
+        }
+
+        public void LeaveGroup(string groupId)
+        {
+            logger.Info($"LeaveGroup( {groupId} )");
+            if (! ApianInstances.ContainsKey(groupId))
+                logger.Warn($"LeaveGroup() - No group: {groupId}");
+            else
+                ApianInstances[groupId].LeaveGroup();
         }
 
         // void AddChannel(string subChannel); // not overridden here

@@ -84,6 +84,7 @@ namespace Apian
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
         void JoinGroup(string localMemberJson);
+        void LeaveGroup();
         void Update();
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);

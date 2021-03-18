@@ -50,10 +50,14 @@ namespace Apian
 
         public void JoinGroup(string localMemberJson)
         {
-
             // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
                 new GroupMemberJoinedMsg(GroupId, LocalPeerId, localMemberJson));
+        }
+
+        public void LeaveGroup()
+        {
+           ApianInst.OnGroupMemberStatusChange(LocalMember, ApianGroupMember.Status.Removed);
         }
 
         public void Update()

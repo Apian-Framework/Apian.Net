@@ -10,6 +10,7 @@ namespace Apian
         public const string GroupsRequest = "APrg";
         public const string GroupAnnounce = "APga";
         public const string GroupJoinRequest = "APgjr";
+        public const string GroupLeaveRequest = "APglr";
         public const string GroupMemberJoined = "APgmj"; // Sent on "active" - we need it 'cause it has AppData
         public const string GroupMemberStatus = "APgms"; // joining, active, removed, etc
         public const string GroupSyncRequest = "APgsyr"; // request sync data
@@ -46,6 +47,12 @@ namespace Apian
         public string PeerId;
         public string ApianClientPeerJson;
         public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerId=pid; ApianClientPeerJson = peerData;}
+    }
+
+    public class GroupLeaveRequestMsg : ApianGroupMessage
+    {
+        public string PeerId;
+        public GroupLeaveRequestMsg(string gid, string pid) : base(gid, GroupLeaveRequest) {PeerId=pid;}
     }
 
     public class GroupMemberJoinedMsg : ApianGroupMessage
@@ -127,6 +134,7 @@ namespace Apian
             {ApianGroupMessage.GroupAnnounce, (s) => JsonConvert.DeserializeObject<GroupAnnounceMsg>(s) },
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
             {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },
+            {ApianGroupMessage.GroupLeaveRequest, (s) => JsonConvert.DeserializeObject<GroupLeaveRequestMsg>(s) },
             {ApianGroupMessage.GroupMemberStatus, (s) => JsonConvert.DeserializeObject<GroupMemberStatusMsg>(s) },
             {ApianGroupMessage.GroupMemberJoined, (s) => JsonConvert.DeserializeObject<GroupMemberJoinedMsg>(s) },
             {ApianGroupMessage.GroupSyncRequest, (s) => JsonConvert.DeserializeObject<GroupSyncRequestMsg>(s) },

@@ -178,6 +178,7 @@ namespace Apian
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
+                {ApianGroupMessage.GroupLeaveRequest, OnGroupLeaveRequest },
                 {ApianGroupMessage.GroupMemberJoined, OnGroupMemberJoined },
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
@@ -226,9 +227,22 @@ namespace Apian
             if (GroupInfo == null)
                 Logger.Error($"GroupMgr.JoinGroup() - group uninitialized."); // TODO: once again - this should probably throw.
 
+            Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId}");
             // Because of the group type send the request directly to the creator
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
         }
+        public void LeaveGroup()
+        {
+            // Question... do we REALLY want to send a request and wait? My guess is not - apps will will send the request
+            // and then just proceed to shut down the group locally. Th rest of the group can deal with the message
+            Logger.Info($"{this.GetType().Name}.LeaveGroup(): {GroupInfo?.GroupId}");
+
+            ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupLeaveRequestMsg(GroupId, LocalPeerId));
+
+            // ApianInst.OnGroupMemberStatusChange(LocalMember, ApianGroupMember.Status.Removed); If we wait this is what'll eventually happen.
+            // Maybe we should just do it here? Nah.
+        }
+
 
         private ApianGroupMember _AddMember(string peerId, string appDataJson)
         {
@@ -424,6 +438,20 @@ namespace Apian
                 // Now send status updates (from "joined") for any member that has changed status
                 _SendMemberStatusUpdates(jreq.PeerId);
 
+            }
+        }
+
+        private void OnGroupLeaveRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            // In this implementation the creator decides
+            // Everyone else just ignores this.
+            if (LocalPeerIsServer)
+            {
+                GroupLeaveRequestMsg jreq = msg as GroupLeaveRequestMsg;
+                Logger.Info($"{this.GetType().Name}.OnGroupLeaveRequest()");
+
+                // Just remove.
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, jreq.PeerId,ApianGroupMember.Status.Removed));
             }
         }
 

@@ -125,8 +125,10 @@ namespace GameNet
         }
         public virtual void LeaveNetwork()
         {
-            callbacksForNextPoll.Enqueue( () => client.OnPeerLeftNetwork(LocalP2pId(), CurrentNetworkId()));
-            p2p.Leave();
+            callbacksForNextPoll.Enqueue( () => client.OnPeerLeftNetwork(LocalP2pId(), CurrentNetworkId())); // well get this next polling update
+            p2p.Leave(); // sends goodbye
+            // Note that this is not Disconnect(). It probably almost always is, but just as Connect() and JoinNetwork()
+            // are separate, so are LeaveNetwork and Disconnect. I dunno if that good, bad, or irrelevant.
         }
 
         public virtual void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData)
