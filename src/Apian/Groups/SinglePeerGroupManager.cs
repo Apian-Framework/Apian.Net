@@ -13,11 +13,11 @@ namespace Apian
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private ApianGroupMember _Member {get; set;}
-        private const string SinglePeerGroupType = "SinglePeerGroup";
+        public const string groupType = "SinglePeerGroup";
 
         // IApianGroupManager
         public bool Intialized {get => GroupInfo != null; }
-        public string GroupType {get => SinglePeerGroupType;}
+        public string GroupType {get => groupType;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public ApianGroupMember LocalMember {private set; get;}
