@@ -9,7 +9,7 @@ using UniLog;
 namespace Apian
 {
 
-    public class CreatorServerGroupManager : ApianGroupManagerBase, IApianGroupManager
+    public class LeaderSezGroupManager : ApianGroupManagerBase, IApianGroupManager
     {
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
@@ -18,7 +18,7 @@ namespace Apian
             {"CheckpointOffsetMs", "50"},  // Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
             {"StashedCommandsPerUpdate", "10"},
-            {"Server.MaxSyncCmdsPerUpdate", "10"},
+            {"Leader.MaxSyncCmdsPerUpdate", "10"},
         };
 
         protected class SyncingPeerData
@@ -41,7 +41,7 @@ namespace Apian
             public long TimeStamp;
             public string StateHash;
             public string SerializedStateData;
-            // TODO: add this dict and make the stashedStateData member of ServerOnly a dict
+            // TODO: add this dict and make the stashedStateData member of LeaderOnly a dict
             // and keep a couple of them - tracking how well they (hashes) were agreed with.
             // Maybe when asked it's better to send out the "one before last" if the most recent disagreed
             // with all the other peers?
@@ -54,7 +54,7 @@ namespace Apian
             }
         }
 
-        protected class ServerOnlyData
+        protected class LeaderOnlyData
         {
             private ApianBase ApianInst {get; }
             private long NextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
@@ -64,7 +64,7 @@ namespace Apian
             UniLogger Logger;
 
             private int  MaxSyncCmdsPerUpdate; //
-            public ServerOnlyData(ApianBase apInst, Dictionary<string,string> config)
+            public LeaderOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
                 Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
                 ApianInst = apInst;
@@ -74,7 +74,7 @@ namespace Apian
 
             private void _LoadConfig(Dictionary<string,string> configDict)
             {
-                MaxSyncCmdsPerUpdate = int.Parse(configDict["Server.MaxSyncCmdsPerUpdate"]);
+                MaxSyncCmdsPerUpdate = int.Parse(configDict["Leader.MaxSyncCmdsPerUpdate"]);
             }
 
             private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long first, long firstPeerHas)
@@ -144,7 +144,7 @@ namespace Apian
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-        public const string groupType = "CreatorServerGroup";
+        public const string groupType = "LeaderSez";
 
         // IApianGroupManager
         public string GroupType {get => groupType;}
@@ -167,11 +167,11 @@ namespace Apian
         private long CheckpointMs;
         private long CheckpointOffsetMs;
 
-        private ServerOnlyData ServerData;
-        public bool LocalPeerIsServer {get => ServerData != null;}
+        private LeaderOnlyData LeaderData;
+        public bool LocalPeerIsLeader {get => LeaderData != null;}
         private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
-        public CreatorServerGroupManager(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
+        public LeaderSezGroupManager(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
             _ParseConfig(config ?? DefaultConfig);
 
@@ -211,9 +211,9 @@ namespace Apian
 
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
-            ServerData = new ServerOnlyData(ApianInst, ConfigDict);   // since we're server we need serverdata
+            LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're seader we need seaderdata
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
-            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another server thing
+            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another seader thing
         }
 
         public void SetupExistingGroup(ApianGroupInfo info)
@@ -257,18 +257,18 @@ namespace Apian
 
         public void Update()
         {
-            if (LocalPeerIsServer)
-                _ServerUpdate();
+            if (LocalPeerIsLeader)
+                _LeaderUpdate();
 
             _ApplyStashedCommands(); // always check the stash
         }
 
         //
-        // TODO: move server stuff to the server class
+        // TODO: move seader stuff to the seader class
         //
-        private void _ServerUpdate()
+        private void _LeaderUpdate()
         {
-            ServerData.SendSyncData(CommandStash);
+            LeaderData.SendSyncData(CommandStash);
             _DoCheckpointRequest();
         }
 
@@ -288,7 +288,7 @@ namespace Apian
         private void _SendCheckpointCommand(long curApainMs)
         {
             ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
-            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(ServerData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
         }
@@ -332,15 +332,15 @@ namespace Apian
         public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
             // Requests are assumed to be valid as long as source is Active
-            if (LocalPeerIsServer && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(ServerData.GetNewCommandSequenceNumber()));
+            if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
         }
 
         public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
-            // Observations from the server are turned into commands by the server
-            if (LocalPeerIsServer && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(ServerData.GetNewCommandSequenceNumber()));
+            // Observations from the seader are turned into commands by the seader
+            if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
         }
 
         public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
@@ -354,7 +354,7 @@ namespace Apian
                 return ApianCommandStatus.kBadSource;
 
 
-            if (LocalPeerIsServer) // Server has to stash everything
+            if (LocalPeerIsLeader) // Leader has to stash everything
                 CommandStash[msg.SequenceNum] = msg;// TODO: at least until there is checkpointing
 
             // if we are processing the cache (syncing) and get to this then we are done.
@@ -412,7 +412,7 @@ namespace Apian
       private void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // Only the creator answers
-            if (LocalPeerIsServer)
+            if (LocalPeerIsLeader)
             {
                 GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo);
                 ApianInst.SendApianMessage(msgSrc, amsg);
@@ -423,7 +423,7 @@ namespace Apian
         {
             // In this implementation the creator decides
             // Everyone else just ignores this.
-            if (LocalPeerIsServer)
+            if (LocalPeerIsLeader)
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
                 Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
@@ -445,7 +445,7 @@ namespace Apian
         {
             // In this implementation the creator decides
             // Everyone else just ignores this.
-            if (LocalPeerIsServer)
+            if (LocalPeerIsLeader)
             {
                 GroupLeaveRequestMsg jreq = msg as GroupLeaveRequestMsg;
                 Logger.Info($"{this.GetType().Name}.OnGroupLeaveRequest()");
@@ -489,7 +489,7 @@ namespace Apian
                 ApianInst.OnGroupMemberJoined(m); // inform local apian
 
                 // Unless we are the group creator AND this is OUR join message
-                if (joinedMsg.PeerId == LocalPeerId && LocalPeerIsServer)
+                if (joinedMsg.PeerId == LocalPeerId && LocalPeerIsLeader)
                 {
                     // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
                     ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
@@ -519,19 +519,19 @@ namespace Apian
         // &&& Old, command-only version
         // private void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         // {
-        //     if (LocalPeerIsServer) // Only creator handles this
+        //     if (LocalPeerIsLeader) // Only creator handles this
         //     {
         //         GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
         //         Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
 
-        //         ServerData.AddSyncingPeer(msgSrc, sMsg.ExpectedCmdSeqNum, sMsg.FirstStashedCmdSeqNum );
+        //         LeaderData.AddSyncingPeer(msgSrc, sMsg.ExpectedCmdSeqNum, sMsg.FirstStashedCmdSeqNum );
         //         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Syncing));
         //     }
         // }
 
         private void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (LocalPeerIsServer) // Only creator handles this
+            if (LocalPeerIsLeader) // Only creator handles this
             {
                 GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
@@ -541,7 +541,7 @@ namespace Apian
                 // Send out most recent state
                 long firstCmdToSend = sMsg.ExpectedCmdSeqNum;
 
-                AppStateData state = ServerData.stashedAppState;
+                AppStateData state = LeaderData.stashedAppState;
                 if (state != null)
                 {
                     ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.SequenceNumber, state.StateHash, state.SerializedStateData));
@@ -549,7 +549,7 @@ namespace Apian
                     Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.SequenceNumber}");
                 }
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending peer stashed commands from {firstCmdToSend} through {sMsg.FirstStashedCmdSeqNum-1}");
-                ServerData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
+                LeaderData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
             }
         }
 
@@ -563,7 +563,7 @@ namespace Apian
 
         private void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (LocalPeerIsServer) // Only creator handles this
+            if (LocalPeerIsLeader) // Only creator handles this
             {
                 GroupSyncCompletionMsg sMsg = (msg as GroupSyncCompletionMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");
@@ -574,9 +574,9 @@ namespace Apian
         public void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState)
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
-            if (LocalPeerIsServer) // Only server handles this
+            if (LocalPeerIsLeader) // Only seader handles this
             {
-                ServerData.StashLocalState(seqNum, timeStamp, stateHash, serializedState);
+                LeaderData.StashLocalState(seqNum, timeStamp, stateHash, serializedState);
 
                 // Toss out the old stashed commands
                 // TODO:  Hmm. Or maybe not. Seems like there is a need for a persistent record.
@@ -589,11 +589,11 @@ namespace Apian
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
             Logger.Info($"***** {this.GetType().Name}.OnGroupCheckpointReport() from {msgSrc} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
-            if (LocalPeerIsServer) // Only server handles this
+            if (LocalPeerIsLeader) // Only seader handles this
             {
                 // TODO: use this to report hashes to check the "quality" of a save state
-                // (OTOH: since by definition the server's version is true, it's probably not a big deal)
-                // ServerData.HandleRemoteState(rMsg.SeqNum, rMsg.StateHash);
+                // (OTOH: since by definition the seader's version is true, it's probably not a big deal)
+                // LeaderData.HandleRemoteState(rMsg.SeqNum, rMsg.StateHash);
             }
 
         }
