@@ -9,8 +9,16 @@ using UniLog;
 namespace Apian
 {
 
-    public class LeaderSezGroupManager : ApianGroupManagerBase, IApianGroupManager
+
+
+    public class LeaderSezGroupManager : ApianGroupManagerBase
     {
+        public const string kGroupType = "LeaderSez";
+        public override string GroupType {get => kGroupType; }
+        public const string kGroupTypeName = "LeaderSez";
+        public override string GroupTypeName {get => kGroupTypeName; }
+
+
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
         {
@@ -144,15 +152,11 @@ namespace Apian
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-        public const string groupType = "LeaderSez";
 
         // IApianGroupManager
-        public string GroupType {get => groupType;}
-        public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
-        public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
+
         public bool Intialized {get => GroupInfo != null; }
-        public ApianGroupMember LocalMember {private set; get;}
-        private Dictionary<long, ApianCommand> CommandStash;
+          private Dictionary<long, ApianCommand> CommandStash;
 
         // State data
         private long MaxReceivedCmdSeqNum; // inits to -1
@@ -202,7 +206,7 @@ namespace Apian
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
-        public void SetupNewGroup(ApianGroupInfo info)
+        public override void SetupNewGroup(ApianGroupInfo info)
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
@@ -216,13 +220,13 @@ namespace Apian
             NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another seader thing
         }
 
-        public void SetupExistingGroup(ApianGroupInfo info)
+        public override void SetupExistingGroup(ApianGroupInfo info)
         {
             Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
             GroupInfo = info;
         }
 
-        public void JoinGroup(string localMemberJson)
+        public override void JoinGroup(string localMemberJson)
         {
             if (GroupInfo == null)
                 Logger.Error($"GroupMgr.JoinGroup() - group uninitialized."); // TODO: once again - this should probably throw.
@@ -231,7 +235,7 @@ namespace Apian
             // Because of the group type send the request directly to the creator
             ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
         }
-        public void LeaveGroup()
+        public override void LeaveGroup()
         {
             // Question... do we REALLY want to send a request and wait? My guess is not - apps will will send the request
             // and then just proceed to shut down the group locally. Th rest of the group can deal with the message
@@ -255,7 +259,7 @@ namespace Apian
             return newMember;
         }
 
-        public void Update()
+        public override void Update()
         {
             if (LocalPeerIsLeader)
                 _LeaderUpdate();
@@ -318,7 +322,7 @@ namespace Apian
         }
 
 
-        public void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
+        public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
             if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
             {
@@ -329,21 +333,21 @@ namespace Apian
                 Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");
         }
 
-        public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
+        public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
             // Requests are assumed to be valid as long as source is Active
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
         }
 
-        public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
+        public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
             // Observations from the seader are turned into commands by the seader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
         }
 
-        public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
         {
             // Too early
             if (LocalMember == null)
@@ -409,7 +413,7 @@ namespace Apian
             // when creator gets the sync request it'll broadcast an identical status change msg
         }
 
-      private void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // Only the creator answers
             if (LocalPeerIsLeader)
@@ -419,7 +423,7 @@ namespace Apian
             }
         }
 
-        private void OnGroupJoinRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupJoinRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // In this implementation the creator decides
             // Everyone else just ignores this.
@@ -441,7 +445,7 @@ namespace Apian
             }
         }
 
-        private void OnGroupLeaveRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupLeaveRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // In this implementation the creator decides
             // Everyone else just ignores this.
@@ -455,7 +459,7 @@ namespace Apian
             }
         }
 
-        private void _SendMemberJoinedMessages(string toWhom)
+        protected void _SendMemberJoinedMessages(string toWhom)
         {
             // Send a newly-approved member all of the Join messages for the other member
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
@@ -466,7 +470,7 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
-        private void _SendMemberStatusUpdates(string toWhom)
+        protected void _SendMemberStatusUpdates(string toWhom)
         {
             // Send a newly-approved member the status of every non-"Joining" member (since a joinmessage was already sent)
             List<GroupMemberStatusMsg> statusMsgs = Members.Values
@@ -476,7 +480,7 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
-        private void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // If from GroupCreator then it's valid
             if (msgSrc == GroupCreatorId)
@@ -498,7 +502,7 @@ namespace Apian
             }
         }
 
-        private void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             if (msgSrc == GroupCreatorId) // If from GroupCreator then it's valid
             {
@@ -517,7 +521,7 @@ namespace Apian
         }
 
         // &&& Old, command-only version
-        // private void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        // protected void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         // {
         //     if (LocalPeerIsLeader) // Only creator handles this
         //     {
@@ -529,7 +533,7 @@ namespace Apian
         //     }
         // }
 
-        private void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             if (LocalPeerIsLeader) // Only creator handles this
             {
@@ -553,7 +557,7 @@ namespace Apian
             }
         }
 
-        private void OnGroupSyncData(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupSyncData(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupSyncDataMsg dMsg = (msg as GroupSyncDataMsg);
             ApianInst.ApplyCheckpointStateData(dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
@@ -561,7 +565,7 @@ namespace Apian
             MaxReceivedCmdSeqNum = dMsg.StateSeqNum;
         }
 
-        private void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             if (LocalPeerIsLeader) // Only creator handles this
             {
@@ -571,7 +575,7 @@ namespace Apian
             }
         }
 
-        public void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState)
+        public override void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState)
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
             if (LocalPeerIsLeader) // Only seader handles this
@@ -585,7 +589,7 @@ namespace Apian
 
         }
 
-        private void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
             Logger.Info($"***** {this.GetType().Name}.OnGroupCheckpointReport() from {msgSrc} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");

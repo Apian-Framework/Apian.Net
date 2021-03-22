@@ -6,21 +6,24 @@ using UniLog;
 namespace Apian
 {
 
-    public class SinglePeerGroupManager : ApianGroupManagerBase, IApianGroupManager
+    public class SinglePeerGroupManager : ApianGroupManagerBase
     {
+        // I hate that c# doesn;t allow you to require (either using an interface or an abstract base) that a class
+        // implement a static member/method/property.
+        public const string kGroupType = "SinglePeer";
+        public const string kGroupTypeName = "SinglePeer";
+
+        public override string GroupType {get => kGroupType; }
+        public override string GroupTypeName {get => kGroupTypeName; }
+
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private ApianGroupMember _Member {get; set;}
-        public const string groupType = "SinglePeerGroup";
 
         // IApianGroupManager
         public bool Intialized {get => GroupInfo != null; }
-        public string GroupType {get => groupType;}
-        public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
-        public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
-        public ApianGroupMember LocalMember {private set; get;}
         private long NextNewCommandSeqNum;
         public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
 
@@ -35,7 +38,7 @@ namespace Apian
          }
 
 
-        public void SetupNewGroup(ApianGroupInfo info)
+        public override void SetupNewGroup(ApianGroupInfo info)
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
@@ -46,26 +49,26 @@ namespace Apian
             ApianInst.ApianClock.Set(0); // Need to start it running - we're the only peer
         }
 
-        public void SetupExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
+        public override void SetupExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
-        public void JoinGroup(string localMemberJson)
+        public override void JoinGroup(string localMemberJson)
         {
             // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
                 new GroupMemberJoinedMsg(GroupId, LocalPeerId, localMemberJson));
         }
 
-        public void LeaveGroup()
+        public override void LeaveGroup()
         {
            ApianInst.OnGroupMemberStatusChange(LocalMember, ApianGroupMember.Status.Removed);
         }
 
-        public void Update()
+        public override void Update()
         {
 
         }
 
-        public void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
+        public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
             if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
             {
@@ -76,23 +79,23 @@ namespace Apian
                 Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");
         }
 
-        public void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
+        public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
             ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
-        public void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
+        public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
             ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
         }
 
-        public ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
         {
             return ApianCommandStatus.kShouldApply; // TODO: ok, even this one should at least check the source
         }
 
 
-        private void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // No need to validate source, since it;s local
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
@@ -107,7 +110,7 @@ namespace Apian
             ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
         }
 
-        public void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
+        public override void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
 
     }
 }

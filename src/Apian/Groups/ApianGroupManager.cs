@@ -72,10 +72,18 @@ namespace Apian
 
     public interface IApianGroupManager
     {
+        // I hate that C# has no way to force derived classes to implement
+        // uniformly-named static members or methods.
+        // Make sure to add these 2 properties to any derived classes:
+        //   public static string GroupType = "typeIdStr";
+        //   public static string GroupTypeName = "Friendly Name";
+
+
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global        ApianGroupInfo GroupInfo {get;}
+        string GroupId {get; }
+        string GroupName {get; }
         string GroupType {get;}
-        string GroupId {get;}
-        string GroupName {get;}
+        string GroupTypeName {get;}
         string GroupCreatorId {get;}
         string LocalPeerId {get;}
         ApianGroupMember LocalMember {get;}
@@ -95,15 +103,20 @@ namespace Apian
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
 
-    public abstract class ApianGroupManagerBase
+    public abstract class ApianGroupManagerBase : IApianGroupManager
     {
-        protected ApianBase ApianInst {get; }
+        public abstract string GroupType {get;}
+        public abstract string GroupTypeName {get;}
 
         public ApianGroupInfo GroupInfo {get; protected set;}
         public string GroupId {get => GroupInfo.GroupId;}
         public string GroupName {get => GroupInfo.GroupName;}
-
+        public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
+        public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
+        public ApianGroupMember LocalMember {protected set; get;}
         public UniLogger Logger;
+
+        protected ApianBase ApianInst {get; }
         protected Dictionary<string, ApianGroupMember> Members {get;}
 
         public ApianGroupManagerBase(ApianBase apianInst)
@@ -119,6 +132,18 @@ namespace Apian
                 return null;
             return Members[peerId];
         }
+
+        public abstract void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
+        public abstract void SetupExistingGroup(ApianGroupInfo info);
+        public abstract void JoinGroup(string localMemberJson);
+        public abstract void LeaveGroup();
+        public abstract void Update();
+        public abstract void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
+        public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
+        public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
+        public abstract void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
+        public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
+
     }
 
 }
