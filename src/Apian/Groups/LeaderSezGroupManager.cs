@@ -516,7 +516,7 @@ namespace Apian
                     ApianInst.OnGroupMemberStatusChange(m, old);
                 }
                 else
-                    Logger.Error($"{this.GetType().Name}.OnGroupMemberStatus(): Member not present" );
+                    Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): Member {sMsg.PeerId} not present" );
             }
         }
 
