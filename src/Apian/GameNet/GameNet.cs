@@ -161,7 +161,7 @@ namespace GameNet
         }
 
         public string LocalP2pId() => p2p?.GetId();
-        public string CurrentNetworkId() => p2p?.GetMainChannel().Id;
+        public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
 
         //
         // IP2pNetClient
