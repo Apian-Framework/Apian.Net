@@ -44,12 +44,11 @@ namespace Apian
             Joining, // In the process of joining a group
             Syncing, // In the process of syncing app state
             Active, // part of the gang
-            Missing, // not currently present, but only newly so
             Removed, // has left, or was missing long enough to be removed
         }
 
         public string PeerId {get;}
-        public Status CurStatus;
+        public Status CurStatus {get; set;}
 
         public string AppDataJson; // This is ApianClient-relevant data. It's Apian doesn;t read it
 

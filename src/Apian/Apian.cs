@@ -211,6 +211,19 @@ namespace Apian
             // TODO: This is awkward.
             ApianClock?.OnP2pPeerSync( remotePeerId,  clockOffsetMs,  netLagMs);
         }
+
+        // "Missing" is a little tricky. It's not like Joining or Leaving a group - it's more of a network-level
+        // notification that a peer is late being heard from - but not so badly that it's being dropped. In many
+        // applications this can be dealt with by pausing or temporarily disabling stuff. It's VERY app-dependant
+        // but when used well can make an otherwise unusable app useful for someone with a droppy connection (or a
+        // computer prone to "pausing" for a couple seconds at a time - I've seen them both)
+        public virtual void OnPeerMissing(string channelId, string p2pId)
+        {
+        }
+
+        public virtual void OnPeerReturned(string channelId, string p2pId)
+        {
+        }
     }
 
 

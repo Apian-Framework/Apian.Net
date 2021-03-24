@@ -63,7 +63,6 @@ namespace Apian
         public GroupMemberJoinedMsg(string gid, string pid, string peerData) : base(gid, GroupMemberJoined) {PeerId=pid; ApianClientPeerJson = peerData;}
     }
 
-
     public class GroupMemberStatusMsg : ApianGroupMessage
     {
         public string PeerId;

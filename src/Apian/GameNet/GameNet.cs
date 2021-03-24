@@ -172,19 +172,33 @@ namespace GameNet
             if (channel == CurrentNetworkId())
                 client.OnPeerJoinedNetwork(p2pId, CurrentNetworkId(), helloData);
 
-            // FIXME: what about other channels?
+            // Note: ApianGameNet overrides this (and calls it)
         }
 
         public virtual void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
         {
+            // Note: ApianGameNet overrides this and DOESN'T call it - Apian deals with any sync stuff for apian apps
             client.OnPeerSync(channelId, p2pId, clockOffsetMs, netLagMs);
         }
 
         public virtual void OnPeerLeft(string channelId, string p2pId)
         {
-            // FIXME: what about other channels?
+
+            // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
                 client.OnPeerLeftNetwork(p2pId, CurrentNetworkId());
+        }
+
+        public virtual void OnPeerMissing(string channelId, string p2pId)
+        {
+            // Note: ApianGameNet overrides this (and calls it)
+            // TODO: should this (and "returned") call a currently non-existing handler in the client interface?
+
+        }
+
+        public virtual void OnPeerReturned(string channelId, string p2pId)
+        {
+            // Note: ApianGameNet overrides this (and calls it)
         }
 
         public void OnClientMsg(string from, string to, long msSinceSent, string payload)

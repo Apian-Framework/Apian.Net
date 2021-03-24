@@ -148,16 +148,34 @@ namespace Apian
 
         public override void OnPeerLeft(string channelId, string p2pId)
         {
-            // P2pNet Peer left main game channel. Hopefully any Apian instances it was part of already know
-            // Send that it's gone, just in case.
-            foreach (ApianBase ap in ApianInstances.Values)
-                ap.OnApianMessage( LocalP2pId(), ap.GroupId, new GroupMemberStatusMsg(ap.GroupId, p2pId, ApianGroupMember.Status.Removed), 0);
 
-            base.OnPeerLeft(channelId, p2pId); // for gamemgr
+            if (channelId == CurrentNetworkId()) // P2pNet Peer left main game channel.
+            {
+                // Leave any groups
+                foreach (ApianBase ap in ApianInstances.Values)
+                    ap.OnApianMessage( LocalP2pId(), ap.GroupId, new GroupMemberStatusMsg(ap.GroupId, p2pId, ApianGroupMember.Status.Removed), 0);
 
-            // FIXME: I this this is all wrong.
+                Peers.Remove(p2pId); // remove the peer
+            } else {
+                if (ApianInstances.ContainsKey(channelId))
+                    ApianInstances[channelId].OnApianMessage( LocalP2pId(), channelId, new GroupMemberStatusMsg(channelId, p2pId, ApianGroupMember.Status.Removed), 0);
+            }
 
-            Peers.Remove(p2pId);
+            base.OnPeerLeft(channelId, p2pId); // calls client
+
+        }
+
+        public override void OnPeerMissing(string channelId, string p2pId)
+        {
+            if (ApianInstances.ContainsKey(channelId))
+                ApianInstances[channelId].OnPeerMissing(channelId, p2pId);
+        }
+
+        public override void OnPeerReturned(string channelId, string p2pId)
+        {
+           if (ApianInstances.ContainsKey(channelId))
+                ApianInstances[channelId].OnPeerReturned(channelId, p2pId);
+
         }
 
         public override void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
