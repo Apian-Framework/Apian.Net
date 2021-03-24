@@ -6,10 +6,10 @@ using System;
 using System.Collections.Generic;
 using P2pNet;
 using UniLog;
+using static UniLog.UniLogger; // for SIM
+
 namespace Apian
 {
-
-
 
     public class LeaderSezGroupManager : ApianGroupManagerBase
     {
@@ -592,7 +592,7 @@ namespace Apian
         protected void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
-            Logger.Info($"***** {this.GetType().Name}.OnGroupCheckpointReport() from {msgSrc} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() from {SID(msgSrc)} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
             if (LocalPeerIsLeader) // Only seader handles this
             {
                 // TODO: use this to report hashes to check the "quality" of a save state
