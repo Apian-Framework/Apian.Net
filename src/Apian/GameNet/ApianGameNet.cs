@@ -107,6 +107,7 @@ namespace Apian
             apian.SetupNewGroup(groupInfo); // create the group
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
+
             apian.JoinGroup(localGroupData); //
         }
 
