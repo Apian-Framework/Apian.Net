@@ -99,14 +99,14 @@ namespace Apian
             // need to set the groupMgr's "groupInfo" and open/join the p2pNet group channel
             apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
-            AddChannel(groupInfo.GroupChannelInfo, null); // FIXME: should send some peer data for the channel?
+            AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: SHould put something useful here
             apian.JoinGroup(localGroupData); //
         }
         public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
             apian.SetupNewGroup(groupInfo); // create the group
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
-            AddChannel(groupInfo.GroupChannelInfo, null); // FIXME: should send some peer data for the channel?
+            AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // FIXME: see above
             apian.JoinGroup(localGroupData); //
         }
 
@@ -162,20 +162,20 @@ namespace Apian
             }
 
             base.OnPeerLeft(channelId, p2pId); // calls client
-
         }
 
         public override void OnPeerMissing(string channelId, string p2pId)
         {
             if (ApianInstances.ContainsKey(channelId))
                 ApianInstances[channelId].OnPeerMissing(channelId, p2pId);
+            base.OnPeerMissing(channelId, p2pId);
         }
 
         public override void OnPeerReturned(string channelId, string p2pId)
         {
            if (ApianInstances.ContainsKey(channelId))
                 ApianInstances[channelId].OnPeerReturned(channelId, p2pId);
-
+            base.OnPeerReturned(channelId, p2pId);
         }
 
         public override void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
