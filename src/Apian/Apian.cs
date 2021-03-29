@@ -32,7 +32,7 @@ namespace Apian
         public IApianClock ApianClock {get; protected set;}
         public IApianGameNet GameNet {get; private set;}
         public IApianAppCore AppCore {get; private set;}
-        // protected long SysMs { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}  // TODO: delete this once I'm sure no one is using it.
+
         public string GroupName { get => GroupMgr.GroupName; }
         public string NetworkId { get => GameNet.CurrentNetworkId(); }
         public string GroupId { get => GroupMgr.GroupId; }
