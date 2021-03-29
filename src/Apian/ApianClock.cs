@@ -17,6 +17,7 @@ namespace Apian
         void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs); // sys + offset = apian
         void SendApianClockOffset(); // Another part of Apian might want us to send this ( when member joins, for instance)
         void OnApianClockOffset(string remotePeerId,  long apianOffset);
+        void OnPeerLeft(string peerId);
         void Update(); // loop
         // ReSharper enable UnusedMemberInSuper.Global,UnusedMember.Global
 
@@ -37,8 +38,6 @@ namespace Apian
         //   timeOffset - the time you wanted it to be last time you set the rate or offset
         //
         //   set rate and offset at the same time.
-
-        // TODO: should get notified of peerleft?
 
         public readonly UniLogger Logger;
 
@@ -133,8 +132,16 @@ namespace Apian
             }
         }
 
-        // Internals
+        public void OnPeerLeft(string peerId)
+        {
+            if (_sysOffsetsByPeer.ContainsKey(peerId))
+                _sysOffsetsByPeer.Remove(peerId);
 
+            if (_apianOffsetsByPeer.ContainsKey(peerId))
+                _apianOffsetsByPeer.Remove(peerId);
+        }
+
+        // Internals
 
         public void SendApianClockOffset()
         {

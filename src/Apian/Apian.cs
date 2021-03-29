@@ -199,6 +199,14 @@ namespace Apian
             }
         }
 
+        public virtual void OnGroupMemberLeft(string groupId, string peerId)
+        {
+            if (ApianClock != null)
+                ApianClock.OnPeerLeft(peerId);
+
+            OnApianMessage( GameNet.LocalP2pId(), GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Removed), 0);
+        }
+
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
         public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app

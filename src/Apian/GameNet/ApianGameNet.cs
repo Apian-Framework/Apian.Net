@@ -154,14 +154,12 @@ namespace Apian
             {
                 // Leave any groups
                 foreach (ApianBase ap in ApianInstances.Values)
-                    ap.OnApianMessage( LocalP2pId(), ap.GroupId, new GroupMemberStatusMsg(ap.GroupId, p2pId, ApianGroupMember.Status.Removed), 0);
-
+                    ap.OnGroupMemberLeft(channelId, p2pId);
                 Peers.Remove(p2pId); // remove the peer
             } else {
                 if (ApianInstances.ContainsKey(channelId))
-                    ApianInstances[channelId].OnApianMessage( LocalP2pId(), channelId, new GroupMemberStatusMsg(channelId, p2pId, ApianGroupMember.Status.Removed), 0);
+                    ApianInstances[channelId].OnGroupMemberLeft(channelId, p2pId);
             }
-
             base.OnPeerLeft(channelId, p2pId); // calls client
         }
 
