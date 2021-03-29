@@ -25,6 +25,9 @@ namespace GameNet
        // void OnNetworkCreated(string netP2pChannel);
         void OnPeerJoinedNetwork(string peerId, string netId, string helloData);
         void OnPeerLeftNetwork(string p2pId, string netId);
+        void OnPeerMissing(string p2pId, string networkId);
+        void OnPeerReturned(string p2pId, string networkId);
+
         void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
 
         // TODO: do we want PeerJoinedChannel-type notifications?
@@ -192,13 +195,16 @@ namespace GameNet
         public virtual void OnPeerMissing(string channelId, string p2pId)
         {
             // Note: ApianGameNet overrides this (and calls it)
-            // TODO: should this (and "returned") call a currently non-existing handler in the client interface?
+            if (channelId == CurrentNetworkId())
+                client.OnPeerMissing(p2pId, CurrentNetworkId());
 
         }
 
         public virtual void OnPeerReturned(string channelId, string p2pId)
         {
             // Note: ApianGameNet overrides this (and calls it)
+            if (channelId == CurrentNetworkId())
+                client.OnPeerReturned(p2pId, CurrentNetworkId());
         }
 
         public void OnClientMsg(string from, string to, long msSinceSent, string payload)
