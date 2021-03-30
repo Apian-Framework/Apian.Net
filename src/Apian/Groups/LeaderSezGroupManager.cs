@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using P2pNet;
 using UniLog;
-using static UniLog.UniLogger; // for SIM
+using static UniLog.UniLogger; // for SID
 
 namespace Apian
 {
@@ -337,7 +337,10 @@ namespace Apian
         {
             // Requests are assumed to be valid as long as source is Active
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
+            {
+                Logger.Debug($"OnApianRequest(): upgrading {msg.CliMsgType} from {SID(msgSrc)} to Command");
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
+            }
         }
 
         public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
