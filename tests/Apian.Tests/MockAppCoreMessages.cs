@@ -70,7 +70,7 @@ namespace ApianTests
     // Wrapped Apian Messages
     public class PutThingObservation : ApianObservation
     {
-        public override ApianCoreMessage ClientMsg {get => putThingMsg;}
+        public override ApianCoreMessage CoreMsg {get => putThingMsg;}
         public PutThingMsg putThingMsg;
         public PutThingObservation(string gid, PutThingMsg _putThingMsg) : base(gid, _putThingMsg) {putThingMsg=_putThingMsg;}
         public PutThingObservation() : base() {}
@@ -79,7 +79,7 @@ namespace ApianTests
 
     public class GetThingObservation : ApianObservation
     {
-        public override ApianCoreMessage ClientMsg {get => getThingMsg;}
+        public override ApianCoreMessage CoreMsg {get => getThingMsg;}
         public GetThingMsg getThingMsg;
         public GetThingObservation(string gid, GetThingMsg _getThingMsg) : base(gid, _getThingMsg) {getThingMsg=_getThingMsg;}
         public GetThingObservation() : base() {}
@@ -87,7 +87,7 @@ namespace ApianTests
     }
     public class SeeThingObservation : ApianObservation
     {
-        public override ApianCoreMessage ClientMsg {get => seeThingMsg;}
+        public override ApianCoreMessage CoreMsg {get => seeThingMsg;}
         public SeeThingMsg seeThingMsg;
         public SeeThingObservation(string gid, SeeThingMsg _seeThingMsg) : base(gid, _seeThingMsg) {seeThingMsg=_seeThingMsg;}
         public SeeThingObservation() : base() {}
