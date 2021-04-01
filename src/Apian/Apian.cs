@@ -121,7 +121,7 @@ namespace Apian
             }
 
             // Sort by timestamp, earliest first
-            batchedObservations.Sort( (a,b) => a.ClientMsg.TimeStamp.CompareTo(b.ClientMsg.TimeStamp));
+            batchedObservations.Sort( (a,b) => a.CoreMsg.TimeStamp.CompareTo(b.CoreMsg.TimeStamp));
 
             // TODO: run conflict resolution!!!
             List<ApianObservation> obsToSend = new List<ApianObservation>();
@@ -132,15 +132,15 @@ namespace Apian
                 foreach (ApianObservation prevObs in obsToSend)
                 {
                     ApianConflictResult effect = ApianConflictResult.Unaffected;
-                    (effect, reason) = AppCore.ValidateCoreMessages(prevObs.ClientMsg, obs.ClientMsg);
+                    (effect, reason) = AppCore.ValidateCoreMessages(prevObs.CoreMsg, obs.CoreMsg);
                     switch (effect)
                     {
                         case ApianConflictResult.Validated:
-                            Logger.Info($"{obs.ClientMsg.MsgType} Observation Validated by {prevObs.ClientMsg.MsgType}: {reason}");
+                            Logger.Info($"{obs.CoreMsg.MsgType} Observation Validated by {prevObs.CoreMsg.MsgType}: {reason}");
                             isValid = true;
                             break;
                         case ApianConflictResult.Invalidated:
-                            Logger.Info($"{obs.ClientMsg.MsgType} Observation invalidated by {prevObs.ClientMsg.MsgType}: {reason}");
+                            Logger.Info($"{obs.CoreMsg.MsgType} Observation invalidated by {prevObs.CoreMsg.MsgType}: {reason}");
                             isValid = false;
                             break;
                         case ApianConflictResult.Unaffected:
@@ -152,7 +152,7 @@ namespace Apian
                 if (isValid)
                     obsToSend.Add(obs);
                 else
-                    Logger.Info($"{obs.ClientMsg.MsgType} Observation rejected.");
+                    Logger.Info($"{obs.CoreMsg.MsgType} Observation rejected.");
             }
 
             //Logger.Warn($"vvvv - Start Obs batch send - vvvv");

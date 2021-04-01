@@ -338,7 +338,7 @@ namespace Apian
             // Requests are assumed to be valid as long as source is Active
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
             {
-                Logger.Debug($"OnApianRequest(): upgrading {msg.CliMsgType} from {SID(msgSrc)} to Command");
+                Logger.Debug($"OnApianRequest(): upgrading {msg.CoreMsgType} from {SID(msgSrc)} to Command");
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
             }
         }

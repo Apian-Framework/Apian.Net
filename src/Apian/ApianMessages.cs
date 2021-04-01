@@ -36,42 +36,42 @@ namespace Apian
         protected ApianMessage() {}
     }
 
-    public class ApianWrappedClientMessage : ApianMessage
+    public class ApianWrappedCoreMessage : ApianMessage
     {
-        public string CliMsgType; // TODO: This is a hack and is a copy of the ApianClientMessage MsgType
+        public string CoreMsgType; // TODO: This is a hack and is a copy of the ApianClientMessage MsgType
                                   // It's related to deserializing from JSON into an ApianWrappedClientMessage
                                   // and me not wanting to include the full derived class names in the data stream.
 
         [JsonIgnore]
-        public virtual ApianCoreMessage ClientMsg {get;}
-        public ApianWrappedClientMessage(string gid, string apianMsgType, string clientMsgType) : base(gid, apianMsgType)
+        public virtual ApianCoreMessage CoreMsg {get;}
+        public ApianWrappedCoreMessage(string gid, string apianMsgType, string coreMsgType) : base(gid, apianMsgType)
         {
-            CliMsgType=clientMsgType;
+            CoreMsgType=coreMsgType;
         }
-        public ApianWrappedClientMessage() : base() {}
+        public ApianWrappedCoreMessage() : base() {}
 
     }
 
     // The constructors for these wrapped messages are protected to ensure that they get subclasses into specific
-    // pre-message subclasses which override ClientMsg to return a types subclass of ApianCoreMessage
+    // pre-message subclasses which override CoreMsg to return a types subclass of ApianCoreMessage
 
-    public class ApianRequest : ApianWrappedClientMessage
+    public class ApianRequest : ApianWrappedCoreMessage
     {
-        protected ApianRequest(string gid, ApianCoreMessage clientMsg) : base(gid, CliRequest, clientMsg.MsgType) {}
+        protected ApianRequest(string gid, ApianCoreMessage coreMsg) : base(gid, CliRequest, coreMsg.MsgType) {}
         public ApianRequest() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
-    public class ApianObservation : ApianWrappedClientMessage
+    public class ApianObservation : ApianWrappedCoreMessage
     {
-        protected ApianObservation(string gid,ApianCoreMessage clientMsg) : base(gid, CliObservation, clientMsg.MsgType) {}
+        protected ApianObservation(string gid,ApianCoreMessage coreMsg) : base(gid, CliObservation, coreMsg.MsgType) {}
         public ApianObservation() : base() {}
         public virtual ApianCommand ToCommand(long seqNum) {return null;}
     }
 
-    public class ApianCommand : ApianWrappedClientMessage {
+    public class ApianCommand : ApianWrappedCoreMessage {
         public long SequenceNum;
-        protected ApianCommand(long seqNum, string gid, ApianCoreMessage clientMsg) : base(gid, CliCommand, clientMsg.MsgType) {SequenceNum=seqNum;}
+        protected ApianCommand(long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg.MsgType) {SequenceNum=seqNum;}
         public ApianCommand() : base() {}
 
     }
@@ -87,7 +87,7 @@ namespace Apian
 
     public class ApianCheckpointMsg : ApianCoreMessage
     {
-        // This is a "mock client command" for an ApianCheckpointCommand to "wrap"
+        // This is a "mock core command" for an ApianCheckpointCommand to "wrap"
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
     }
 
@@ -95,11 +95,11 @@ namespace Apian
     {
         // A checkpoint request is implemented as an ApianCommand so it can:
         // - Explicitly specify an "epoch" for the checkpoint (its sequence number)
-        // - Be part of the serial command stream. Client commands are strictly evaluated
+        // - Be part of the serial command stream. Core commands are strictly evaluated
         // and applied in order. By being a command the request can guarantee that it is processed
         // by all peers on an app state that has the identical commands applied - and will take advantage
         // of the ordering mechanism
-        public override ApianCoreMessage ClientMsg {get => checkpointMsg;}
+        public override ApianCoreMessage CoreMsg {get => checkpointMsg;}
         public ApianCheckpointMsg checkpointMsg;
         public ApianCheckpointCommand(long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
         public ApianCheckpointCommand() : base() {}
@@ -123,9 +123,9 @@ namespace Apian
 
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()
         {
-            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CliMsgType }, // Need to use App-level message deserializer to fully decode
-            {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).CliMsgType },
-            {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CliMsgType },
+            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CoreMsgType }, // Need to use App-level message deserializer to fully decode
+            {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).CoreMsgType },
+            {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CoreMsgType },
             {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType }, // Need to use ApianGroupMessageDeserializer to fully decode
             {ApianMessage.ApianClockOffset, (msg) => null },
         };
