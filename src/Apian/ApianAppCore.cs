@@ -20,16 +20,4 @@ namespace Apian
         (ApianConflictResult result, string reason) ValidateCoreMessages(ApianCoreMessage prevMsg, ApianCoreMessage testMsg);
     }
 
-
-    public interface IApianCoreData
-    {
-        // A serializable CoreState data element
-        //string ApianHash();
-        string ApianSerialized(object args);
-
-        // Requires a paired:
-        // public static <DerivedClassType> FromApainJson()
-    }
-
-
 }
