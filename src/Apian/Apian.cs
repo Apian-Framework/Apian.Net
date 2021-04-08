@@ -174,7 +174,7 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
         public void LeaveGroup() => GroupMgr.LeaveGroup();
-        public abstract void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData);
+        public abstract void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData);
 
         // FROM GroupManager
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
@@ -209,7 +209,7 @@ namespace Apian
 
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
-        public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
+        public abstract void SendCheckpointState(long timeStamp, long epoch, long seqNum, string serializedState); // called by client app
 
 
 

@@ -59,19 +59,20 @@ namespace Apian
     {
         protected ApianRequest(string gid, ApianCoreMessage coreMsg) : base(gid, CliRequest, coreMsg.MsgType) {}
         public ApianRequest() : base() {}
-        public virtual ApianCommand ToCommand(long seqNum) {return null;}
+        public virtual ApianCommand ToCommand(long epoch, long seqNum) {return null;}
     }
 
     public class ApianObservation : ApianWrappedCoreMessage
     {
         protected ApianObservation(string gid,ApianCoreMessage coreMsg) : base(gid, CliObservation, coreMsg.MsgType) {}
         public ApianObservation() : base() {}
-        public virtual ApianCommand ToCommand(long seqNum) {return null;}
+        public virtual ApianCommand ToCommand(long epoch, long seqNum) {return null;}
     }
 
     public class ApianCommand : ApianWrappedCoreMessage {
+        public long Epoch;
         public long SequenceNum;
-        protected ApianCommand(long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg.MsgType) {SequenceNum=seqNum;}
+        protected ApianCommand(long ep, long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg.MsgType) {Epoch=ep; SequenceNum=seqNum;}
         public ApianCommand() : base() {}
 
     }
@@ -94,14 +95,15 @@ namespace Apian
     public class ApianCheckpointCommand : ApianCommand
     {
         // A checkpoint request is implemented as an ApianCommand so it can:
-        // - Explicitly specify an "epoch" for the checkpoint (its sequence number)
+        // - Explicitly specify an "epoch" for the checkpoint. (The checkpoint command closes an epoch.
+        //   Next command has seqNum=0 for the next epoch )
         // - Be part of the serial command stream. Core commands are strictly evaluated
         // and applied in order. By being a command the request can guarantee that it is processed
         // by all peers on an app state that has the identical commands applied - and will take advantage
         // of the ordering mechanism
         public override ApianCoreMessage CoreMsg {get => checkpointMsg;}
         public ApianCheckpointMsg checkpointMsg;
-        public ApianCheckpointCommand(long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
+        public ApianCheckpointCommand(long epoch, long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(epoch, seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
         public ApianCheckpointCommand() : base() {}
     }
 

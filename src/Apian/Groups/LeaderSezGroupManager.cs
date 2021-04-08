@@ -45,7 +45,8 @@ namespace Apian
 
         protected class AppStateData
         {
-            public long SequenceNumber;
+            public long Epoch;
+            public long CmdSequenceNumber;
             public long TimeStamp;
             public string StateHash;
             public string SerializedStateData;
@@ -55,9 +56,10 @@ namespace Apian
             // with all the other peers?
             // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerId
 
-            public AppStateData(long sequenceNum)
+            public AppStateData(long epoch, long sequenceNum)
             {
-                SequenceNumber = sequenceNum;
+                Epoch = epoch;
+                CmdSequenceNumber = sequenceNum;
                 // ReportedHashes = new Dictionary<string, string>();
             }
         }
@@ -65,8 +67,10 @@ namespace Apian
         protected class LeaderOnlyData
         {
             private ApianBase ApianInst {get; }
+            public long CurrentEpoch {get; private set;}
             private long NextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
             public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
+            public void IncrementEpoch() { NextNewCommandSeqNum = 0; CurrentEpoch++; }
             public Dictionary<string, SyncingPeerData> syncingPeers;
             public AppStateData stashedAppState; // Consider making this a dict
             UniLogger Logger;
@@ -85,11 +89,13 @@ namespace Apian
                 MaxSyncCmdsPerUpdate = int.Parse(configDict["Leader.MaxSyncCmdsPerUpdate"]);
             }
 
-            private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long first, long firstPeerHas)
+//------------------------------ here
+
+            private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long firstCmdNeededByPeer, long firstCmdPeerHas)
             {
                 // TODO: This should not be able to happen
-                peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, first);
-                peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstPeerHas);
+                peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, firstCmdNeededByPeer);
+                peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstCmdPeerHas);
                 return peerData;
             }
 
@@ -292,9 +298,10 @@ namespace Apian
         private void _SendCheckpointCommand(long curApainMs)
         {
             ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
-            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.CurrentEpoch, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
+            LeaderData.IncrementEpoch(); // sending out a checkpoint cmds ends the current epoch
         }
 
         private void _ApplyStashedCommands()
@@ -551,9 +558,9 @@ namespace Apian
                 AppStateData state = LeaderData.stashedAppState;
                 if (state != null)
                 {
-                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.SequenceNumber, state.StateHash, state.SerializedStateData));
-                    firstCmdToSend = state.SequenceNumber + 1;
-                    Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.SequenceNumber}");
+                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.CmdSequenceNumber, state.StateHash, state.SerializedStateData));
+                    firstCmdToSend = state.CmdSequenceNumber + 1;
+                    Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.CmdSequenceNumber}");
                 }
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending peer stashed commands from {firstCmdToSend} through {sMsg.FirstStashedCmdSeqNum-1}");
                 LeaderData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
@@ -563,7 +570,7 @@ namespace Apian
         protected void OnGroupSyncData(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupSyncDataMsg dMsg = (msg as GroupSyncDataMsg);
-            ApianInst.ApplyCheckpointStateData(dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
+            ApianInst.ApplyCheckpointStateData( dMsg.StateEpoch, dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
             MaxAppliedCmdSeqNum = dMsg.StateSeqNum;
             MaxReceivedCmdSeqNum = dMsg.StateSeqNum;
         }
@@ -578,7 +585,7 @@ namespace Apian
             }
         }
 
-        public override void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState)
+        public override void OnLocalStateCheckpoint(long epoch, long seqNum, long timeStamp, string stateHash, string serializedState)
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
             if (LocalPeerIsLeader) // Only seader handles this
