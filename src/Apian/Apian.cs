@@ -174,6 +174,8 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
         public void LeaveGroup() => GroupMgr.LeaveGroup();
+
+         // TODO: ApplyCheckpointStateData() doesn't seem to belong here.
         public abstract void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData);
 
         // FROM GroupManager
@@ -209,7 +211,9 @@ namespace Apian
 
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
-        public abstract void SendCheckpointState(long timeStamp, long epoch, long seqNum, string serializedState); // called by client app
+
+        // called by AppCore
+        public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
 
 
 

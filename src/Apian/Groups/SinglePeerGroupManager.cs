@@ -112,7 +112,7 @@ namespace Apian
             ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
         }
 
-        public override void OnLocalStateCheckpoint(long epoch, long cndSeqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
+        public override void OnLocalStateCheckpoint(long cndSeqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
 
     }
 }

@@ -35,18 +35,22 @@ namespace Apian
             public long nextCommandToSend;
             public long firstCommandPeerHas;
 
-            public SyncingPeerData(string pid, long firstNeeded, long firstPeerHas)
+            public SyncingPeerData(string pid, long firstNeeded, long firstCmdPeerHas)
             {
+                // The peer has been storing - but not applying - commands while waiting for the
+                // leader to send data, and keeps doing so while syncing. It can be assumed the peer
+                // ALREADY has "firstCmdPeerHas" through whatever is current.
                 peerId = pid;
                 nextCommandToSend = firstNeeded;
-                firstCommandPeerHas = firstPeerHas;
+                firstCommandPeerHas = firstCmdPeerHas;
             }
         }
 
-        protected class AppStateData
+        protected class EpochData
         {
-            public long Epoch;
-            public long CmdSequenceNumber;
+            public long EpochNum;
+            public long StartCmdSeqNumber; // first command in the epoch
+            public long EndCmdSeqNumber; // This is the seq # of the LAST command - which is a checkpoint request
             public long TimeStamp;
             public string StateHash;
             public string SerializedStateData;
@@ -56,10 +60,11 @@ namespace Apian
             // with all the other peers?
             // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerId
 
-            public AppStateData(long epoch, long sequenceNum)
+            public EpochData(long epochNum, long startCmdSeqNum, long endCmdSeqNum)
             {
-                Epoch = epoch;
-                CmdSequenceNumber = sequenceNum;
+                EpochNum = epochNum;
+                StartCmdSeqNumber = startCmdSeqNum;
+                EndCmdSeqNumber = endCmdSeqNum;
                 // ReportedHashes = new Dictionary<string, string>();
             }
         }
@@ -67,21 +72,22 @@ namespace Apian
         protected class LeaderOnlyData
         {
             private ApianBase ApianInst {get; }
-            public long CurrentEpoch {get; private set;}
-            private long NextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
-            public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
-            public void IncrementEpoch() { NextNewCommandSeqNum = 0; CurrentEpoch++; }
+            public long CurrentEpochNum {get => curEpochData.EpochNum; }
+            private long _nextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
+            public long GetNewCommandSequenceNumber() => _nextNewCommandSeqNum++;
             public Dictionary<string, SyncingPeerData> syncingPeers;
-            public AppStateData stashedAppState; // Consider making this a dict
+            public EpochData curEpochData;
+            public EpochData prevEpochData; // TODO: this needs to be a collection and should be persistent
             UniLogger Logger;
 
-            private int  MaxSyncCmdsPerUpdate; //
+            private int  MaxSyncCmdsPerUpdate;
             public LeaderOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
                 Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
                 ApianInst = apInst;
                 syncingPeers = new Dictionary<string, SyncingPeerData>();
                 _LoadConfig(config);
+                curEpochData = new EpochData(0,0,-1); // -1 means we aren't done yet
             }
 
             private void _LoadConfig(Dictionary<string,string> configDict)
@@ -89,20 +95,19 @@ namespace Apian
                 MaxSyncCmdsPerUpdate = int.Parse(configDict["Leader.MaxSyncCmdsPerUpdate"]);
             }
 
-//------------------------------ here
-
             private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long firstCmdNeededByPeer, long firstCmdPeerHas)
             {
+                // Update the adta for a peer already syncing. (really?)
                 // TODO: This should not be able to happen
                 peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, firstCmdNeededByPeer);
                 peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstCmdPeerHas);
                 return peerData;
             }
 
-            public void AddSyncingPeer(string peerId, long firstNeededCmd, long firstStashedCmd )
+            public void AddSyncingPeer(string peerId, long firstNeededCmd, long firstCmdPeerHas )
             {
-                SyncingPeerData peer = !syncingPeers.ContainsKey(peerId) ? new SyncingPeerData(peerId, firstNeededCmd, firstStashedCmd)
-                    : _UpdateSyncingPeer(syncingPeers[peerId], firstNeededCmd, firstStashedCmd);
+                SyncingPeerData peer = !syncingPeers.ContainsKey(peerId) ? new SyncingPeerData(peerId, firstNeededCmd, firstCmdPeerHas)
+                    : _UpdateSyncingPeer(syncingPeers[peerId], firstNeededCmd, firstCmdPeerHas);
                 syncingPeers[peerId] = peer;
             }
 
@@ -145,14 +150,27 @@ namespace Apian
             }
 
             // AppState
-            public void StashLocalState(long seqNum, long timeStamp, string stateHash, string serializedState)
+
+            public void StartNewEpoch(long lastCmdSeqNum)
             {
-                stashedAppState = new AppStateData(seqNum);
-                stashedAppState.TimeStamp = timeStamp;
-                stashedAppState.StateHash = stateHash;
-                stashedAppState.SerializedStateData = serializedState;
+                // Checkpoint command has been sent, to this epoch is done.
+                // But - the epoch state and hash aren;t known until the local peer sends the
+                // checkpoint reponse.
+
+                prevEpochData = curEpochData;
+                curEpochData = new EpochData(prevEpochData.EpochNum+1, lastCmdSeqNum+1, -1);  // this is where CurEpochNum gets incremented
             }
 
+            public void StoreCompletedEpoch(long lastSeqNum, long timeStamp, string stateHash, string serializedState)
+            {
+                // TODO: this needs to do something persistent with the data, too
+                prevEpochData.EndCmdSeqNumber = lastSeqNum;
+                prevEpochData.TimeStamp = timeStamp;
+                prevEpochData.StateHash = stateHash;
+                prevEpochData.SerializedStateData = serializedState;
+
+                // TODO: when this returns, the caller needs to dispatch any ApianGroupMsgs waiting for it (sync requests)
+            }
         }
 
 
@@ -298,10 +316,11 @@ namespace Apian
         private void _SendCheckpointCommand(long curApainMs)
         {
             ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
-            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.CurrentEpoch, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
-            LeaderData.IncrementEpoch(); // sending out a checkpoint cmds ends the current epoch
+            LeaderData.StartNewEpoch(cpCmd.SequenceNum); // sending out a checkpoint cmds ends the current epoch
+            // but the prev epoch's data can;t be filled in until the local peer's response comes back.
         }
 
         private void _ApplyStashedCommands()
@@ -337,7 +356,7 @@ namespace Apian
                 GroupMsgHandlers[gMsg.GroupMsgType](gMsg, msgSrc, msgChannel);
             }
             else
-                Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");
+                Logger.Warn($"OnApianMessage(): unexpected ApianMsg Type: {msg?.MsgType}");
         }
 
         public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
@@ -346,7 +365,7 @@ namespace Apian
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
             {
                 Logger.Debug($"OnApianRequest(): upgrading {msg.CoreMsgType} from {SID(msgSrc)} to Command");
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber()));
             }
         }
 
@@ -354,7 +373,7 @@ namespace Apian
         {
             // Observations from the seader are turned into commands by the seader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.GetNewCommandSequenceNumber()));
+                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber()));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
@@ -406,7 +425,7 @@ namespace Apian
 
         private void _RequestSync(long firstStashedSeqNum)
         {
-            // Here we actually set our own status and short-circuit the MeberStatusMsg
+            // Here we actually set our own status and short-circuit the MemberStatusMsg
             // process - we WILL recieve that message in a bit, but in the meantime we want to
             // stop processing incoming commands and stash them instead.
 
@@ -530,22 +549,9 @@ namespace Apian
             }
         }
 
-        // &&& Old, command-only version
-        // protected void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
-        // {
-        //     if (LocalPeerIsLeader) // Only creator handles this
-        //     {
-        //         GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
-        //         Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
-
-        //         LeaderData.AddSyncingPeer(msgSrc, sMsg.ExpectedCmdSeqNum, sMsg.FirstStashedCmdSeqNum );
-        //         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Syncing));
-        //     }
-        // }
-
         protected void OnGroupSyncRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (LocalPeerIsLeader) // Only creator handles this
+            if (LocalPeerIsLeader) // Only leader handles this
             {
                 GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
@@ -555,12 +561,12 @@ namespace Apian
                 // Send out most recent state
                 long firstCmdToSend = sMsg.ExpectedCmdSeqNum;
 
-                AppStateData state = LeaderData.stashedAppState;
+                EpochData state = LeaderData.prevEpochData;
                 if (state != null)
                 {
-                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.CmdSequenceNumber, state.StateHash, state.SerializedStateData));
-                    firstCmdToSend = state.CmdSequenceNumber + 1;
-                    Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.CmdSequenceNumber}");
+                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.StateHash, state.SerializedStateData));
+                    firstCmdToSend = state.EndCmdSeqNumber + 1;
+                    Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.EndCmdSeqNumber}");
                 }
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending peer stashed commands from {firstCmdToSend} through {sMsg.FirstStashedCmdSeqNum-1}");
                 LeaderData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
@@ -585,26 +591,35 @@ namespace Apian
             }
         }
 
-        public override void OnLocalStateCheckpoint(long epoch, long seqNum, long timeStamp, string stateHash, string serializedState)
+        public override void OnLocalStateCheckpoint( long seqNum, long timeStamp, string stateHash, string serializedState)
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
             if (LocalPeerIsLeader) // Only seader handles this
             {
-                LeaderData.StashLocalState(seqNum, timeStamp, stateHash, serializedState);
+                // Note that epoch is not in the params. AppCore doesn't know about epochs
+                LeaderData.StoreCompletedEpoch(seqNum, timeStamp, stateHash, serializedState);
 
+                // TODO: dispatch any incoming messages that were waiting for the prev epoch data
+
+                // FIXME: decide what to do here. Probably need to build command tries and
+                // a serialized command list and save it with the epoch
                 // Toss out the old stashed commands
                 // TODO:  Hmm. Or maybe not. Seems like there is a need for a persistent record.
                 //CommandStash = CommandStash.Values.Where( c => c.SequenceNum > seqNum).ToDictionary(c => c.SequenceNum);
             }
-
         }
 
         protected void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
-            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() from {SID(msgSrc)} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
-            if (LocalPeerIsLeader) // Only seader handles this
+
+            string isLocal = msgSrc == LocalPeerId ? "Local" : "Remote";
+            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+            if (LocalPeerIsLeader) // Only leader handles this
             {
+               Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {LeaderData.prevEpochData.EpochNum}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+
+
                 // TODO: use this to report hashes to check the "quality" of a save state
                 // (OTOH: since by definition the seader's version is true, it's probably not a big deal)
                 // LeaderData.HandleRemoteState(rMsg.SeqNum, rMsg.StateHash);

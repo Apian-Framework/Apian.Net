@@ -88,19 +88,20 @@ namespace Apian
 
     public class ApianCheckpointMsg : ApianCoreMessage
     {
-        // This is a "mock core command" for an ApianCheckpointCommand to "wrap"
+        // This is a "mock core command" for an ApianCheckpointCommand to wrap and insert int he command stream.
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
     }
 
     public class ApianCheckpointCommand : ApianCommand
     {
-        // A checkpoint request is implemented as an ApianCommand so it can:
-        // - Explicitly specify an "epoch" for the checkpoint. (The checkpoint command closes an epoch.
-        //   Next command has seqNum=0 for the next epoch )
-        // - Be part of the serial command stream. Core commands are strictly evaluated
-        // and applied in order. By being a command the request can guarantee that it is processed
-        // by all peers on an app state that has the identical commands applied - and will take advantage
-        // of the ordering mechanism
+        // A checkpoint request is implemented as an ApianCommand so it can be part of the serial command stream.
+        // Core commands are strictly evaluated and applied in order, and by being a command itself, the request
+        // can guarantee that it is processed by all peers on an app state that has the identical commands
+        //  applied - and will take advantage of the ordering mechanism
+        //
+        // A checkpoint explicitly specifies an "epoch" for the checkpoint. The checkpoint command is the last command in
+        // the epoch, effectively closing it, but command sequence numbers DO NOT reset with a change of epoch.
+
         public override ApianCoreMessage CoreMsg {get => checkpointMsg;}
         public ApianCheckpointMsg checkpointMsg;
         public ApianCheckpointCommand(long epoch, long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(epoch, seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
