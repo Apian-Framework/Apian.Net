@@ -24,8 +24,10 @@ namespace Apian
 
         // IApianGroupManager
         public bool Intialized {get => GroupInfo != null; }
+        private long CurEpochNum;
         private long NextNewCommandSeqNum;
         public long GetNewCommandSequenceNumber() => NextNewCommandSeqNum++;
+        public void IncrementEpoch() { NextNewCommandSeqNum = 0;  CurEpochNum++;}
 
         public SinglePeerGroupManager(ApianBase apianInst) : base(apianInst)
         {
@@ -81,12 +83,12 @@ namespace Apian
 
         public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(CurEpochNum, GetNewCommandSequenceNumber()));
         }
 
         public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(GetNewCommandSequenceNumber()));
+            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(CurEpochNum, GetNewCommandSequenceNumber()));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
@@ -110,7 +112,7 @@ namespace Apian
             ApianInst.OnGroupMemberStatusChange(_Member, ApianGroupMember.Status.Joining);
         }
 
-        public override void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
+        public override void OnLocalStateCheckpoint(long cndSeqNum, long timeStamp, string stateHash, string serializedState) {} // this GroupMgr doesn;t care
 
     }
 }

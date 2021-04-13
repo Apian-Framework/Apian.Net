@@ -88,12 +88,14 @@ namespace Apian
 
     public class GroupSyncDataMsg : ApianGroupMessage
     {
+        public long StateEpoch; // current epoch #
         public long StateSeqNum; // sequence number of the last applied ApianCommand
         public long StateTimeStamp;
         public string StateHash;
         public string StateData; // serialized state data (app-dependent format)
-        public GroupSyncDataMsg(string gid, long timestamp, long seqNum, string hash, string data) : base(gid, GroupSyncData)
+        public GroupSyncDataMsg(string gid, long timestamp, long epoch, long seqNum, string hash, string data) : base(gid, GroupSyncData)
         {
+            StateEpoch = epoch;
             StateSeqNum=seqNum;
             StateTimeStamp = timestamp;
             StateHash = hash;

@@ -140,7 +140,7 @@ namespace Apian
         public abstract void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
-        public abstract void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
+        public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
         public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
 
     }

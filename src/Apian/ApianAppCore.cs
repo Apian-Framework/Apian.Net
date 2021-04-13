@@ -30,7 +30,7 @@ namespace Apian
         public abstract void SetApianReference(ApianBase apian);
         public abstract void OnApianCommand(ApianCommand cmd);
         public abstract void OnCheckpointCommand(long seqNum, long timeStamp);
-        public abstract void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
+        public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
         // Validation
         public abstract bool CommandIsValid(ApianCoreMessage cmdMsg);
