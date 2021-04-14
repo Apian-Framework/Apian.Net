@@ -87,17 +87,12 @@ jobs:
       run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release --no-restore
       working-directory: main
 
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
     - name: Test # See the test project .csproj file for property definitions
       run: dotnet test ./tests/${{env.SUBPROJECT}}.Tests --no-restore --verbosity normal
       working-directory: main
 
   update_badges:
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
