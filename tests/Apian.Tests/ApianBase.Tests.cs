@@ -12,7 +12,7 @@ using UniLog;
 namespace ApianTests
 {
 
-    public class TestApianBase : ApianBase // We need a public ctor
+    public class TestApianBase : ApianBase //  We need a public ctor
     {
         public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
         {
