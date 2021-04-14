@@ -32,9 +32,8 @@ jobs:
 
       - name: Commit default badges
         run: |
-            cp -v ../badges/badge_linecoverage_none.svg ../badges/${{env.SUBPROJECT}}_linecoverage.svg
-            cp -v ../badges/badge_branchcoverage_none.svg ../badges/${{env.SUBPROJECT}}_branchcoverage.svg
-          fi
+          cp -v ../badges/badge_linecoverage_none.svg ../badges/${{env.SUBPROJECT}}_linecoverage.svg
+          cp -v ../badges/badge_branchcoverage_none.svg ../badges/${{env.SUBPROJECT}}_branchcoverage.svg
           cd ../badges
           git config --global user.name "ApianFrameworkPackageAccess"
           git config --global user.email "apian-framework-machine@bigfattail.com"
