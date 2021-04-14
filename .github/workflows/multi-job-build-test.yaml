@@ -32,8 +32,8 @@ jobs:
 
       - name: Commit default badges
         run: |
-          cp -v ../badges/badge_linecoverage_none.svg ../badges/${{env.SUBPROJECT}}_linecoverage.svg
-          cp -v ../badges/badge_branchcoverage_none.svg ../badges/${{env.SUBPROJECT}}_branchcoverage.svg
+          cp -v badge_linecoverage_none.svg ${{env.SUBPROJECT}}_linecoverage.svg
+          cp -v badge_branchcoverage_none.svg ${{env.SUBPROJECT}}_branchcoverage.svg
           cd ../badges
           git config --global user.name "ApianFrameworkPackageAccess"
           git config --global user.email "apian-framework-machine@bigfattail.com"
@@ -41,8 +41,8 @@ jobs:
           git add ${{env.SUBPROJECT}}_linecoverage.svg
           git add ${{env.SUBPROJECT}}_branchcoverage.svg
           git pull --ff-only
-          git commit --allow-empty -m "${{env.SUBPROJECT}} coverage badges"
-        working-directory: main
+          git commit --allow-empty -m "${{env.SUBPROJECT}} default badges"
+        working-directory: badges
 
       - name: Push Badges
         uses: ad-m/github-push-action@master
