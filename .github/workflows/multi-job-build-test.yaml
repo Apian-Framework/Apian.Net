@@ -98,7 +98,8 @@ jobs:
     steps:
     - name: Commit Badges
       run: |
-        tree
+        pwd
+        ls -R
         if [ -f ./tests/${{env.SUBPROJECT}}.Tests/coverage/reports/badge_linecoverage.svg ]
         then
           cp -v ./tests/${{env.SUBPROJECT}}.Tests/coverage/reports/badge_linecoverage.svg ../badges/${{env.SUBPROJECT}}_linecoverage.svg
