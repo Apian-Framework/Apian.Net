@@ -29,7 +29,7 @@ namespace ApianTests
 
         public int MsgHandlerCount => ApMsgHandlers.Count;
 
-        public override void ApplyCheckpointStateData(long seqNum, long timeStamp, string stateHash, string stateData)
+        public override void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
         {
             throw new NotImplementedException();
         }
