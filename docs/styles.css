@@ -16,19 +16,32 @@ img {
 .shuttle {
     position: fixed;
     z-index: 1000;
+    padding: 4px 2px 4px 2px;
+    border-radius: 4px;
     background-color: #e6c764;
     font-size: 20px;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 0;
+    bottom: 2px;
 }
 
 .shuttle div {
-    display: inline;
+    display: inline-block;
+    padding: 2px 2px 0px 2px;
+    margin: 0px 4px 0px 4px;
+    border-radius: 4px;
 }
 
-.shuttle div:hover {
-    background-color: #a9e664;
+.shuttle:not(.shuttle-disabled) div:hover {
+    background-color: #FFA400;
+}
+
+div.shuttle-disabled div {
+    color: #e6c764;
+}
+
+div.shuttle-disabledxxx {
+    background-color: #00000060;
 }
 
 .main {
@@ -46,8 +59,16 @@ img {
 }
 
 .slide-title {
+    margin-top: .75em;
+    margin-bottom: 0;
     visibility: hidden;
     font-size: 3em;
+}
+
+.slide-content {
+    position: absolute;
+    margin: 0;
+    padding: 0;
 }
 
 .text-line {

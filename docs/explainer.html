@@ -12,55 +12,97 @@
     <div id="main" class="main bk-y">
 
         <div id="slide" class="slide bk-y"  >
-
+            <img class="anim" id="apian-logo" src="img/apian-logo-sm.png"/>
             <h1 class="slide-title" id="slide-title">Apian Peer Architecture</h1>
-            <div class="anim" id="app-frame">
-                <div class="anim" id="core-frame">
-                    <img class="anim" id="core-frame-img" src="img/core-frame.png"/>
-                    <img class="anim" id="core-logic" src="img/core-logic.png"/>
-                    <h1 class="slide-title" id="appcore-title">AppCore</h1>
-                    <img class="anim" id="core-work-arw" src="img/work-arw.png"/>
-                    <img class="anim" id="core-state" src="img/core-state.png"/>
-                    <img class="anim" id="core-state-hole" src="img/hole.png"/>
-                    <img class="anim" id="plane-rd-lt" src="img/plane-rd-lt.png"/>
-                    <img class="anim" id="plane-rd-rt" src="img/plane-rd-rt.png"/>
-                    <img class="anim" id="plane-bl-lt" src="img/plane-bl-lt.png"/>
-                    <img class="anim" id="plane-bl-rt" src="img/plane-bl-rt.png"/>
-                    <img class="anim" id="core-arw" src="img/core-arw.png"/>
+            <div class="slide-content" id="slide-content">
+                <div class="anim" id="app-frame">
+                    <div class="anim" id="core-frame">
+                        <img class="anim" id="core-frame-img" src="img/core-frame.png"/>
+                        <img class="anim" id="core-logic" src="img/core-logic.png"/>
+                        <h1 class="slide-title" id="appcore-title">AppCore</h1>
+                        <img class="anim" id="core-work-arw" src="img/work-arw.png"/>
+                        <img class="anim" id="core-state" src="img/core-state.png"/>
+                        <img class="anim" id="core-state-hole" src="img/hole.png"/>
+                        <img class="anim" id="plane-rd-lt" src="img/plane-rd-lt.png"/>
+                        <img class="anim" id="plane-rd-rt" src="img/plane-rd-rt.png"/>
+                        <img class="anim" id="plane-bl-lt" src="img/plane-bl-lt.png"/>
+                        <img class="anim" id="plane-bl-rt" src="img/plane-bl-rt.png"/>
+                        <img class="anim" id="core-arw" src="img/core-arw.png"/>
+                    </div>
+
+                    <img class="anim" id="qmark" src="img/qmark.png"/>
+                    <img class="anim" id="apian" src="img/apian.png"/>
+                    <img class="anim" id="ap-core-arw" src="img/ap-core-arw.png"/>
+                    <img class="anim" id="apian-work-arw" src="img/work-arw.png"/>
+
+                    <img class="anim" id="app-code" src="img/app-code.png"/>
+                    <img class="anim" id="the-ai" src="img/ai.png"/>
+                    <img class="anim" id="app-eye" src="img/app-eye.png"/>
+                    <img class="anim" id="app-ap-arw" src="img/app-ap-arw.png"/>
+                    <img class="anim" id="app-core-arw" src="img/app-core-arw.png"/>
+                    <img class="anim" id="app-work-arw" src="img/work-arw.png"/>
+
+                    <img class="anim" id="screen" src="img/screen.png"/>
+                    <img class="anim" id="app-scrn-arw" src="img/app-scrn-arw.png"/>
+
+                    <img class="anim" id="player" src="img/plyr.png"/>
+                    <img class="anim" id="plyr-app-arw" src="img/plyr-app-arw.png"/>
+
+                    <img class="anim" id="big-red-x" src="img/big-red-x.png"/>
+
+                    <img class="anim" id="spark1" src="img/msg.png" />
+                    <img class="anim" id="cmd1" src="img/command.png" />
+                    <img class="anim" id="req1" src="img/request.png" />
+                    <img class="anim" id="obs1" src="img/observation.png" />
                 </div>
 
-                <img class="anim" id="qmark" src="img/qmark.png"/>
-                <img class="anim" id="apian" src="img/apian.png"/>
-                <img class="anim" id="ap-core-arw" src="img/ap-core-arw.png"/>
-                <img class="anim" id="apian-work-arw" src="img/work-arw.png"/>
+                <div class="narrative line1" id="nar1">&#11041; Start with the simplest data model that can possibly represent your app.</div>
+                <div class="narrative line2" id="nar2">&nbsp;&nbsp;(If it were a paper game, what would the board, pieces and scorepads be like?)</div>
 
-                <img class="anim" id="app-code" src="img/app-code.png"/>
-                <img class="anim" id="the-ai" src="img/ai.png"/>
-                <img class="anim" id="app-eye" src="img/app-eye.png"/>
-                <img class="anim" id="app-ap-arw" src="img/app-ap-arw.png"/>
-                <img class="anim" id="app-core-arw" src="img/app-core-arw.png"/>
-                <img class="anim" id="app-work-arw" src="img/work-arw.png"/>
+                <div class="narrative line3" id="nar3">&#11041; This is your CORE STATE</div>
+                <div class="narrative line4" id="nar4">&nbsp;&nbsp;It's ok for everything to be able to see it, but NOTHING CAN CHANGE IT.</div>
 
-                <img class="anim" id="screen" src="img/screen.png"/>
-                <img class="anim" id="app-scrn-arw" src="img/app-scrn-arw.png"/>
+                <div class="narrative line5" id="nar5">&#11041; ...Except CORE LOGIC.</div>
+                <div class="narrative line6" id="nar6">&nbsp;&nbsp; which is the only code allowed to update the Core State.</div>
 
-                <img class="anim" id="player" src="img/plyr.png"/>
-                <img class="anim" id="plyr-app-arw" src="img/plyr-app-arw.png"/>
+                <div class="narrative line4" id="nar7">&#11041; Core Logic and Core State make up the APP CORE.</div>
+                <div class="narrative line5" id="nar8">&nbsp;&nbsp;The idea is for pre-defined, high-level, application-domain directives to be sent to the AppCore and for the Core Logic to interpret them and make the appropriate low-level changes to the state data.</div>
+                <div class="narrative line8" id="nar9">&nbsp;&nbsp;And this is the ONLY way to modify the Core State.</div>
 
-                <img class="anim" id="big-red-x" src="img/big-red-x.png"/>
+                <div class="narrative line1" id="nar10">Some AppCore rules:</div>
+                <div class="narrative line2" id="nar11">&#11041; State can be seen and queried by everyone.</div>
+                <div class="narrative line3" id="nar12">&#11041; State can ONLY be modified via external commands.</div>
+                <div class="narrative line4" id="nar13">&#11041; Logic must be deterministic. Cannot contain any stochastic code.</div>
+                <div class="narrative line5" id="nar14">&#11041; ...other stuff I can't think of right now...</div>
 
-                <img class="anim" id="spark1" src="img/msg.png" />
-                <img class="anim" id="cmd1" src="img/command.png" />
-                <img class="anim" id="req1" src="img/request.png" />
+                <div class="narrative line7" id="nar15">An AppCore instance contains all of the rules, logic, and state to perform the fundamental work of the application, but it's clearly not enough to be practical.</div>
+
+                <div class="narrative line6" id="nar16">&nbsp;&nbsp; We're going to refer to the rest simply as the APPLICATION CODE.</div>
+                <div class="narrative line7" id="nar17">&#11041; It handles front-end tasks like rendering the CoreState for users.</div>
+                <div class="narrative line8" id="nar18">&#11041; As well as dispatching user input.</div>
+                <div class="narrative line8" id="nar19">&#11041; As well as dispatching user input - which is wrapped in a Command and sent to the AppCore.</div>
+
+                <div class="narrative line6" id="nar20">As mentioned earlier, random behavior is not allowed in the AppCore.</div>
+                <div class="narrative line7" id="nar21">So any randomly acting code - like an AI - has to live in the Application Code.</div>
+                <div class="narrative line8" id="nar22">This is actually pretty cool, since now the AI and User actions work exactly the same way.</div>
+
+                <div class="narrative line6" id="nar23">Sending commands directly to the AppCore works pretty well for a single-user app.</div>
+                <div class="narrative line7" id="nar24">But that's not what we're trying to do.</div>
+                <div class="narrative line8" id="nar25">Which brings us to a new component: Apian</div>
+
+                <div class="narrative line6" id="nar26">Apian defines 3 types of wrapper messages:</div>
+                <div class="narrative line7" id="nar27">Commands - tell the AppCore to apply an application directive.</div>
+                <div class="narrative line8" id="nar28">Requests from the Application Code ask that a directive be applied.</div>
+                <div class="narrative line9" id="nar29">Observations are similar to Requests, but originate from the AppCore</div>
+
+                <div class="narrative line8" id="narsorry">Sorry! This is as far as I've gotten for now...</div>
 
             </div>
 
         </div>
 
         <div id="shuttle" class="shuttle" ">
-            <div id="rewind" onClick="rewind()">&nbsp;<<&nbsp;</div>
-            <div id="play" onClick="play_to_next()" >&nbsp;>&nbsp; </div>
-            <div id="fwd" onClick="fast_fwd()" >&nbsp;>>&nbsp;</div>
+            <div id="rewind" onClick="rewind()"><<</div><div id="play" onClick="play_to_next()">Next</div><div id="fwd" onClick="fast_fwd()" >>></div>
         </div>
 
     </div>
@@ -129,14 +171,35 @@
             return gsap.timeline()
                 .fromTo("#plyr-app-arw", {autoAlpha: 0, scale: .1},{duration: 1, autoAlpha: 1, scale: 1, transformOrigin: "top right"})
                 .fromTo("#spark1",   {scale: .1, autoAlpha: 0}, {duration: .5, scale: 1, autoAlpha: 1},">")
-                .fromTo("#spark1", {x: 760, y:480}, {x: 380, y:520, duration: 1}, "<")
+                .fromTo("#spark1", {x: 760, y:460}, {x: 380, y:520, duration: 1}, "<")
                 .to("#plyr-app-arw", {duration: 1, autoAlpha: 0, scale: .1, transformOrigin: "bottom left"},">");
         }
 
+        function inputFromAI() {
+            return gsap.timeline()
+                .fromTo("#spark1",  {scale: .1, autoAlpha: 0, x: 520, y:555}, {duration: .5, scale: 1, autoAlpha: 1})
+                .to("#spark1", {x: 380, y:520, duration: .5}, ">")
+        }
+
+        function hilightNar(sel)
+        {
+            gsap.set("div.narrative", {color: "var(--nar-color)"});
+            gsap.set( sel, {color: "var(--nar-hi-color)"});
+        }
+
         var tLine = gsap.timeline();
+
+        tLine.set("#slide-content", { scale: .85, x: 120} );
+
         tLine.addLabel("titleIn");
-        tLine.to("#slide-title", {duration: 1, autoAlpha: 1});
-        tLine.from("#slide-title", {duration: .5, y: -50}, "<");
+        tLine.to("#slide-title", {duration: 2, autoAlpha: 1});
+        tLine.to("#apian-logo", {duration: 2, autoAlpha: 1}, "<");
+        tLine.from("#slide-title", {duration: 1, y: -80}, "<");
+        tLine.from("#apian-logo",  {duration: 1, y: -80}, "<");
+
+        tLine.addLabel("startWords");
+        tLine.from("#nar1",  {duration: 1, autoAlpha: 0, x: -1000, onStart: ()=>hilightNar("#nar1") });
+        tLine.from("#nar2",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar2")}, ">+1");
 
         tLine.addLabel("coreState");
         tLine.to("#app-frame", {duration: 0, autoAlpha: 1, backgroundColor: "transparent"});
@@ -144,68 +207,182 @@
         tLine.from("#core-state", {duration: 1, rotation: -360, scale: .1, autoAlpha: 0} , "<");
         tLine.to(["#plane-rd-lt", "#plane-bl-lt", "#plane-rd-rt", "#plane-bl-rt"], {duration: .5, stagger: .25, autoAlpha: 1} , ">");
 
+        tLine.from("#nar3",  {duration: 1, autoAlpha: 0,onStart: ()=>hilightNar("#nar3")}, ">");
+        tLine.from("#nar4",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar4")}, ">+1");
+
         tLine.addLabel("coreLogic");
         tLine.to("#core-frame", {duration: 1, backgroundColor: "#fdf3c9"});
         tLine.to("#core-frame-img", {duration: 1, autoAlpha: 1}, "<");
         tLine.from("#core-logic", {duration: 1, scale: .1, autoAlpha: 0, ease: "bounce"}, "<");
         tLine.to("#app-frame", {duration: 1, x:140}, "<");
+        tLine.from("#nar5",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar5")}, ">");
+        tLine.from("#nar6",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar6")}, ">+1");
 
         tLine.addLabel("calledAppCore");
-        tLine.to("#appcore-title", {duration: 1, autoAlpha: 1});
+        tLine.to("#nar1",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar2",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar3",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar4",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar5",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar6",  {duration: .1, autoAlpha: 0})
+        tLine.from("#nar7",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar7")});
+        tLine.to("#appcore-title", {duration: 1, autoAlpha: 1}, ">");
+
+        tLine.addLabel("theBasicIdea");
+        tLine.from("#nar8",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar8")}, ">");
 
         tLine.addLabel("stateChange");
-        tLine.from("#qmark",   {duration: .5, scale: .1, autoAlpha: 0});
-        tLine.from("#ap-core-arw", {duration: .5, transformOrigin: "bottom", scale: .1, autoAlpha: 0, ease: "none"}, ">-.5");
-        tLine.set("#cmd1", {x: 125, y:550});
+        tLine.from("#qmark",   {duration: .5, scale: .1, autoAlpha: 0}, ">");
+        tLine.from("#ap-core-arw", {duration: .5,  scale: .1, autoAlpha: 0, transformOrigin: "bottom", ease: "none"}, ">+.5");
+        tLine.set("#cmd1", {x: 120, y:460});
         tLine.from("#cmd1",   {duration: .5, scale: .1, autoAlpha: 0}, ">");
         // SHould this be a func?
         tLine.to("#cmd1", {x: 125, y:150, duration: 1}, "<");
+        tLine.to("#ap-core-arw", {duration: .5,  scale: .1, autoAlpha: 0, transformOrigin: "top", ease: "none"}, ">+.5");
         tLine.add(coreWorkAnim());
         tLine.add(coreArrowAnim(), ">-.25")
         tLine.add(planeMove1(), "<+.25");
         tLine.to("#cmd1", {duration: .5, autoAlpha: 0}, "<");
+        tLine.from("#nar9",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar9")});
 
-        tLine.addLabel("stateChange-b");
+        tLine.addLabel("aboutAppCore");
         tLine.to("#qmark", {duration: .5, autoAlpha: 0});
-        tLine.to("#ap-core-arw", {duration: .5, autoAlpha: 0}, "<");
-        tLine.add(undoPlaneMove1(), "<");
+        tLine.to("#nar9",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar8",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar7",  {duration: .1, autoAlpha: 0});
+        tLine.add(undoPlaneMove1(), "<-.3");
+        tLine.from("#nar10",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar10")});
+
+        tLine.addLabel("thing1");
+        tLine.from("#nar11",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar11")});
+
+        tLine.addLabel("thing2");
+        tLine.from("#nar12",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar12")});
+
+        tLine.addLabel("thing3");
+        tLine.from("#nar13",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar13")});
+
+        tLine.addLabel("thing4");
+        tLine.from("#nar14",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar14")});
+
+        tLine.addLabel("notEnough");
+        tLine.from("#nar15",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar15")});
 
         tLine.addLabel("AppCode");
-        tLine.to("#core-frame", {duration: 1, backgroundColor: "#ffffff"},);
+        tLine.to("#nar10",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar11",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar12",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar13",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar14",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar15",  {duration: .1, autoAlpha: 0});
+        tLine.to("#core-frame", {duration: 1, backgroundColor: "#ffffff"});
         tLine.to("#app-frame", {duration: 1, backgroundColor: "#fdf3c9"}, "<");
         tLine.from("#app-code", {duration: 1, scale: .1, autoAlpha: 0, ease: "bounce"}, "<");
+        tLine.from("#nar16",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar16")}, ">");
 
         tLine.addLabel("StateDisplay");
+        tLine.from("#nar17",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar17")});
         tLine.add(updateScreen());
 
         tLine.addLabel("UserInput");
         tLine.to("#player", {duration: 1, autoAlpha: 1});
+        tLine.from("#nar18",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar18")}, ">");
         tLine.add(inputFromUser());
 
         tLine.addLabel("CommandFromApp");
-        tLine.set("#cmd1", {x: 380, y: 520});
+        tLine.to("#nar18",  {duration: 1, autoAlpha: 0});
+        tLine.from("#nar19",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar19")}, "<");
+        tLine.set("#cmd1", {x: 380, y: 520}, ">+1");
         tLine.add(appWorkAnim());
         tLine.fromTo("#cmd1", {autoAlpha: 0}, {autoAlpha:1, duration: 1}, "<");
 
         tLine.from("#app-core-arw", {duration: .5, autoAlpha: 0, scale: .1, transformOrigin: "bottom right"}, ">");
         tLine.to("#cmd1", {x: 125, y:150, duration: 1}, ">");
         tLine.to("#spark1", {x: 125, y:150, duration: 1}, "<");
+        tLine.to("#app-core-arw", {duration: .5, autoAlpha: 0, scale: .1, transformOrigin: "top left"}, ">");
         tLine.add(coreWorkAnim());
         tLine.to("#cmd1", {duration: 1, autoAlpha: 0}, "<");
         tLine.add(coreArrowAnim(), ">-.25")
         tLine.add(planeMove1(), "<+.25");
         tLine.to("#spark1", {duration: 1, autoAlpha: 0}, "<+.5");
 
+        tLine.addLabel("noRandomInCore");
+        tLine.to("#nar16",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar17",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar18",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar19",  {duration: .1, autoAlpha: 0});
+        tLine.add(undoPlaneMove1(), "<");
+        tLine.from("#nar20",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar20")});
+
+        tLine.addLabel("whyNotAnAI");
+        tLine.from("#nar21",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar21")});
+        tLine.from("#the-ai", {duration: .5, autoAlpha:0});
+
+        tLine.addLabel("startItWithAI");
+        tLine.from("#nar22",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar22")});
+        //tLine.set("#cmd1", {x: 380, y: 520}, ">+1");
+        tLine.add(inputFromAI());
+        tLine.add(appWorkAnim());
+        tLine.fromTo("#cmd1", {x: 380, y: 520, autoAlpha: 0}, {autoAlpha:1, duration: 1}, "<");
+
+        // Dup of above block
+        // Need to fix the app-core-arrow
+
+        tLine.fromTo("#app-core-arw", {duration: .5, autoAlpha: 0, scale: .1},{autoAlpha: 1, scale: 1, transformOrigin: "bottom right"}, ">");
+        tLine.to("#cmd1", {x: 125, y:150, duration: 1}, ">");
+        tLine.to("#spark1", {x: 125, y:150, duration: 1}, "<");
+        tLine.to("#app-core-arw", {duration: .5, autoAlpha: 0, scale: .1, transformOrigin: "top left"}, ">");
+        tLine.add(coreWorkAnim());
+        tLine.to("#cmd1", {duration: 1, autoAlpha: 0}, "<");
+        tLine.add(coreArrowAnim(), ">-.25")
+        tLine.add(planeMove1(), "<+.25");
+        tLine.to("#spark1", {duration: 1, autoAlpha: 0}, "<+.5");
+
+        tLine.addLabel("SometimesPrettyGood");
+        tLine.to("#nar20",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar21",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar22",  {duration: .1, autoAlpha: 0});
+        tLine.add(undoPlaneMove1(), "<-.3");
+        tLine.fromTo("#app-core-arw", {duration: .5, autoAlpha: 0, scale: .1},{autoAlpha: 1, scale: 1, transformOrigin: "bottom right"});
+        tLine.from("#nar23",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar23")});
+
         tLine.addLabel("Nope");
         tLine.from(["#big-red-x"], {duration: .25, rotation: -360, scale: .1, autoAlpha: 0});
+        tLine.from("#nar24",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar24")});
 
         tLine.addLabel("Moving on");
         tLine.to("#app-core-arw", {duration: .5, autoAlpha: 0});
         tLine.to("#big-red-x", {duration: .5, autoAlpha: 0});
-        tLine.add(undoPlaneMove1(), "<");
 
         tLine.addLabel("showApian");
+        tLine.from("#nar25",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar25")});
         tLine.from(["#apian"], {duration: 1, rotation: -360, scale: .1, autoAlpha: 0});
+
+        tLine.addLabel("apCommands");
+        tLine.to("#nar23",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar24",  {duration: .1, autoAlpha: 0});
+        tLine.to("#nar25",  {duration: .1, autoAlpha: 0});
+        tLine.from("#nar26",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar26")});
+        tLine.set("#cmd1", {x: -260, y: 705});
+        tLine.from("#nar27",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar27")}, ">+1")
+        tLine.to("#cmd1", {duration: 1, autoAlpha: 1}, "<");
+
+        tLine.addLabel("apRequests");
+        tLine.set("#req1", {x: -260, y: 755});
+        tLine.from("#nar28",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar28")})
+        tLine.to("#req1", {duration: 1, autoAlpha: 1}, "<");
+
+        tLine.addLabel("apObservations");
+        tLine.set("#obs1", {x: -260, y: 805});
+        tLine.from("#nar29",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar29")})
+        tLine.to("#obs1", {duration: 1, autoAlpha: 1}, "<");
+
+        tLine.addLabel("asFarAsIvgotten");
+        tLine.to(".narrative",  {duration: .1, autoAlpha: 0});
+        tLine.to("#cmd1", {duration: 1, autoAlpha: 0}, "<");
+        tLine.to("#obs1", {duration: 1, autoAlpha: 0}, "<");
+        tLine.to("#req1", {duration: 1, autoAlpha: 0}, "<");
+        tLine.from("#narsorry",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#narsorry")})
 
         tLine.addLabel("userInputAgain");
         tLine.add(inputFromUser());
@@ -234,13 +411,16 @@
         tLine.add(planeMove1(), "<+.25");
         tLine.to("#spark1", {duration: 1, autoAlpha: 0}, "<+.5");
 
-        tLine.addLabel("whyNotAnAI");
-        tLine.from("#the-ai", {duration: .5, autoAlpha:0});
-        tLine.add(undoPlaneMove1(), "<");
 
-        tLine.addLabel("startItWithAI");
-        tLine.set("#spark1", {x: 520, y: 555});
-        tLine.to("#spark1",  {duration: .5, scale: 1, autoAlpha: 1});
+
+
+        // tLine.addLabel("whyNotAnAI");
+        // tLine.from("#the-ai", {duration: .5, autoAlpha:0});
+        // tLine.add(undoPlaneMove1(), "<");
+
+        // tLine.addLabel("startItWithAI");
+        // tLine.set("#spark1", {x: 520, y: 555});
+        // tLine.to("#spark1",  {duration: .5, scale: 1, autoAlpha: 1});
 
         tLine.addLabel("onceAgain");
         tLine.to("#spark1", {x: 380, y:520, duration: 1});
@@ -265,6 +445,10 @@
         tLine.add(planeMove1(), "<+.25");
         tLine.to("#spark1", {duration: 1, autoAlpha: 0}, "<+.5");
 
+
+
+
+
         tLine.pause();
         play_to_next();
 
@@ -273,16 +457,30 @@
 
         var paused = false;
 
+        function disable_shuttle()
+        {
+            document.getElementById("shuttle").classList.add("shuttle-disabled");
+        }
+
+
+        function enable_shuttle()
+        {
+            document.getElementById("shuttle").classList.remove("shuttle-disabled");
+        }
+
         function fast_fwd() {
-            tLine.timeScale(5).tweenTo( tLine.nextLabel(), {onComplete: () => tLine.timeScale(1)} );
+            disable_shuttle();
+            tLine.timeScale(5).tweenTo( tLine.nextLabel(), {onComplete: () => {tLine.timeScale(1);enable_shuttle()} });
         }
 
         function play_to_next() {
-            tLine.tweenTo( tLine.nextLabel() );
+            disable_shuttle();
+            tLine.tweenTo( tLine.nextLabel(),  {onComplete: () => enable_shuttle()} );
         }
 
         function rewind() {
-            tLine.timeScale(5).tweenTo( tLine.previousLabel(), {onComplete: () => tLine.timeScale(1)} );
+            disable_shuttle();
+            tLine.timeScale(5).tweenTo( tLine.previousLabel(), {onComplete: () => {tLine.timeScale(1); enable_shuttle()} });
         }
 
         function sizeSlideToWindow()

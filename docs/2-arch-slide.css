@@ -1,10 +1,16 @@
 
+html {
+    --nar-color: #A26F01;
+    --nar-hi-color: #e97100;
+}
+
 #app-frame {
     left: 160px;
-    top: 120px;
+    top: 50px;
     width: 680px;
     height: 660px;
-    background-color: #fdf3c9
+    border-radius: 40px;
+    background-color: #fdf3c9;
 }
 
 #core-frame {
@@ -29,7 +35,12 @@
     font-weight: normal;
     bottom: 0px;
     left: 43%;
-    transform: translate(-50%, 30%);
+    transform: translate(-50%, -30%);
+}
+
+#apian-logo {
+    left: 480px;
+    top: -5px;
 }
 
 #core-logic {
@@ -146,12 +157,12 @@
 
 #player {
     left: 790px;
-    top: 400px;
+    top: 380px;
 }
 
 #plyr-app-arw {
     left: 610px;
-    top: 500px;
+    top: 480px;
 }
 
 #spark1 {
@@ -167,4 +178,57 @@
 #req1 {
     left: 0;
     top: 0;
+}
+
+#obs1 {
+    left: 0;
+    top: 0;
+}
+
+div.narrative {
+    position: absolute;
+    width: 1500px;
+    text-align: left;
+    margin-left: 3em;
+    margin-top: 0em;
+    margin-bottom: 0em;
+    font-size: 2.5em;
+    visibility: visible;
+    color: var(--nar-color);
+}
+
+.narrative.line1 {
+    top: 470px;
+}
+
+.narrative.line2 {
+    top: 520px;
+}
+
+.narrative.line3 {
+    top: 570px;
+}
+
+.narrative.line4 {
+    top: 620px;
+}
+
+.narrative.line5 {
+    top: 670px;
+}
+
+.narrative.line6 {
+    top: 720px;
+}
+
+.narrative.line7 {
+    top: 770px;
+}
+
+.narrative.line8 {
+    top: 820px;
+}
+
+.narrative.line9 {
+    top: 870px;
 }
