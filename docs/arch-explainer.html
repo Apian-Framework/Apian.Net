@@ -16,6 +16,7 @@
             <h1 class="slide-title" id="slide-title">Apian Peer Architecture</h1>
             <div class="slide-content" id="slide-content">
                 <div class="anim" id="app-frame">
+                    <img class="anim" id="apian-bkg" src="img/apian-bkg.png"/>    <!-- goes behind core frame -->
                     <div class="anim" id="core-frame">
                         <img class="anim" id="core-frame-img" src="img/core-frame.png"/>
                         <img class="anim" id="core-logic" src="img/core-logic.png"/>
@@ -115,6 +116,7 @@
             return gsap.timeline()
             .fromTo("#core-work-arw", {scale: .1, autoAlpha: 0}, {duration: .25, scale: 1, autoAlpha: 1})
             .fromTo("#core-work-arw", {rotate: 0}, {duration: 1, repeat: 1, rotate: 360, ease: "none"}, "<")
+            .fromTo("#core-work-arw", {filter: "none"}, {filter: "blur(1px)", duration: 1, repeat: 1,  yoyo: true, ease: "circ"}, "<")
             .to("#core-work-arw", {duration: .25, scale: .1, autoAlpha: 0});
         }
 
@@ -145,6 +147,7 @@
             return gsap.timeline()
             .fromTo("#app-work-arw", {scale: .1, autoAlpha: 0}, {duration: .25, scale: 1, autoAlpha: 1})
             .fromTo("#app-work-arw", {rotate: 0}, {duration: 1, repeat: 1, rotate: 360, ease: "none"}, "<")
+            .fromTo("#app-work-arw", {filter: "none"}, {filter: "blur(1px)", duration: 1, repeat: 1,  yoyo: true, ease: "circ"}, "<")
             .to("#app-work-arw", {duration: .25, scale: .1, autoAlpha: 0});
         }
 
@@ -152,6 +155,7 @@
             return gsap.timeline()
             .fromTo("#apian-work-arw", {scale: .1, autoAlpha: 0}, {duration: .25, scale: 1, autoAlpha: 1})
             .fromTo("#apian-work-arw", {rotate: 0}, {duration: 1, repeat: 1, rotate: 360, ease: "none"}, "<")
+            .fromTo("#apian-work-arw", {filter: "none"}, {filter: "blur(1px)", duration: 1, repeat: 1,  yoyo: true, ease: "circ"}, "<")
             .to("#apian-work-arw", {duration: .25, scale: .1, autoAlpha: 0});
         }
 
@@ -350,13 +354,12 @@
         tLine.from(["#big-red-x"], {duration: .25, rotation: -360, scale: .1, autoAlpha: 0});
         tLine.from("#nar24",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar24")});
 
-        tLine.addLabel("Moving on");
+        tLine.addLabel("showApian");
         tLine.to("#app-core-arw", {duration: .5, autoAlpha: 0});
         tLine.to("#big-red-x", {duration: .5, autoAlpha: 0});
-
-        tLine.addLabel("showApian");
         tLine.from("#nar25",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar25")});
         tLine.from(["#apian"], {duration: 1, rotation: -360, scale: .1, autoAlpha: 0});
+        tLine.from("#apian-bkg", {duration: 1, autoAlpha: 0}, "<");
 
         tLine.addLabel("apCommands");
         tLine.to("#nar23",  {duration: .1, autoAlpha: 0});

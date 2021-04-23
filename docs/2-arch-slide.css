@@ -90,6 +90,11 @@ html {
     top: 150px;
 }
 
+#apian-bkg {
+    left: 40px;
+    top: 350px;
+}
+
 #apian {
     left: 60px;
     top: 450px;
@@ -127,7 +132,7 @@ html {
 
 #app-work-arw {
     left: 350px;
-    top: 480px;
+    top: 485px;
 }
 
 #app-core-arw {
