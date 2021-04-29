@@ -11,6 +11,7 @@ namespace Apian
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
+        void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
         PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
@@ -35,7 +36,7 @@ namespace Apian
     public abstract class ApianGameNetBase : GameNetBase, IApianGameNet
     {
         // This is the actual GameNet instance
-        public IApianApplication gameManager; // This is the IGameNetClient
+        public IApianApplication Client {get => client as IApianApplication;}
         public Dictionary<string,ApianNetworkPeer> Peers; // keyed by p2pid
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
@@ -66,7 +67,6 @@ namespace Apian
         public override void AddClient(IGameNetClient _client)
         {
             base.AddClient(_client);
-            gameManager = _client as IApianApplication;
         }
 
          // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
@@ -192,6 +192,11 @@ namespace Apian
             ApianInstances[groupId] = instance;
         }
 
+        public void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)
+        {
+            Client.OnGroupMemberStatus( groupId, peerId, newStatus, prevStatus);
+        }
+
         protected override void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)
         {
             // This is called by GameNetBase.OnClientMessage()
@@ -224,7 +229,7 @@ namespace Apian
                 {
                 case ApianGroupMessage.GroupAnnounce:
                     GroupAnnounceMsg gaMsg = apMsg as GroupAnnounceMsg;
-                    gameManager.OnGroupAnnounce(gaMsg.GroupInfo);
+                    Client.OnGroupAnnounce(gaMsg.GroupInfo);
                     break;
 
                 case ApianGroupMessage.GroupsRequest: // Send to all instances

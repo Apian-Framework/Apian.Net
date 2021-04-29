@@ -227,7 +227,12 @@ namespace Apian
             OnApianMessage( GameNet.LocalP2pId(), GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Removed), 0);
         }
 
-        public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
+        public virtual void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus)
+        {
+            // Note that the member status has already been changed when this is called
+            Logger.Info($"OnGroupMemberStatusChange(): {UniLogger.SID(member.PeerId)} from {prevStatus} to {member.CurStatus}");
+            GameNet.OnApianGroupMemberStatus( GroupId, member.PeerId, member.CurStatus, prevStatus);
+        }
 
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
 
