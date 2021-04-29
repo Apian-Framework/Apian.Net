@@ -22,7 +22,6 @@ namespace GameNet
 
     public interface IGameNetClient
     {
-       // void OnNetworkCreated(string netP2pChannel);
         void OnPeerJoinedNetwork(string peerId, string netId, string helloData);
         void OnPeerLeftNetwork(string p2pId, string netId);
         void OnPeerMissing(string p2pId, string networkId);
@@ -30,7 +29,8 @@ namespace GameNet
 
         void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
 
-        // TODO: do we want PeerJoinedChannel-type notifications?
+        // FIXME: add the rest
+
     }
 
     // used internally
