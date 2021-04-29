@@ -213,7 +213,7 @@ namespace Apian
         public void SendApianMessage(string toChannel, ApianMessage appMsg)
         {
             logger.Verbose($"SendApianMessage() - type: {appMsg.MsgType}, To: {toChannel}");
-            _SendClientMessage( toChannel, appMsg.MsgType,  JsonConvert.SerializeObject(appMsg));
+            SendClientMessage( toChannel, appMsg.MsgType,  JsonConvert.SerializeObject(appMsg));
         }
 
         protected override void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)

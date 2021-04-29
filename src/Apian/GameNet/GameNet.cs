@@ -224,7 +224,7 @@ namespace GameNet
         protected abstract void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage);
 
 
-        protected void _SendClientMessage(string _toChan, string _clientMsgType, string _payload)
+        public void SendClientMessage(string _toChan, string _clientMsgType, string _payload)
         {
             string gameNetClientMsgJSON = JsonConvert.SerializeObject(new GameNetClientMessage(){clientMsgType=_clientMsgType, payload=_payload});
             p2p.Send(_toChan, gameNetClientMsgJSON);
