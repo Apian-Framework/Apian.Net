@@ -15,14 +15,31 @@ namespace Apian
     // any GroupManager-specific behavior.
 
     // TODO: ApianBase should check to make sure GroupMgr is not null.
+
+    public interface IApianClientServices
+    {
+        // This is the interface that a client (almost certainly a GameNet) sees
+        void SetupExistingGroup(ApianGroupInfo groupInfo);
+        void SetupNewGroup(ApianGroupInfo groupInfo);
+        void JoinGroup(string localGroupData);
+        void LeaveGroup();
+        void OnGroupMemberLeft(string groupChannelId, string p2pId);
+        void OnPeerMissing(string groupChannelId, string p2pId);
+        void OnPeerReturned(string groupChannelId, string p2pId);
+        void OnP2pPeerSync(string peerId, long clockOffsetMs, long netLagMs);
+        void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
+    }
+
+
     public interface IApianAppCoreServices
     {
+        // This is the interface an AppCore sees
         void SendObservation(ApianObservation msg);
         void StartObservationSet();
         void EndObservationSet();
     }
 
-    public abstract class ApianBase : IApianAppCoreServices
+    public abstract class ApianBase : IApianAppCoreServices, IApianClientServices
     {
 		// public API
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
@@ -59,6 +76,7 @@ namespace Apian
 
         // Apian Messages
         public abstract void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
+
         public virtual void SendApianMessage(string toChannel, ApianMessage msg)
         {
             Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgTYpe: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
@@ -210,6 +228,7 @@ namespace Apian
         }
 
         public abstract void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status oldStatus);
+
         public abstract void ApplyStashedApianCommand(ApianCommand cmd);
 
         // called by AppCore
