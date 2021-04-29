@@ -15,10 +15,6 @@ namespace Apian
         ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
         PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
 
-        // TODO: Are these needed?
-        //void CreateApianGroup(ApianGroupInfo groupInfo); // TODO: results in An ApianGroupData message on game ch
-        //void JoinApianGroup(string groupId); // results in An Apian MemberJoinedGroup message on group ch
-        //void LeaveApianGroup(string groupId); // results in An Apian GroupMemberStatus message on group ch
     }
 
     public class ApianNetworkPeer
@@ -61,10 +57,11 @@ namespace Apian
         }
 
         //
-        // *** IGameNet
+        // *** IGameNet Overrides
         //
 
         // void Connect( string p2pConectionString );
+        // void Disconnect();
 
         public override void AddClient(IGameNetClient _client)
         {
@@ -72,15 +69,7 @@ namespace Apian
             gameManager = _client as IApianApplication;
         }
 
-        // void Disconnect();
-
-        // public override void  CreateNetwork<GameCreationData>(GameCreationData data)
-        // {
-        //     logger.Verbose($"CreateGame()");
-        //     _SyncTrivialNewNetwork(); // Creates/sets an ID and enqueues OnGameCreated()
-        // }
-
-        // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
+         // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
 
         public override void LeaveNetwork()
         {
@@ -92,6 +81,18 @@ namespace Apian
             ApianInstances.Clear();
             Peers.Clear();
             base.LeaveNetwork();
+        }
+
+        //void SendClientMessage(string _toChan, string _clientMsgType, string _payload)
+
+        //
+        // ApianGameNet Client API
+        //
+
+        public void RequestGroups()
+        {
+            logger.Verbose($"RequestApianGroups()");
+            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
         public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
@@ -119,26 +120,15 @@ namespace Apian
             else
                 ApianInstances[groupId].LeaveGroup();
         }
-
-        // void AddChannel(string subChannel); // not overridden here
-
-        // void RemoveChannel(string subchannel);
-
-        // string LocalP2pId();
-
-        // string CurrentNetworkId();
-
-        // void Loop();
+        public void SendApianMessage(string toChannel, ApianMessage appMsg)
+        {
+            logger.Verbose($"SendApianMessage() - type: {appMsg.MsgType}, To: {toChannel}");
+            SendClientMessage( toChannel, appMsg.MsgType,  JsonConvert.SerializeObject(appMsg));
+        }
 
         //
-        //  *** IP2pNetClient
+        //  *** IP2pNetClient Overrides
         //
-
-        //public virtual void JoinGame(string gameP2pChannel)
-
-        // public virtual void LeaveGame()
-
-        // string P2pHelloData(); // Hello data FOR remote peer. Probably JSON-encoded by the p2pnet client.
 
         public override void OnPeerJoined(string channelId, string p2pId, string helloData)
         {
@@ -188,8 +178,6 @@ namespace Apian
                ApianInstances[channelId].OnP2pPeerSync(p2pId, clockOffsetMs, netLagMs);
         }
 
-        // void OnClientMsg(string from, string to, long msSinceSent, string payload);
-
         //
         // *** Additional ApianGameNet stuff
         //
@@ -202,18 +190,6 @@ namespace Apian
         public void AddApianInstance( ApianBase instance, string groupId)
         {
             ApianInstances[groupId] = instance;
-        }
-
-        public void RequestGroups()
-        {
-            logger.Verbose($"RequestApianGroups()");
-            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
-        }
-
-        public void SendApianMessage(string toChannel, ApianMessage appMsg)
-        {
-            logger.Verbose($"SendApianMessage() - type: {appMsg.MsgType}, To: {toChannel}");
-            SendClientMessage( toChannel, appMsg.MsgType,  JsonConvert.SerializeObject(appMsg));
         }
 
         protected override void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)
