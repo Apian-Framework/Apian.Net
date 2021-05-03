@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using GameNet;
 using P2pNet;
+using System.Threading.Tasks;
 
 namespace Apian
 {
@@ -11,6 +12,7 @@ namespace Apian
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
+        Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs);
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
@@ -89,26 +91,54 @@ namespace Apian
         // ApianGameNet Client API
         //
 
+
+        //  Request announcement of existing Apian groups
         public void RequestGroups()
         {
             logger.Verbose($"RequestApianGroups()");
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
+        private Dictionary<string, ApianGroupInfo> GroupRequestResults;
+
+        public async Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs)
+        {
+            // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
+            GroupRequestResults = new Dictionary<string, ApianGroupInfo>();
+            logger.Verbose($"RequestGroupsAsync()");
+            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
+            await Task.Delay(timeoutMs);
+            Dictionary<string, ApianGroupInfo> results = GroupRequestResults;
+            GroupRequestResults = null;
+            return results;
+        }
+        protected void _OnGroupAnnounceMsg(GroupAnnounceMsg gaMsg)
+        {
+            if (GroupRequestResults != null)
+                GroupRequestResults[gaMsg.GroupInfo.GroupId] = gaMsg.GroupInfo; // RequestGroupsAsync was called
+            else
+                Client.OnGroupAnnounce(gaMsg.GroupInfo); // TODO: should this happen even on an async request?
+        }
+
+        // Joining a group (or creating and joining one)
+        //
+        // Eventual result is hopefully a call to:
+        //    OnGroupMemberStatusChange(_Member) where member is the local peer and CurStatus is "Active"
+        //
+
         public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
             // need to set the groupMgr's "groupInfo" and open/join the p2pNet group channel
             apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
-            AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: SHould put something useful here
-            apian.JoinGroup(localGroupData); //
+            AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
+            apian.JoinGroup(localGroupData); // results in
         }
         public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
             apian.SetupNewGroup(groupInfo); // create the group
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
-
             apian.JoinGroup(localGroupData); //
         }
 
@@ -220,19 +250,23 @@ namespace Apian
             ApianGroupMessage apMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload) as ApianGroupMessage;
             logger.Verbose($"_DispatchGroupMessage() Type: {apMsg.GroupMsgType}, Group: {apMsg.DestGroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
-            if (ApianInstances.ContainsKey(apMsg.DestGroupId))
+            if (ApianInstances.ContainsKey(apMsg.DestGroupId)) // it's for a particular group
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  apMsg,  msSinceSent);
             else if (apMsg.DestGroupId == "") // It's a group message not sent to a particular group.
             {
                 // TODO: This is kinda ugly, but sorta special-case. Still ugly, tho.
+                // Most group messages have a destination group.
+                // Example exceptions are (don't expect this list to be definitive):
+                //    GroupRequest, GroupAnnounce
+                // TODO: Are these expections maybe NOT really "GroupMessages" at all? Just regular Apian messages that happen
+                // to be *about* groups? Would that make this code cleaner?
                 switch(apMsg.GroupMsgType)
                 {
-                case ApianGroupMessage.GroupAnnounce:
-                    GroupAnnounceMsg gaMsg = apMsg as GroupAnnounceMsg;
-                    Client.OnGroupAnnounce(gaMsg.GroupInfo);
+                case ApianGroupMessage.GroupAnnounce:  // special case message
+                    _OnGroupAnnounceMsg( apMsg as GroupAnnounceMsg);
                     break;
 
-                case ApianGroupMessage.GroupsRequest: // Send to all instances
+                default: // Send to all instances
                     foreach (ApianBase ap in ApianInstances.Values)
                         ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);
                     break;
