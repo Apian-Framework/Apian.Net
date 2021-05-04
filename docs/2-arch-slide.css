@@ -170,6 +170,21 @@ html {
     top: 480px;
 }
 
+#cloud-sm {
+    left: -335px;
+    top: 377px;
+}
+
+#cloud-zoom {
+    left: -120px;
+    top: 440px;
+}
+
+#cloud-flash {
+    left: -170px;
+    top: 440px;
+}
+
 #spark1 {
     left: 0;
     top: 0;

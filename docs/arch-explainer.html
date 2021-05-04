@@ -51,10 +51,15 @@
 
                     <img class="anim" id="big-red-x" src="img/big-red-x.png"/>
 
+                    <img class="anim" id="cloud-sm" src="img/apian-cloud-sm.png"/>
+                    <img class="anim" id="cloud-zoom" src="img/apian-zoom-lines.png"/>
+                    <img class="anim" id="cloud-flash" src="img/apian-zoom-flash.png"/>
+
                     <img class="anim" id="spark1" src="img/msg.png" />
                     <img class="anim" id="cmd1" src="img/command.png" />
                     <img class="anim" id="req1" src="img/request.png" />
                     <img class="anim" id="obs1" src="img/observation.png" />
+
                 </div>
 
                 <div class="narrative line1" id="nar1">&#11041; Start with the simplest data model that can possibly represent your app.</div>
@@ -70,13 +75,13 @@
                 <div class="narrative line5" id="nar8">&nbsp;&nbsp;The idea is for pre-defined, high-level, application-domain directives to be sent to the AppCore and for the Core Logic to interpret them and make the appropriate low-level changes to the state data.</div>
                 <div class="narrative line8" id="nar9">&nbsp;&nbsp;And this is the ONLY way to modify the Core State.</div>
 
-                <div class="narrative line1" id="nar10">Some AppCore rules:</div>
-                <div class="narrative line2" id="nar11">&#11041; State can be seen and queried by everyone.</div>
-                <div class="narrative line3" id="nar12">&#11041; State can ONLY be modified via external commands.</div>
-                <div class="narrative line4" id="nar13">&#11041; Logic must be deterministic. Cannot contain any stochastic code.</div>
-                <div class="narrative line5" id="nar14">&#11041; ...other stuff I can't think of right now...</div>
+                <div class="narrative line2" id="nar10">Some AppCore rules:</div>
+                <div class="narrative line3" id="nar11">&#11041; State can be seen and queried by everyone.</div>
+                <div class="narrative line4" id="nar12">&#11041; State can ONLY be modified via external commands.</div>
+                <div class="narrative line5" id="nar13">&#11041; Logic must be deterministic. Cannot contain any stochastic code.</div>
+                <div class="narrative line6" id="nar14">&#11041; ...other stuff I can't think of right now...</div>
 
-                <div class="narrative line7" id="nar15">An AppCore instance contains all of the rules, logic, and state to perform the fundamental work of the application, but that's clearly not enough to be standalone application.</div>
+                <div class="narrative line8" id="nar15">An AppCore instance contains all of the rules, logic, and state to perform the fundamental work of the application, but that's clearly not enough to be standalone application.</div>
 
                 <div class="narrative line6" id="nar16">&nbsp;&nbsp; We're going to refer to the rest simply as the APPLICATION CODE.</div>
                 <div class="narrative line7" id="nar17">&#11041; It handles front-end tasks like rendering the CoreState for users.</div>
@@ -92,9 +97,14 @@
                 <div class="narrative line8" id="nar25">Which brings us to a new component: Apian</div>
 
                 <div class="narrative line6" id="nar26">Apian defines 3 types of wrapper messages:</div>
-                <div class="narrative line7" id="nar27">&nbsp;&nbsp;Commands - tell the AppCore to apply an application directive.</div>
-                <div class="narrative line8" id="nar28">&nbsp;&nbsp;Requests from the Application Code ask that a directive be applied.</div>
-                <div class="narrative line9" id="nar29">&nbsp;&nbsp;Observations are similar to Requests, but originate from the AppCore</div>
+                <div class="narrative line7" id="nar27">&nbsp;&nbsp;Commands - tell the AppCore to apply an application directive to the Core State.</div>
+                <div class="narrative line8" id="nar28">&nbsp;&nbsp;Requests from the Application Code *ask* that a directive be applied.</div>
+                <div class="narrative line9" id="nar29">&nbsp;&nbsp;Observations are similar to Requests, but originate from the AppCore itself.</div>
+
+                <div class="narrative line6" id="nar30">An Apian instance is paired with an AppCore instance.</div>
+                <div class="narrative line7" id="nar31">(yes, that implies that there can be more than one Apian/AppCore pair)</div>
+                <div class="narrative line8" id="nar32">But the important thing about an Apian instance is that it is actually a proxy...</div>
+                <div class="narrative line9" id="nar33">...for an aggregate "Apian Collective" object.</div>
 
                 <div class="narrative line8" id="narsorry">Sorry! This is as far as I've gotten for now...</div>
 
@@ -367,18 +377,34 @@
         tLine.to("#nar25",  {duration: .1, autoAlpha: 0});
         tLine.from("#nar26",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar26")});
         tLine.set("#cmd1", {x: -260, y: 705});
-        tLine.from("#nar27",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar27")}, ">+1")
+        tLine.from("#nar27",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar27")}, ">+1");
         tLine.to("#cmd1", {duration: 1, autoAlpha: 1}, "<");
 
         tLine.addLabel("apRequests");
         tLine.set("#req1", {x: -260, y: 755});
-        tLine.from("#nar28",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar28")})
+        tLine.from("#nar28",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar28")});
         tLine.to("#req1", {duration: 1, autoAlpha: 1}, "<");
 
         tLine.addLabel("apObservations");
         tLine.set("#obs1", {x: -260, y: 805});
-        tLine.from("#nar29",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar29")})
+        tLine.from("#nar29",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar29")});
         tLine.to("#obs1", {duration: 1, autoAlpha: 1}, "<");
+
+        tLine.addLabel("apianAppCorePair");
+        tLine.to(["#obs1", "#req1","#cmd1"], {duration: .1, autoAlpha: 0});
+        tLine.to(".narrative",  {duration: .1, autoAlpha: 0}, "<");
+        tLine.from("#nar30",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar30")});
+        tLine.from("#nar31",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar31")}, ">+1");
+
+        tLine.addLabel("apianIsAProxy");
+        tLine.from("#nar32",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar32")});
+
+        tLine.addLabel("forACollective");
+        tLine.to("#cloud-sm", {duration: 1, autoAlpha: 1});
+        tLine.to("#app-frame", {duration: 1, left: 260}, "<");
+        tLine.to("#cloud-zoom", {duration: 1, autoAlpha: 1}, "<");
+        tLine.fromTo("#cloud-flash", {autoAlpha: 0}, {duration: .5, repeat: 8, yoyo: true, ease: "step", autoAlpha: 1}, "<");
+        tLine.from("#nar33",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar33")}, ">");
 
         tLine.addLabel("asFarAsIvgotten");
         tLine.to(".narrative",  {duration: .1, autoAlpha: 0});
