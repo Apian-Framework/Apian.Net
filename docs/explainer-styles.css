@@ -22,26 +22,45 @@ img {
     font-size: 20px;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 2px;
+    bottom: 0px;
 }
 
-.shuttle div {
+.shuttle > div {
     display: inline-block;
     padding: 2px 2px 0px 2px;
     margin: 0px 4px 0px 4px;
     border-radius: 4px;
 }
 
-.shuttle:not(.shuttle-disabled) div:hover {
+.shuttle div#searchlabels {
+    padding: 0px 2px 0px 0px;
+    font-size: 18px;
+}
+
+div.goto-enabled > div#searchlabels {
+    background-color: #ffe88b;
+}
+
+.shuttle:not(.shuttle-disabled) > div:hover {
     background-color: #FFA400;
 }
 
-div.shuttle-disabled div {
-    color: #e6c764;
+div.shuttle-disabled > div {
+    visibility: hidden;
 }
 
-div.shuttle-disabledxxx {
-    background-color: #00000060;
+div.shuttle-disabled div.goto {
+    visibility: hidden;
+}
+
+div:not(.goto-enabled) > div.goto {
+    display: none;
+}
+
+div.goto > select {
+    background-color: #ffe88b;
+    font-family: "Virgil";
+    font-size: 14px;
 }
 
 .main {

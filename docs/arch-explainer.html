@@ -114,7 +114,12 @@
 
         <div id="shuttle" class="shuttle" ">
             <div id="rewind" onClick="rewind()"><<</div><div id="play" onClick="play_to_next()">Next</div><div id="fwd" onClick="fast_fwd()" >>></div>
+            <div id="searchlabels" onClick="toggle_goto()">&#x1F50D;&#xFE0E;</div>
+            <div id="goto" class="goto"><select id="gotoList" name="gotoList" onChange="goto_label()"></select></div>
         </div>
+
+
+
 
     </div>
 
@@ -205,7 +210,7 @@
 
         tLine.set("#slide-content", { scale: .85, x: 120} );
 
-        tLine.addLabel("titleIn");
+        //tLine.addLabel("titleIn");
         tLine.to("#slide-title", {duration: 2, autoAlpha: 1});
         tLine.to("#apian-logo", {duration: 2, autoAlpha: 1}, "<");
         tLine.from("#slide-title", {duration: 1, y: -80}, "<");
@@ -393,7 +398,7 @@
         tLine.addLabel("apianAppCorePair");
         tLine.to(["#obs1", "#req1","#cmd1"], {duration: .1, autoAlpha: 0});
         tLine.to(".narrative",  {duration: .1, autoAlpha: 0}, "<");
-        tLine.from("#nar30",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar30")});
+        tLine.from("#nar30",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar30")}, ">");
         tLine.from("#nar31",  {duration: 1, autoAlpha: 0, onStart: ()=>hilightNar("#nar31")}, ">+1");
 
         tLine.addLabel("apianIsAProxy");
@@ -475,9 +480,7 @@
         tLine.to("#spark1", {duration: 1, autoAlpha: 0}, "<+.5");
 
 
-
-
-
+        setupGotoLabels(tLine);
         tLine.pause();
         play_to_next();
 
@@ -491,10 +494,14 @@
             document.getElementById("shuttle").classList.add("shuttle-disabled");
         }
 
-
         function enable_shuttle()
         {
             document.getElementById("shuttle").classList.remove("shuttle-disabled");
+        }
+
+        function toggle_goto()
+        {
+            document.getElementById("shuttle").classList.toggle("goto-enabled");
         }
 
         function fast_fwd() {
@@ -512,6 +519,15 @@
             tLine.timeScale(5).tweenTo( tLine.previousLabel(), {onComplete: () => {tLine.timeScale(1); enable_shuttle()} });
         }
 
+        function goto_label() {
+            toggle_goto(); // disable it
+            var gotoList = document.getElementById("gotoList");
+            var targetLabel = gotoList.value;
+            disable_shuttle();
+            var speedScale = targetLabel == gotoList.firstChild.value ? 1 : 100; // slow if it's the 1st label to make sure it doesn't overrun the label
+            tLine.timeScale(speedScale).restart().tweenTo( targetLabel, {onComplete: () => {tLine.timeScale(1);enable_shuttle()} });
+        }
+
         function sizeSlideToWindow()
         {
             baseW = 1600;
@@ -522,6 +538,16 @@
             gsap.set("#slide", {x: 0, y: 0, scale: newScale, transformOrigin: "top left"});
         }
 
+        function setupGotoLabels(timeLine)
+        {
+            var gotoList = document.getElementById("gotoList");
+            for (label in timeLine.labels) {
+                var opt = document.createElement('option');
+                opt.value = label;
+                opt.innerHTML = label;
+                gotoList.appendChild(opt);
+            }
+        }
 
     </script>
 
