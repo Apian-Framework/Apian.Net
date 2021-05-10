@@ -91,7 +91,7 @@ namespace Apian
             ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(CurEpochNum, GetNewCommandSequenceNumber()));
         }
 
-        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)
         {
             return ApianCommandStatus.kShouldApply; // TODO: ok, even this one should at least check the source
         }
