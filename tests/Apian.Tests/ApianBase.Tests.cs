@@ -78,13 +78,12 @@ namespace ApianTests
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
 
-            // protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             TestApianBase ap =  new TestApianBase(mockGameNet.Object, mockAppCore.Object);
             Assert.That(ap.GameNet, Is.EqualTo(mockGameNet.Object));
             Assert.That(ap.AppCore, Is.EqualTo(mockAppCore.Object));
             mockAppCore.Verify(foo => foo.SetApianReference(ap), Times.Once);
             Assert.That(ap.Logger, Is.InstanceOf<UniLogger>());
-            Assert.That(ap.MsgHandlerCount, Is.EqualTo(0)); // will also fail if dict isn't there
+            Assert.That(ap.MsgHandlerCount, Is.EqualTo(5)); // will also fail if dict isn't there
         }
 
         [Test]
