@@ -62,11 +62,15 @@ namespace Apian
     }
 
     public enum ApianCommandStatus {
-        kShouldApply, // It's good. Apply it to the state
-        kStashedInQueued, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
-        kBadSource, // Ignore it and complain about the source
-        kAlreadyReceived, // seqence nuber < that what we were expecting
+        kUnknown, // not evaluated
         kLocalPeerNotReady, // local peer hasn;t been accepted into group yet
+        kAlreadyReceived, // seqence nuber < that what we were expecting
+        kBadSource, // Ignore it and complain about the source
+        kStashedInQueue, // Higher seq# than we can apply. Cache it and, if not already, ask to be sync'ed up
+        kShouldApply, // It's good. Apply it to the state
+
+
+        kStashedInQueued, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
     }
 
     public interface IApianGroupManager
@@ -97,7 +101,7 @@ namespace Apian
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
-        ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
+        ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
 
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
@@ -141,7 +145,7 @@ namespace Apian
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
-        public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan);
+        public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
 
     }
 

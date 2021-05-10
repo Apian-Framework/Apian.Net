@@ -10,7 +10,6 @@ using static UniLog.UniLogger; // for SID
 
 namespace Apian
 {
-
     public class LeaderSezGroupManager : ApianGroupManagerBase
     {
         public const string kGroupType = "LeaderSez";
@@ -25,26 +24,7 @@ namespace Apian
             {"CheckpointMs", "5000"},  // request a checkpoint this often
             {"CheckpointOffsetMs", "50"},  // Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
-            {"StashedCommandsPerUpdate", "10"},
-            {"Leader.MaxSyncCmdsPerUpdate", "10"},
         };
-
-        protected class SyncingPeerData
-        {
-            public string peerId;
-            public long nextCommandToSend;
-            public long firstCommandPeerHas;
-
-            public SyncingPeerData(string pid, long firstNeeded, long firstCmdPeerHas)
-            {
-                // The peer has been storing - but not applying - commands while waiting for the
-                // leader to send data, and keeps doing so while syncing. It can be assumed the peer
-                // ALREADY has "firstCmdPeerHas" through whatever is current.
-                peerId = pid;
-                nextCommandToSend = firstNeeded;
-                firstCommandPeerHas = firstCmdPeerHas;
-            }
-        }
 
         protected class EpochData
         {
@@ -75,78 +55,23 @@ namespace Apian
             public long CurrentEpochNum {get => curEpochData.EpochNum; }
             private long _nextNewCommandSeqNum; // really should ever access this. Creator should use GetNewCommandSequenceNumber()
             public long GetNewCommandSequenceNumber() => _nextNewCommandSeqNum++;
-            public Dictionary<string, SyncingPeerData> syncingPeers;
+
             public EpochData curEpochData;
             public EpochData prevEpochData; // TODO: this needs to be a collection and should be persistent
-            UniLogger Logger;
+            public UniLogger Logger;
 
-            private int  MaxSyncCmdsPerUpdate;
+
             public LeaderOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
                 Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
                 ApianInst = apInst;
-                syncingPeers = new Dictionary<string, SyncingPeerData>();
                 _LoadConfig(config);
                 curEpochData = new EpochData(0,0,-1); // -1 means we aren't done yet
             }
 
             private void _LoadConfig(Dictionary<string,string> configDict)
             {
-                MaxSyncCmdsPerUpdate = int.Parse(configDict["Leader.MaxSyncCmdsPerUpdate"]);
-            }
 
-            private SyncingPeerData _UpdateSyncingPeer(SyncingPeerData peerData,  long firstCmdNeededByPeer, long firstCmdPeerHas)
-            {
-                // Update the adta for a peer already syncing. (really?)
-                // TODO: This should not be able to happen
-                peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, firstCmdNeededByPeer);
-                peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstCmdPeerHas);
-                return peerData;
-            }
-
-            public void AddSyncingPeer(string peerId, long firstNeededCmd, long firstCmdPeerHas )
-            {
-                SyncingPeerData peer = !syncingPeers.ContainsKey(peerId) ? new SyncingPeerData(peerId, firstNeededCmd, firstCmdPeerHas)
-                    : _UpdateSyncingPeer(syncingPeers[peerId], firstNeededCmd, firstCmdPeerHas);
-                syncingPeers[peerId] = peer;
-            }
-
-            public void SendSyncData( Dictionary<long, ApianCommand> commandStash)
-            {
-                List<string> donePeers = new List<string>();
-                int msgsLeft = MaxSyncCmdsPerUpdate;
-                foreach (SyncingPeerData sPeer in syncingPeers.Values )
-                {
-                    msgsLeft -= _SendCmdsToOnePeer(sPeer, commandStash, msgsLeft);
-                    if (sPeer.nextCommandToSend >= sPeer.firstCommandPeerHas) // might be greater than if checkpoint data ends after firstCommandPeerHas
-                        donePeers.Add(sPeer.peerId);
-                    if (msgsLeft <= 0)
-                        break;
-                }
-
-                foreach (string id in donePeers)
-                    syncingPeers.Remove(id);
-            }
-
-            private int _SendCmdsToOnePeer(SyncingPeerData sPeer,  Dictionary<long, ApianCommand> commandStash, int maxToSend)  // true means "keep going"
-            {
-                int cmdsSent = 0;
-                for (int i=0; i<maxToSend;i++)
-                {
-                    long cmdNum = sPeer.nextCommandToSend;
-                    if (commandStash.ContainsKey(cmdNum))
-                    {
-                        ApianCommand cmd =  commandStash[cmdNum];
-                        ApianInst.GameNet.SendApianMessage(sPeer.peerId, cmd);
-                        cmdsSent++;
-                        sPeer.nextCommandToSend++;
-                        if (sPeer.nextCommandToSend == sPeer.firstCommandPeerHas)
-                            break;
-                    }
-                    else
-                        break; // should have access to logger to warn
-                }
-                return cmdsSent;
             }
 
             // AppState
@@ -177,21 +102,19 @@ namespace Apian
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
 
+        private ApianGroupSynchronizer CmdSynchronizer;
+
         // IApianGroupManager
 
         public bool Intialized {get => GroupInfo != null; }
-          private Dictionary<long, ApianCommand> CommandStash;
 
         // State data
-        private long MaxReceivedCmdSeqNum; // inits to -1
-        private long MaxAppliedCmdSeqNum; // inits to -1
         private long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
         private long NextCheckPointMs;
 
         // Config params
         Dictionary<string,string> ConfigDict;
-        private long SyncCompletionWaitMs; // wait this long for a sync completion request reply
-        private int StashedCommandsPerUpdate;
+        private long SyncCompletionWaitMs; // wait this long for a sync completion request reply  &&&&&& Here? Or in Synchronizer?
         private long CheckpointMs;
         private long CheckpointOffsetMs;
 
@@ -202,7 +125,7 @@ namespace Apian
         public LeaderSezGroupManager(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
             _ParseConfig(config ?? DefaultConfig);
-
+            CmdSynchronizer = new ApianGroupSynchronizer(apianInst, config);
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
@@ -214,18 +137,12 @@ namespace Apian
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
             };
-
-            CommandStash = new Dictionary<long, ApianCommand>();
-            MaxAppliedCmdSeqNum = -1; // this +1 is what we expect to see enxt
-            MaxReceivedCmdSeqNum = -1; // haven't received one yet
-
         }
 
         private void _ParseConfig( Dictionary<string,string> config)
         {
             ConfigDict = config; // ugly
             SyncCompletionWaitMs = int.Parse(config["SyncCompletionWaitMs"]);
-            StashedCommandsPerUpdate = int.Parse(config["StashedCommandsPerUpdate"]);
             CheckpointMs = int.Parse(config["CheckpointMs"]);
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
@@ -271,7 +188,6 @@ namespace Apian
             // Maybe we should just do it here? Nah.
         }
 
-
         private ApianGroupMember _AddMember(string peerId, string appDataJson)
         {
             Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
@@ -288,7 +204,20 @@ namespace Apian
             if (LocalPeerIsLeader)
                 _LeaderUpdate();
 
-            _ApplyStashedCommands(); // always check the stash
+            // TODO: the command stash needs to be part of Apian itself. While it plays a large part in the multi-peer process
+            // synchronization "catch up" process, it is used more generally to deal with commands that arrive earlier than "expected",
+            //  even when the synchronizer is not in use.
+            // OTOH - the transition from syncing to active *is* a sychronization thing
+            // Let's leave this all here for now - and look at it again later
+            if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if calling it caught us up.
+            {
+                if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing && SysMsNow > DontRequestSyncBeforeMs)
+                {
+                    Logger.Info($"{this.GetType().Name}.Update(): Sending SyncCompletion request.");
+                    ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
+                    DontRequestSyncBeforeMs = SysMsNow + SyncCompletionWaitMs; // ugly "wait a bit before doing it again" timer
+                }
+            }
         }
 
         //
@@ -296,7 +225,7 @@ namespace Apian
         //
         private void _LeaderUpdate()
         {
-            LeaderData.SendSyncData(CommandStash);
+            CmdSynchronizer.SendSyncData();
             _DoCheckpointRequest();
         }
 
@@ -322,31 +251,6 @@ namespace Apian
             LeaderData.StartNewEpoch(cpCmd.SequenceNum); // sending out a checkpoint cmds ends the current epoch
             // but the prev epoch's data can;t be filled in until the local peer's response comes back.
         }
-
-        private void _ApplyStashedCommands()
-        {
-            for(int i=0; i<StashedCommandsPerUpdate;i++)
-            {
-                long expectedSeqNum = MaxAppliedCmdSeqNum+1;
-                if (CommandStash.ContainsKey(expectedSeqNum))
-                {
-                    ApianInst.ApplyStashedApianCommand(CommandStash[expectedSeqNum]);
-                    MaxAppliedCmdSeqNum = expectedSeqNum;
-                    CommandStash.Remove(expectedSeqNum); // TODO: remove all comamnds <= expectedSeqNum
-                    if (expectedSeqNum >= MaxReceivedCmdSeqNum )
-                    {
-                        if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing)
-                        {
-                            Logger.Info($"{this.GetType().Name}._ApplyStashedCommand(): Sending SyncCompletion request.");
-                            ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, expectedSeqNum, "hash"));
-                            DontRequestSyncBeforeMs = SysMsNow + SyncCompletionWaitMs;
-                        }
-                        break; // don;t try any more
-                    }
-                }
-            }
-        }
-
 
         public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
@@ -376,7 +280,7 @@ namespace Apian
                 ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber()));
         }
 
-        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, string msgChan)
+        public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)
         {
             // Too early
             if (LocalMember == null)
@@ -386,50 +290,44 @@ namespace Apian
             if (msgSrc != GroupCreatorId)
                 return ApianCommandStatus.kBadSource;
 
-
-            if (LocalPeerIsLeader) // Leader has to stash everything
-                CommandStash[msg.SequenceNum] = msg;// TODO: at least until there is checkpointing
-
             // if we are processing the cache (syncing) and get to this then we are done.
             // Keep in mind that after we've requested sync data we'll be getting both LIVE commands
             // (with bigger #s) and "we asked for em" commands.
-            MaxReceivedCmdSeqNum = Math.Max(MaxReceivedCmdSeqNum, msg.SequenceNum);
-
-            long expectedSeqNum = MaxAppliedCmdSeqNum + 1; //
+            long expectedSeqNum = maxAppliedCmdNum + 1;
 
             // TODO: this is hideous with all the returns and convolution.
             // Once it's working figure out how to make it elegant.
             if (LocalMember.CurStatus == ApianGroupMember.Status.Active)
             {
-                if (msg.SequenceNum <= MaxAppliedCmdSeqNum)
+                if (msg.SequenceNum <= maxAppliedCmdNum)
                     return ApianCommandStatus.kAlreadyReceived;
                 else if (msg.SequenceNum > expectedSeqNum)
                 {
-                    Logger.Warn($"{this.GetType().Name}.EvaluateCommand() Expected Seq#: {expectedSeqNum}, Got: {msg.SequenceNum}");
-                    CommandStash[msg.SequenceNum] = msg; // stash it. Maybe what we're looking for will show up soon.
-                    return ApianCommandStatus.kStashedInQueued;
+                    // Go back to "sync" mode
+                    // TODO: this might not be enough
+                    Logger.Warn($"{this.GetType().Name}.EvaluateCommand() Out of sync. Expected Seq#: {expectedSeqNum}, Got: {msg.SequenceNum}");
+                    CmdSynchronizer.StashCommand(msg);
+                    _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                    return ApianCommandStatus.kStashedInQueue;
                 }
 
             } else {
                 // TODO: This is how we enter Sync mode. Maybe it should be more explicit?
                 if (LocalMember.CurStatus == ApianGroupMember.Status.Joining)
-                    _RequestSync(msg.SequenceNum);
-
-                CommandStash[msg.SequenceNum] = msg;
-                return ApianCommandStatus.kStashedInQueued;
+                    _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                CmdSynchronizer.StashCommand(msg);
+                return ApianCommandStatus.kStashedInQueue;
             }
-
-            MaxAppliedCmdSeqNum = msg.SequenceNum;
             return ApianCommandStatus.kShouldApply;
         }
 
-        private void _RequestSync(long firstStashedSeqNum)
+        private void _RequestSync(long firstStashedSeqNum, long maxAppliedCmdNum)
         {
             // Here we actually set our own status and short-circuit the MemberStatusMsg
             // process - we WILL recieve that message in a bit, but in the meantime we want to
             // stop processing incoming commands and stash them instead.
 
-            long firstSeqNumWeNeed = MaxAppliedCmdSeqNum + 1;  // Since the variable inits to -1, this is 0 if we haven't applied any
+            long firstSeqNumWeNeed = maxAppliedCmdNum + 1;  // Since the variable inits to -1, this is 0 if we haven't applied any
 
             GroupSyncRequestMsg syncRequest = new GroupSyncRequestMsg(GroupId, firstSeqNumWeNeed, firstStashedSeqNum);
             Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} 1st Stashed: {syncRequest.FirstStashedCmdSeqNum}");
@@ -568,17 +466,14 @@ namespace Apian
                     firstCmdToSend = state.EndCmdSeqNumber + 1;
                     Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.EndCmdSeqNumber}");
                 }
-                Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending peer stashed commands from {firstCmdToSend} through {sMsg.FirstStashedCmdSeqNum-1}");
-                LeaderData.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
+                CmdSynchronizer.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
             }
         }
 
         protected void OnGroupSyncData(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupSyncDataMsg dMsg = (msg as GroupSyncDataMsg);
-            ApianInst.ApplyCheckpointStateData( dMsg.StateEpoch, dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
-            MaxAppliedCmdSeqNum = dMsg.StateSeqNum;
-            MaxReceivedCmdSeqNum = dMsg.StateSeqNum;
+            CmdSynchronizer.ApplyCheckpointStateData( dMsg.StateEpoch, dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
         }
 
         protected void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)

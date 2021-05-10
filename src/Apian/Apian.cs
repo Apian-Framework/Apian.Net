@@ -60,27 +60,108 @@ namespace Apian
         protected List<ApianObservation> batchedObservations;
 
         // Command-related stuff
-        // protected Dictionary<long, ApianCommand> PendingCommands; // Commands received but not yet applied to the state
-        // protected long ExpectedCommandNum { get; set;} // starts at 0 - there should be no skipping unles a data checkpoint is loaded
+        public Dictionary<long, ApianCommand> AppliedCommands; // All commands we have applied // TODO: write out/prune periodically?
+        public  long MaxAppliedCmdSeqNum {get; private set;} // largest seqNum we have applied, inits to -1
 
         protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             GameNet = gn;
             AppCore = cl;
             AppCore.SetApianReference(this);
             Logger = UniLogger.GetLogger("Apian");
+
             ApMsgHandlers = new Dictionary<string, Action<string, string, ApianMessage, long>>();
             // Add any truly generic handlers here
+            // params are:  from, to, apMsg, msSinceSent
+            ApMsgHandlers[ApianMessage.CliRequest] = (f,t,m,d) => this.OnApianRequest(f,t,m,d);
+            ApMsgHandlers[ApianMessage.CliObservation] = (f,t,m,d) => this.OnApianObservation(f,t,m,d);
+            ApMsgHandlers[ApianMessage.CliCommand] = (f,t,m,d) => this.OnApianCommand(f,t,m,d);
+            ApMsgHandlers[ApianMessage.GroupMessage] = (f,t,m,d) => this.OnApianGroupMessage(f,t,m,d);
+            ApMsgHandlers[ApianMessage.ApianClockOffset] = (f,t,m,d) => this.OnApianClockOffsetMsg(f,t,m,d);
+
+            AppliedCommands = new Dictionary<long, ApianCommand>();
+            MaxAppliedCmdSeqNum = -1; // this +1 is what we expect to see enxt
+
         }
 
         public abstract bool Update(); // Returns TRUE is local peer is in active state
 
         // Apian Messages
-        public abstract void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
 
         public virtual void SendApianMessage(string toChannel, ApianMessage msg)
         {
             Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgTYpe: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
             GameNet.SendApianMessage(toChannel, msg);
+        }
+
+        public virtual void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        {
+            ApMsgHandlers[msg.MsgType](fromId, toId, msg, lagMs);
+        }
+
+        // Default Apian Msg handlers
+
+        protected virtual void OnApianRequest(string fromId, string toId, ApianMessage msg, long delayMs)
+        {
+            GroupMgr.OnApianRequest(msg as ApianRequest, fromId, toId);
+        }
+        protected virtual void OnApianObservation(string fromId, string toId, ApianMessage msg, long delayMs)
+        {
+            GroupMgr.OnApianObservation(msg as ApianObservation, fromId, toId);
+        }
+
+       protected virtual void OnApianCommand(string fromId, string toId, ApianMessage msg, long delayMs)
+        {
+            ApianCommand cmd = msg as ApianCommand;
+            ApianCommandStatus cmdStat = GroupMgr.EvaluateCommand(cmd, fromId, MaxAppliedCmdSeqNum);
+
+            switch (cmdStat)
+            {
+            case ApianCommandStatus.kLocalPeerNotReady:
+                Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet");
+                break;
+            case ApianCommandStatus.kBadSource:
+                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                break;
+            case ApianCommandStatus.kAlreadyReceived:
+                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                break;
+
+            case ApianCommandStatus.kStashedInQueue:
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                break;
+            case ApianCommandStatus.kShouldApply:
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                ApplyApianCommand(cmd);
+                break;
+
+            default:
+                Logger.Error($"ApianBase.OnApianCommand(): Unknown command status: {cmdStat}: Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                break;
+            }
+        }
+
+        protected void ApplyApianCommand(ApianCommand cmd)
+        {
+            MaxAppliedCmdSeqNum = cmd.SequenceNum;
+            if (cmd.CoreMsgType == ApianMessage.CheckpointMsg)
+                AppCore.OnCheckpointCommand(cmd.SequenceNum, cmd.CoreMsg.TimeStamp); // TODO: resolve "special-case-hack vs. CheckpointCommand needs to be a real command" issue
+            else
+            {
+                AppCore.OnApianCommand(cmd);
+            }
+            AppliedCommands[cmd.SequenceNum] = cmd;
+        }
+
+        public virtual void OnApianGroupMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        {
+            Logger.Debug($"OnApianGroupMessage(): {((msg as ApianGroupMessage).GroupMsgType)}");
+            GroupMgr.OnApianMessage(msg, fromId, toId);
+        }
+
+        public virtual void OnApianClockOffsetMsg(string fromId, string toId, ApianMessage msg, long lagMs)
+        {
+            Logger.Verbose($"OnApianClockOffsetMsg(): from {fromId}");
+            ApianClock?.OnApianClockOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
         }
 
         // CoreApp -> Apian API
@@ -193,8 +274,11 @@ namespace Apian
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
         public void LeaveGroup() => GroupMgr.LeaveGroup();
 
-         // TODO: ApplyCheckpointStateData() doesn't seem to belong here.
-        public abstract void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData);
+        public virtual void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
+        {
+            AppCore.ApplyCheckpointStateData( seqNum,  timeStamp,  stateHash,  stateData);
+            MaxAppliedCmdSeqNum = seqNum;
+        }
 
         // FROM GroupManager
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
@@ -234,7 +318,18 @@ namespace Apian
             GameNet.OnApianGroupMemberStatus( GroupId, member.PeerId, member.CurStatus, prevStatus);
         }
 
-        public abstract void ApplyStashedApianCommand(ApianCommand cmd);
+        public virtual void ApplyStashedApianCommand(ApianCommand cmd)
+        {
+            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType} TS: {cmd.CoreMsg.TimeStamp}");
+
+            // If your AppCore includes running-time code that looks for future events in order to report observations
+            // then you may want to override this and include a call to something like:
+            //_AdvanceStateTimeTo((cmd as ApianWrappedCoreMessage).CoreMsg.TimeStamp);
+
+            ApplyApianCommand(cmd);
+
+        }
+
 
         // called by AppCore
         public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
