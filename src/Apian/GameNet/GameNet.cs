@@ -26,11 +26,7 @@ namespace GameNet
         void OnPeerLeftNetwork(string p2pId, string netId);
         void OnPeerMissing(string p2pId, string networkId);
         void OnPeerReturned(string p2pId, string networkId);
-
         void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
-
-        // FIXME: add the rest
-
     }
 
     // used internally

@@ -147,9 +147,6 @@ namespace Apian
             return peerData;
         }
 
-    // FIXME: Somebody needs to call this per-Update()! (ex. groupMgr.LeaderData for LeaderSez?)
-
-
         private int _SendCmdsToOnePeer(SyncingPeerData sPeer, int maxToSend)  // true means "keep going"
         {
             Dictionary<long, ApianCommand> CommandLog = ApianInst.AppliedCommands;

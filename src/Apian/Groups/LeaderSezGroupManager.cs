@@ -496,7 +496,7 @@ namespace Apian
 
                 // TODO: dispatch any incoming messages that were waiting for the prev epoch data
 
-                // FIXME: decide what to do here. Probably need to build command tries and
+                // TODO: decide what to do here. Probably need to build command tries and
                 // a serialized command list and save it with the epoch
                 // Toss out the old stashed commands
                 // TODO:  Hmm. Or maybe not. Seems like there is a need for a persistent record.
