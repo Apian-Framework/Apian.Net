@@ -199,13 +199,11 @@ namespace Apian
 
         public override void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
         {
-            // Should not go to gamenet client (gameManager - it will have to implement a stub handler anyway
-            // since its part of IGameNetClient. Maybe it shouldn't be?)
-            // Instead should go to ApianInstances
+            // TODO: Should this go to the gamenet client?
 
             // P2pNet sends this for each channel that wants it
             if (ApianInstances.ContainsKey(channelId))
-               ApianInstances[channelId].OnP2pPeerSync(p2pId, clockOffsetMs, netLagMs);
+               ApianInstances[channelId].OnPeerClockSync(p2pId, clockOffsetMs, netLagMs);
         }
 
         //

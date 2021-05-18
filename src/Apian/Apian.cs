@@ -26,7 +26,7 @@ namespace Apian
         void OnGroupMemberLeft(string groupChannelId, string p2pId);
         void OnPeerMissing(string groupChannelId, string p2pId);
         void OnPeerReturned(string groupChannelId, string p2pId);
-        void OnP2pPeerSync(string peerId, long clockOffsetMs, long netLagMs);
+        void OnPeerClockSync(string peerId, long clockOffsetMs, long netLagMs);
         void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
     }
 
@@ -161,7 +161,7 @@ namespace Apian
         public virtual void OnApianClockOffsetMsg(string fromId, string toId, ApianMessage msg, long lagMs)
         {
             Logger.Verbose($"OnApianClockOffsetMsg(): from {fromId}");
-            ApianClock?.OnApianClockOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+            ApianClock?.OnPeerApianOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
         }
 
         // CoreApp -> Apian API
@@ -295,10 +295,7 @@ namespace Apian
                     Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
                 else
                 {
-                    ApianClock.OnP2pPeerSync(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
-                    if (!ApianClock.IsIdle)
-                        ApianClock.SendApianClockOffset();
-
+                    ApianClock.OnNewPeer(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
                 }
             }
         }
@@ -337,10 +334,10 @@ namespace Apian
 
 
         // Other stuff
-        public void OnP2pPeerSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
+        public void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
         {
             // TODO: This is awkward.
-            ApianClock?.OnP2pPeerSync( remotePeerId,  clockOffsetMs,  netLagMs);
+            ApianClock?.OnPeerClockSync( remotePeerId,  clockOffsetMs,  netLagMs);
         }
 
         // "Missing" is a little tricky. It's not like Joining or Leaving a group - it's more of a network-level
