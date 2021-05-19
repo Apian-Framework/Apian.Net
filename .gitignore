@@ -11,4 +11,5 @@
 srcassets/
 .vscode/
 .vs/
+*.code-workspace
 inspectcode.xml
