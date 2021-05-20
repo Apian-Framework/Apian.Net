@@ -5,6 +5,7 @@ env:
   SUBPROJECT: Apian
 
 on:
+  workflow_dispatch:
   push:
     branches: [ master ]
     paths:
