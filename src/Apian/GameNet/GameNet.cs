@@ -1,17 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
 
 namespace GameNet
 {
+    public class PeerJoinedNetworkData
+    {
+        public string PeerId {get; private set;}
+        public string NetId {get; private set;}
+        public string HelloData {get; private set;}
+        public PeerJoinedNetworkData(string peerId, string netId, string helloData)
+        {
+            PeerId = peerId;
+            NetId = netId;
+            HelloData = helloData;
+        }
+    }
+
     public interface IGameNet
     {
         void Connect( string p2pConectionString );
         void AddClient(IGameNetClient _client);
         void Disconnect();
         void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
+        Task<PeerJoinedNetworkData> JoinNetworkAsync (P2pNetChannelInfo netP2pChannel, string netLocalData);
         void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
         void LeaveNetwork();
@@ -22,7 +37,7 @@ namespace GameNet
 
     public interface IGameNetClient
     {
-        void OnPeerJoinedNetwork(string peerId, string netId, string helloData);
+        void OnPeerJoinedNetwork(PeerJoinedNetworkData peerData);
         void OnPeerLeftNetwork(string p2pId, string netId);
         void OnPeerMissing(string p2pId, string networkId);
         void OnPeerReturned(string p2pId, string networkId);
@@ -122,6 +137,31 @@ namespace GameNet
             p2p.Join(netP2pChannel, netLocalData);
             callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
         }
+        private TaskCompletionSource<PeerJoinedNetworkData> JoinNetworkCompletion; // can only be one
+        public async Task<PeerJoinedNetworkData> JoinNetworkAsync(P2pNetChannelInfo netP2pChannel, string netLocalData)
+        {
+            if (JoinNetworkCompletion != null)
+                throw new Exception("Already wainting for JoinNetwokAsync()");
+
+            JoinNetworkCompletion = new TaskCompletionSource<PeerJoinedNetworkData>();
+            JoinNetwork(netP2pChannel, netLocalData);
+            return await JoinNetworkCompletion.Task.ContinueWith<PeerJoinedNetworkData>( t => {JoinNetworkCompletion=null; return t.Result;} );
+        }
+
+        public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
+        {
+            // See P2pHelloData() comment regarding actual data struct
+            if (channel == CurrentNetworkId())
+            {
+                PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(p2pId, CurrentNetworkId(), helloData);
+                if (p2pId == LocalP2pId() && JoinNetworkCompletion != null)
+                    JoinNetworkCompletion.TrySetResult(peerData);
+                client.OnPeerJoinedNetwork(peerData);
+            }
+
+            // Note: ApianGameNet overrides this (and calls it)
+        }
+
         public virtual void LeaveNetwork()
         {
             callbacksForNextPoll.Enqueue( () => client.OnPeerLeftNetwork(LocalP2pId(), CurrentNetworkId())); // well get this next polling update
@@ -165,14 +205,7 @@ namespace GameNet
         //
         // IP2pNetClient
         //
-        public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
-        {
-            // See P2pHelloData() comment regarding actual data struct
-            if (channel == CurrentNetworkId())
-                client.OnPeerJoinedNetwork(p2pId, CurrentNetworkId(), helloData);
 
-            // Note: ApianGameNet overrides this (and calls it)
-        }
 
         public virtual void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
         {
