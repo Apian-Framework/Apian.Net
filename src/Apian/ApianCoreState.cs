@@ -17,7 +17,7 @@ namespace Apian
         public long CommandSequenceNumber { get; protected set; } = -1;
 
 
-        public virtual string ApianSerialized(object args=null)
+        public  string ApianSerializedBaseData(object args=null)
         {
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{
@@ -33,7 +33,10 @@ namespace Apian
         }
 
         // Derived class (because it's IApianCoreData) needs:
-        //public static DerivedCoreStateType FromApianSerialized( string serializedData, <other class-dependent-args>)
+
+        //public static DerivedCoreStateType FromApianJson( string serializedData, <other class-dependent-args>)
+
+        public abstract string ApianSerialized(object args=null);
 
 
     }
