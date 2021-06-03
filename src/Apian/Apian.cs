@@ -177,7 +177,7 @@ namespace Apian
             // server then you should just return)
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
             {
-                Logger.Info($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
+                Logger.Debug($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
                 return;
             }
             GameNet.SendApianMessage(destCh, msg);
