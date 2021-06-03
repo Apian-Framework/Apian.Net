@@ -134,8 +134,8 @@ namespace GameNet
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
-            p2p.Join(netP2pChannel, netLocalData);
-            callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
+            p2p.Join(netP2pChannel, netLocalData);    // Results in "OnPeerJoined(localPeer)" call
+            //callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
         }
         private TaskCompletionSource<PeerJoinedNetworkData> JoinNetworkCompletion; // can only be one
         public async Task<PeerJoinedNetworkData> JoinNetworkAsync(P2pNetChannelInfo netP2pChannel, string netLocalData)
