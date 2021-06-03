@@ -17,6 +17,11 @@ namespace Apian
         public const string kGroupTypeName = "LeaderSez";
         public override string GroupTypeName {get => kGroupTypeName; }
 
+        public const int kAllowedSkippedCommands = 5;
+        // This is a bit of a hack to deal with small message ordering issues.
+        // if a command is missed, allow a couple more to come in (and get stashed) before requesting a resync
+        // just in case it's a simple delivery order issue.
+        // Admittedly, this shouldn;t happen - but it's easy to account for.
 
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
@@ -303,11 +308,20 @@ namespace Apian
                     return ApianCommandStatus.kAlreadyReceived;
                 else if (msg.SequenceNum > expectedSeqNum)
                 {
-                    // Go back to "sync" mode
-                    // TODO: this might not be enough
                     Logger.Warn($"{this.GetType().Name}.EvaluateCommand() Out of sync. Expected Seq#: {expectedSeqNum}, Got: {msg.SequenceNum}");
                     CmdSynchronizer.StashCommand(msg);
-                    _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                    // Try not to ask for a resync if just waiting for a couple more messages is good enough...
+                    if (msg.SequenceNum - expectedSeqNum > kAllowedSkippedCommands)
+                    {
+                        Logger.Warn($"{this.GetType().Name}.EvaluateCommand() Requesting resync");
+                        // Go back to "sync" mode
+                        // TODO: resync needs to be fixed:
+                        //   server currently will send a serialized data set, even if unneeded.
+                        //   switching BACK from sync state to active tries to re-add the player... bad.
+                        //   Probably other stuff
+                        _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                    }
+
                     return ApianCommandStatus.kStashedInQueue;
                 }
 
@@ -345,6 +359,7 @@ namespace Apian
             // Only the creator answers
             if (LocalPeerIsLeader)
             {
+                Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest, sending response.");
                 GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo);
                 ApianInst.SendApianMessage(msgSrc, amsg);
             }
