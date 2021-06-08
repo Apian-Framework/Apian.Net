@@ -17,11 +17,11 @@ namespace Apian
         public const string kGroupTypeName = "LeaderSez";
         public override string GroupTypeName {get => kGroupTypeName; }
 
-        public const int kAllowedSkippedCommands = 5;
+        public const int kAllowedSkippedCommands = 2;
         // This is a bit of a hack to deal with small message ordering issues.
-        // if a command is missed, allow a couple more to come in (and get stashed) before requesting a resync
+        // If a command is missed, allow a couple more to come in (and get stashed) before requesting a resync
         // just in case it's a simple delivery order issue.
-        // Admittedly, this shouldn;t happen - but it's easy to account for.
+        // Admittedly, this shouldn't happen - but it's easy to account for.
 
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
