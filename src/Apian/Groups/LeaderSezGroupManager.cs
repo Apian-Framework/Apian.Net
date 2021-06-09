@@ -250,7 +250,7 @@ namespace Apian
         private void _SendCheckpointCommand(long curApainMs)
         {
             ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
-            ApianCheckpointCommand cpCmd = new ApianCheckpointCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCommand cpCmd = new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
             LeaderData.StartNewEpoch(cpCmd.SequenceNum); // sending out a checkpoint cmds ends the current epoch
@@ -274,7 +274,7 @@ namespace Apian
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
             {
                 Logger.Debug($"OnApianRequest(): upgrading {msg.CoreMsgType} from {SID(msgSrc)} to Command");
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber()));
+                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
             }
         }
 
@@ -282,7 +282,7 @@ namespace Apian
         {
             // Observations from the seader are turned into commands by the seader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber()));
+                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)

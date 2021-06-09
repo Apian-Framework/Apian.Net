@@ -8,21 +8,19 @@ namespace Apian
 
      public enum ApianConflictResult { Unaffected, Validated, Invalidated }
 
+    // Parent class for the "Game messages"
     public class ApianCoreMessage
     {
-        // ReSharper disable MemberCanBePrivate.Global
         // Client game or app messages derive from this
         public string MsgType;
         public long TimeStamp; // Apian time when core message happened or gets applied. Not related to network timing.
         public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
         public ApianCoreMessage() {}
-        // ReSharper enable MemberCanBePrivate.Global
 
     }
 
     public class ApianMessage
     {
-        // ReSharper disable MemberCanBeProtected.Global
         public const string CliRequest = "APapRq";
         public const string CliObservation = "APapObs";
         public const string CliCommand = "APapCmd";
@@ -38,41 +36,54 @@ namespace Apian
 
     public class ApianWrappedCoreMessage : ApianMessage
     {
-        public string CoreMsgType; // TODO: This is a hack and is a copy of the ApianClientMessage MsgType
-                                  // It's related to deserializing from JSON into an ApianWrappedClientMessage
-                                  // and me not wanting to include the full derived class names in the data stream.
+        public string CoreMsgType;
+        public long  CoreMsgTimeStamp;
+        public string SerializedCoreMsg;
 
-        [JsonIgnore]
-        public virtual ApianCoreMessage CoreMsg {get;}
-        public ApianWrappedCoreMessage(string gid, string apianMsgType, string coreMsgType) : base(gid, apianMsgType)
+        public ApianWrappedCoreMessage(string gid, string apianMsgType, ApianCoreMessage coreMsg) : base(gid, apianMsgType)
         {
-            CoreMsgType=coreMsgType;
+            CoreMsgType = coreMsg.MsgType;
+            CoreMsgTimeStamp = coreMsg.TimeStamp;
+            SerializedCoreMsg =   JsonConvert.SerializeObject(coreMsg); // FIXME? This is maybe NOT the right type to serialize?
         }
+
+        public ApianWrappedCoreMessage(string apianMsgType, ApianWrappedCoreMessage inMsg) : base(inMsg.DestGroupId, apianMsgType)
+        {
+            // Use this convert a request or obs to a command
+            CoreMsgType = inMsg.CoreMsgType;
+            CoreMsgTimeStamp = inMsg.CoreMsgTimeStamp;
+            SerializedCoreMsg = inMsg.SerializedCoreMsg;
+        }
+
         public ApianWrappedCoreMessage() : base() {}
 
     }
 
-    // The constructors for these wrapped messages are protected to ensure that they get subclasses into specific
-    // pre-message subclasses which override CoreMsg to return a types subclass of ApianCoreMessage
-
     public class ApianRequest : ApianWrappedCoreMessage
     {
-        protected ApianRequest(string gid, ApianCoreMessage coreMsg) : base(gid, CliRequest, coreMsg.MsgType) {}
+        public ApianRequest(string gid, ApianCoreMessage coreMsg) : base(gid, CliRequest, coreMsg) {}
         public ApianRequest() : base() {}
-        public virtual ApianCommand ToCommand(long epoch, long seqNum) {return null;}
     }
 
     public class ApianObservation : ApianWrappedCoreMessage
     {
-        protected ApianObservation(string gid,ApianCoreMessage coreMsg) : base(gid, CliObservation, coreMsg.MsgType) {}
+        public ApianObservation(string gid,ApianCoreMessage coreMsg) : base(gid, CliObservation, coreMsg) {}
         public ApianObservation() : base() {}
-        public virtual ApianCommand ToCommand(long epoch, long seqNum) {return null;}
     }
 
     public class ApianCommand : ApianWrappedCoreMessage {
         public long Epoch;
         public long SequenceNum;
-        protected ApianCommand(long ep, long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg.MsgType) {Epoch=ep; SequenceNum=seqNum;}
+        public ApianCommand(long ep, long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg)
+        {
+            Epoch=ep; SequenceNum=seqNum;
+        }
+        public ApianCommand(long ep, long seqNum, ApianWrappedCoreMessage wrappedMsg) : base(CliCommand, wrappedMsg)
+        {
+            Epoch=ep;
+            SequenceNum=seqNum;
+        }
+
         public ApianCommand() : base() {}
 
     }
@@ -88,33 +99,15 @@ namespace Apian
 
     public class ApianCheckpointMsg : ApianCoreMessage
     {
-        // This is a "mock core command" for an ApianCheckpointCommand to wrap and insert int he command stream.
+        // This is a "mock core message" for an ApianCommand to wrap and insert int he command stream.
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
     }
 
-    public class ApianCheckpointCommand : ApianCommand
-    {
-        // A checkpoint request is implemented as an ApianCommand so it can be part of the serial command stream.
-        // Core commands are strictly evaluated and applied in order, and by being a command itself, the request
-        // can guarantee that it is processed by all peers on an app state that has the identical commands
-        //  applied - and will take advantage of the ordering mechanism
-        //
-        // A checkpoint explicitly specifies an "epoch" for the checkpoint. The checkpoint command is the last command in
-        // the epoch, effectively closing it, but command sequence numbers DO NOT reset with a change of epoch.
-
-        public override ApianCoreMessage CoreMsg {get => checkpointMsg;}
-        public ApianCheckpointMsg checkpointMsg;
-        public ApianCheckpointCommand(long epoch, long seqNum, string gid, ApianCheckpointMsg _checkpointMsg) : base(epoch, seqNum, gid, _checkpointMsg) {checkpointMsg=_checkpointMsg;}
-        public ApianCheckpointCommand() : base() {}
-    }
-
-
-
     static public class ApianMessageDeserializer
     {
-        // IMPORTANT: this only deserialized to the Apian[Foo]Msg level. In many cases all that gets you is
-        // an app-specific "subType" and you then have to do it again at the App message level.
-        // TODO: This is super fugly. Make it not.
+        // The Apian-internal msesages can all be deserialized by this code.
+        // But the "WrappedCoreMsgs" need help from the client AppCore implmentation to recognize and deserialize the app-specific payload
+
         public static Dictionary<string, Func<string, ApianMessage>> deserializers = new  Dictionary<string, Func<string, ApianMessage>>()
         {
             {ApianMessage.CliRequest, (s) => JsonConvert.DeserializeObject<ApianRequest>(s) },
@@ -133,15 +126,24 @@ namespace Apian
             {ApianMessage.ApianClockOffset, (msg) => null },
         };
 
-        public static ApianMessage FromJSON(string msgType, string json)
-        {
-            return deserializers[msgType](json) as ApianMessage;
-        }
+        // public static ApianMessage FromJSON(string msgType, string json)
+        // {
+        //     return deserializers[msgType](json) as ApianMessage;
+        // }
         public static string GetSubType(ApianMessage msg)
         {
             return subTypeExtractor[msg.MsgType](msg);
         }
 
+        public static ApianMessage FromJSON(string msgType, string json)
+        {
+            // Deserialize once. May have to do it again
+            ApianMessage aMsg = deserializers[msgType](json) as ApianMessage;
+
+            string subType = ApianMessageDeserializer.GetSubType(aMsg);
+
+            return  aMsg.MsgType == ApianMessage.GroupMessage ? ApianGroupMessageDeserializer.FromJson(subType, json) : aMsg;
+        }
 
     }
 

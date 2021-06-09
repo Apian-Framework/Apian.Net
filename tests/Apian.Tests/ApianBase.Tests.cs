@@ -146,20 +146,14 @@ namespace ApianTests
 
             apian.StartObservationSet();
 
-            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(200, "thing3", 12) ));
-            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(100, "thing1",  6) ));
-            apian.SendObservation(new GetThingObservation("gid", new GetThingMsg(150, "thing2",  10) ));
+            apian.SendObservation( new GetThingMsg(200, "thing3", 12) );
+            apian.SendObservation( new GetThingMsg(100, "thing1",  6) );
+            apian.SendObservation( new GetThingMsg(150, "thing2",  10) );
 
             apian.EndObservationSet();
 
-            mockGameNet.Verify(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianMessage>()), Times.Exactly(3));
-
+            mockGameNet.Verify(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianObservation>()), Times.Exactly(3));
         }
-
-
-
-
-
     }
 
 }

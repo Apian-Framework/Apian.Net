@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using P2pNet;
@@ -34,7 +33,7 @@ namespace Apian
     public interface IApianAppCoreServices
     {
         // This is the interface an AppCore sees
-        void SendObservation(ApianObservation msg);
+        void SendObservation(ApianCoreMessage msg);
         void StartObservationSet();
         void EndObservationSet();
     }
@@ -57,7 +56,7 @@ namespace Apian
 
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
         // To be batched-up and then ordered and checked for conflict before being sent out.
-        protected List<ApianObservation> batchedObservations;
+        protected List<ApianCoreMessage> batchedObservations;
 
         // Command-related stuff
         public Dictionary<long, ApianCommand> AppliedCommands; // All commands we have applied // TODO: write out/prune periodically?
@@ -120,34 +119,35 @@ namespace Apian
                 Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet");
                 break;
             case ApianCommandStatus.kBadSource:
-                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType }");
                 break;
             case ApianCommandStatus.kAlreadyReceived:
-                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
                 break;
 
             case ApianCommandStatus.kStashedInQueue:
-                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
                 break;
             case ApianCommandStatus.kShouldApply:
-                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
                 ApplyApianCommand(cmd);
                 break;
 
             default:
-                Logger.Error($"ApianBase.OnApianCommand(): Unknown command status: {cmdStat}: Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType}");
+                Logger.Error($"ApianBase.OnApianCommand(): Unknown command status: {cmdStat}: Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
                 break;
             }
         }
 
         protected void ApplyApianCommand(ApianCommand cmd)
         {
+            ApianCoreMessage coreMsg = AppCore.DeserializeCoreMessage(cmd);
             MaxAppliedCmdSeqNum = cmd.SequenceNum;
-            if (cmd.CoreMsgType == ApianMessage.CheckpointMsg)
-                AppCore.OnCheckpointCommand(cmd.SequenceNum, cmd.CoreMsg.TimeStamp); // TODO: resolve "special-case-hack vs. CheckpointCommand needs to be a real command" issue
+            if (coreMsg.MsgType == ApianMessage.CheckpointMsg)
+                AppCore.OnCheckpointCommand(cmd.SequenceNum, coreMsg.TimeStamp); // TODO: resolve "special-case-hack vs. CheckpointCommand needs to be a real command" issue
             else
             {
-                AppCore.OnApianCommand(cmd);
+                AppCore.OnApianCommand(cmd.SequenceNum, coreMsg);
             }
             AppliedCommands[cmd.SequenceNum] = cmd;
         }
@@ -166,7 +166,7 @@ namespace Apian
 
         // CoreApp -> Apian API
         // TODO: You know, these should be interfaces
-        protected virtual void SendRequest(string destCh, ApianMessage msg)
+        protected virtual void SendRequest(ApianCoreMessage msg)
         {
             // Make sure these only get sent out if we are ACTIVE.
             // It wouldn't cause any trouble, since the groupmgr would not make it into a command
@@ -180,12 +180,12 @@ namespace Apian
                 Logger.Debug($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
                 return;
             }
-            GameNet.SendApianMessage(destCh, msg);
+            GameNet.SendApianMessage(GroupMgr.GroupId, new ApianRequest(GroupMgr.GroupId, msg));
         }
 
         // IApianAppCore - only the AppCore calls these
 
-        public virtual void SendObservation(ApianObservation msg) // alwas goes to current group
+        public virtual void SendObservation(ApianCoreMessage msg) // alwas goes to current group
         {
             // See comments in SendRequest
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
@@ -195,7 +195,7 @@ namespace Apian
             }
 
             if (batchedObservations == null)
-                GameNet.SendApianMessage(GroupMgr.GroupId, msg);
+                GameNet.SendApianMessage(GroupMgr.GroupId, new ApianObservation(GroupMgr.GroupId, msg));
             else
                 batchedObservations.Add( msg);
         }
@@ -208,7 +208,7 @@ namespace Apian
                 Logger.Warn($"ApianBase.StartObservationSet(): batchedObservations not null. Clearing it. EndObservationSet() not called?");
                 batchedObservations.Clear();
             }
-            batchedObservations = new List<ApianObservation>();
+            batchedObservations = new List<ApianCoreMessage>();
         }
 
         public virtual void EndObservationSet()
@@ -220,26 +220,26 @@ namespace Apian
             }
 
             // Sort by timestamp, earliest first
-            batchedObservations.Sort( (a,b) => a.CoreMsg.TimeStamp.CompareTo(b.CoreMsg.TimeStamp));
+            batchedObservations.Sort( (a,b) => a.TimeStamp.CompareTo(b.TimeStamp));
 
             // TODO: run conflict resolution!!!
-            List<ApianObservation> obsToSend = new List<ApianObservation>();
-            foreach (ApianObservation obs in batchedObservations)
+            List<ApianCoreMessage> obsToSend = new List<ApianCoreMessage>();
+            foreach (ApianCoreMessage obsUnderTest in batchedObservations)
             {
                 bool isValid = true; // TODO: should check against current CoreState
                 string reason;
-                foreach (ApianObservation prevObs in obsToSend)
+                foreach (ApianCoreMessage prevObs in obsToSend)
                 {
                     ApianConflictResult effect = ApianConflictResult.Unaffected;
-                    (effect, reason) = AppCore.ValidateCoreMessages(prevObs.CoreMsg, obs.CoreMsg);
+                    (effect, reason) = AppCore.ValidateCoreMessages(prevObs, obsUnderTest);
                     switch (effect)
                     {
                         case ApianConflictResult.Validated:
-                            Logger.Info($"{obs.CoreMsg.MsgType} Observation Validated by {prevObs.CoreMsg.MsgType}: {reason}");
+                            Logger.Info($"{obsUnderTest.MsgType} Observation Validated by {prevObs.MsgType}: {reason}");
                             isValid = true;
                             break;
                         case ApianConflictResult.Invalidated:
-                            Logger.Info($"{obs.CoreMsg.MsgType} Observation invalidated by {prevObs.CoreMsg.MsgType}: {reason}");
+                            Logger.Info($"{obsUnderTest.MsgType} Observation invalidated by {prevObs.MsgType}: {reason}");
                             isValid = false;
                             break;
                         case ApianConflictResult.Unaffected:
@@ -249,16 +249,16 @@ namespace Apian
                 }
                 // Still valid?
                 if (isValid)
-                    obsToSend.Add(obs);
+                    obsToSend.Add(obsUnderTest);
                 else
-                    Logger.Info($"{obs.CoreMsg.MsgType} Observation rejected.");
+                    Logger.Info($"{obsUnderTest.MsgType} Observation rejected.");
             }
 
             //Logger.Warn($"vvvv - Start Obs batch send - vvvv");
-            foreach (ApianObservation obs in obsToSend)
+            foreach (ApianCoreMessage obs in obsToSend)
             {
                 //Logger.Warn($"Type: {obs.ClientMsg.MsgType} TS: {obs.ClientMsg.TimeStamp}");
-                GameNet.SendApianMessage(GroupMgr.GroupId, obs); // send the in acsending time order
+                GameNet.SendApianMessage(GroupMgr.GroupId, new ApianObservation(GroupMgr.GroupId, obs)); // send the in acsending time order
             }
             //Logger.Warn($"^^^^ -  End Obs batch send  - ^^^^");
 
@@ -317,11 +317,11 @@ namespace Apian
 
         public virtual void ApplyStashedApianCommand(ApianCommand cmd)
         {
-            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsg.MsgType} TS: {cmd.CoreMsg.TimeStamp}");
+            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType} TS: {cmd.CoreMsgTimeStamp}");
 
             // If your AppCore includes running-time code that looks for future events in order to report observations
             // then you may want to override this and include a call to something like:
-            //_AdvanceStateTimeTo((cmd as ApianWrappedCoreMessage).CoreMsg.TimeStamp);
+            //_AdvanceStateTimeTo((cmd as ApianWrappedCoreMessage).CoreMsgTimeStamp);
 
             ApplyApianCommand(cmd);
 
@@ -330,7 +330,6 @@ namespace Apian
 
         // called by AppCore
         public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
-
 
 
         // Other stuff

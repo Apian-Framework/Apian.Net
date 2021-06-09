@@ -67,33 +67,6 @@ namespace ApianTests
         public SeeThingMsg() : base() {}
     }
 
-    // Wrapped Apian Messages
-    public class PutThingObservation : ApianObservation
-    {
-        public override ApianCoreMessage CoreMsg {get => putThingMsg;}
-        public PutThingMsg putThingMsg;
-        public PutThingObservation(string gid, PutThingMsg _putThingMsg) : base(gid, _putThingMsg) {putThingMsg=_putThingMsg;}
-        public PutThingObservation() : base() {}
-        //public override ApianCommand ToCommand(long seqNum) => new ApianPlaceClaimCommand(seqNum, DestGroupId, placeClaimMsg);
-    }
-
-    public class GetThingObservation : ApianObservation
-    {
-        public override ApianCoreMessage CoreMsg {get => getThingMsg;}
-        public GetThingMsg getThingMsg;
-        public GetThingObservation(string gid, GetThingMsg _getThingMsg) : base(gid, _getThingMsg) {getThingMsg=_getThingMsg;}
-        public GetThingObservation() : base() {}
-        //public override ApianCommand ToCommand(long seqNum) => new ApianPlaceClaimCommand(seqNum, DestGroupId, placeClaimMsg);
-    }
-    public class SeeThingObservation : ApianObservation
-    {
-        public override ApianCoreMessage CoreMsg {get => seeThingMsg;}
-        public SeeThingMsg seeThingMsg;
-        public SeeThingObservation(string gid, SeeThingMsg _seeThingMsg) : base(gid, _seeThingMsg) {seeThingMsg=_seeThingMsg;}
-        public SeeThingObservation() : base() {}
-        //public override ApianCommand ToCommand(long seqNum) => new ApianPlaceClaimCommand(seqNum, DestGroupId, placeClaimMsg);
-    }
-
     // Validator
     public static class MockAppCoreValidator
     {

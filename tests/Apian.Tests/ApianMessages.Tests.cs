@@ -168,7 +168,7 @@ namespace ApianTests
                 throw new NotImplementedException();
             }
 
-            public void OnApianCommand(ApianCommand cmd)
+            public void OnApianCommand(long seqNum, ApianCoreMessage msg)
             {
                 throw new NotImplementedException();
             }
@@ -179,6 +179,11 @@ namespace ApianTests
             }
 
             public void SetApianReference(ApianBase apian)
+            {
+                throw new NotImplementedException();
+            }
+
+            public ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg)
             {
                 throw new NotImplementedException();
             }

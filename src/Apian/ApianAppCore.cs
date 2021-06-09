@@ -12,14 +12,16 @@ namespace Apian
         // Most apps will subclass this to include app-relevant data
         // And subclass ApianGroupMember to do the same
         void SetApianReference(ApianBase apian);
-        void OnApianCommand(ApianCommand cmd);
+        void OnApianCommand(long cmdSeqNum, ApianCoreMessage coreMsg);
         void OnCheckpointCommand(long seqNum, long timeStamp);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
+
+        ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
 
         // Validation
         bool CommandIsValid(ApianCoreMessage cmdMsg);
 
-        // what effect does the previous msg have on the testMsg?
+        // what effect does the previous msg have on the testMsg? Pretty much just for observations coming in a batch
         (ApianConflictResult result, string reason) ValidateCoreMessages(ApianCoreMessage prevMsg, ApianCoreMessage testMsg);
     }
 
@@ -27,8 +29,9 @@ namespace Apian
     {
         protected Dictionary<string, Action<ApianCoreMessage, long>> ClientMsgCommandHandlers;
 
+        public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
         public abstract void SetApianReference(ApianBase apian);
-        public abstract void OnApianCommand(ApianCommand cmd);
+        public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
         public abstract void OnCheckpointCommand(long seqNum, long timeStamp);
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 

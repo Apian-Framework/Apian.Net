@@ -272,7 +272,13 @@ namespace Apian
             }
         }
 
-        public abstract ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
+        public virtual ApianMessage DeserializeApianMessage(string msgType, string msgJSON)
+        {
+            // This just deserialized the generic ApianMessage - it does NOT deserialge the Core message payload
+            // of an ApianWrappedCoreMessage
+            return ApianMessageDeserializer.FromJSON(msgType, msgJSON);
+        }
+
     }
 
 }

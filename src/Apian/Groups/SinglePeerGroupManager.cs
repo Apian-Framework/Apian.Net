@@ -83,12 +83,12 @@ namespace Apian
 
         public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(CurEpochNum, GetNewCommandSequenceNumber()));
+            ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurEpochNum, GetNewCommandSequenceNumber(), msg));
         }
 
         public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
-            ApianInst.GameNet.SendApianMessage(msgChan, msg.ToCommand(CurEpochNum, GetNewCommandSequenceNumber()));
+            ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurEpochNum, GetNewCommandSequenceNumber(), msg));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)
