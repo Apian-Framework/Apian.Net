@@ -8,7 +8,6 @@ namespace Apian
     public class ApianGroupMessage : ApianMessage
     {
         public const string GroupsRequest = "APrg";
-        public const string GroupAnnounce = "APga";
         public const string GroupJoinRequest = "APgjr";
         public const string GroupLeaveRequest = "APglr";
         public const string GroupMemberJoined = "APgmj"; // Sent on "active" - we need it 'cause it has AppData
@@ -27,19 +26,6 @@ namespace Apian
     public class GroupsRequestMsg : ApianGroupMessage // Send on main channel - no DestGroupId
     {
         public GroupsRequestMsg() : base("", GroupsRequest) {}
-    }
-
-    public class GroupAnnounceMsg : ApianGroupMessage // Send on main channel - no DestGroupId
-    {
-        public string groupInfoJson;
-        public ApianGroupInfo GroupInfo {get => ApianGroupInfo.Deserialize(groupInfoJson);}
-        public GroupAnnounceMsg() : base() {}
-        public GroupAnnounceMsg(ApianGroupInfo info) : base("", GroupAnnounce)
-        {
-            groupInfoJson = info.Serialized();
-        }
-
-
     }
 
     public class GroupJoinRequestMsg : ApianGroupMessage
@@ -133,7 +119,6 @@ namespace Apian
 
        private static Dictionary<string, Func<string, ApianMessage>> deserializers = new  Dictionary<string, Func<string, ApianMessage>>()
         {
-            {ApianGroupMessage.GroupAnnounce, (s) => JsonConvert.DeserializeObject<GroupAnnounceMsg>(s) },
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
             {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },
             {ApianGroupMessage.GroupLeaveRequest, (s) => JsonConvert.DeserializeObject<GroupLeaveRequestMsg>(s) },
@@ -147,7 +132,6 @@ namespace Apian
 
         private static Dictionary<string, int> deserializerRefCnts = new Dictionary<string, int>()
         {
-             {ApianGroupMessage.GroupAnnounce, 1 },
             {ApianGroupMessage.GroupsRequest, 1 },
             {ApianGroupMessage.GroupJoinRequest, 1 },
             {ApianGroupMessage.GroupLeaveRequest,1 },

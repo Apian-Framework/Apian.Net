@@ -25,6 +25,7 @@ namespace Apian
         public const string CliObservation = "APapObs";
         public const string CliCommand = "APapCmd";
         public const string ApianClockOffset = "APclk";
+        public const string ApianGroupAnnounce = "APga"; // NOT a GroupMessage, since apian instance never read it (it's just for clients)
         public const string GroupMessage = "APGrp";
         public const string CheckpointMsg = "APchk";
         public string DestGroupId; // Can be empty
@@ -57,6 +58,17 @@ namespace Apian
 
         public ApianWrappedCoreMessage() : base() {}
 
+    }
+
+    public class GroupAnnounceMsg : ApianMessage // Send on main channel - no DestGroupId
+    {
+        public string groupInfoJson;
+        public ApianGroupInfo GroupInfo {get => ApianGroupInfo.Deserialize(groupInfoJson);}
+        public GroupAnnounceMsg() : base() {}
+        public GroupAnnounceMsg(ApianGroupInfo info) : base("", ApianGroupAnnounce)
+        {
+            groupInfoJson = info.Serialized();
+        }
     }
 
     public class ApianRequest : ApianWrappedCoreMessage
@@ -110,6 +122,7 @@ namespace Apian
 
         public static Dictionary<string, Func<string, ApianMessage>> deserializers = new  Dictionary<string, Func<string, ApianMessage>>()
         {
+            {ApianMessage.ApianGroupAnnounce, (s) => JsonConvert.DeserializeObject<GroupAnnounceMsg>(s) },
             {ApianMessage.CliRequest, (s) => JsonConvert.DeserializeObject<ApianRequest>(s) },
             {ApianMessage.CliObservation, (s) => JsonConvert.DeserializeObject<ApianObservation>(s) },
             {ApianMessage.CliCommand, (s) => JsonConvert.DeserializeObject<ApianCommand>(s) },
@@ -119,6 +132,7 @@ namespace Apian
 
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()
         {
+            {ApianMessage.ApianGroupAnnounce, (msg) => null },
             {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CoreMsgType }, // Need to use App-level message deserializer to fully decode
             {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).CoreMsgType },
             {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CoreMsgType },
@@ -126,10 +140,6 @@ namespace Apian
             {ApianMessage.ApianClockOffset, (msg) => null },
         };
 
-        // public static ApianMessage FromJSON(string msgType, string json)
-        // {
-        //     return deserializers[msgType](json) as ApianMessage;
-        // }
         public static string GetSubType(ApianMessage msg)
         {
             return subTypeExtractor[msg.MsgType](msg);

@@ -161,9 +161,9 @@ namespace Apian
 
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
-            LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're seader we need seaderdata
+            LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're leader we need leaderdata
             ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
-            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another seader thing
+            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
         }
 
         public override void SetupExistingGroup(ApianGroupInfo info)
@@ -209,11 +209,6 @@ namespace Apian
             if (LocalPeerIsLeader)
                 _LeaderUpdate();
 
-            // TODO: the command stash needs to be part of Apian itself. While it plays a large part in the multi-peer process
-            // synchronization "catch up" process, it is used more generally to deal with commands that arrive earlier than "expected",
-            //  even when the synchronizer is not in use.
-            // OTOH - the transition from syncing to active *is* a sychronization thing
-            // Let's leave this all here for now - and look at it again later
             if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if calling it caught us up.
             {
                 if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing && SysMsNow > DontRequestSyncBeforeMs)
@@ -225,9 +220,6 @@ namespace Apian
             }
         }
 
-        //
-        // TODO: move seader stuff to the seader class
-        //
         private void _LeaderUpdate()
         {
             CmdSynchronizer.SendSyncData();
@@ -280,7 +272,7 @@ namespace Apian
 
         public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
-            // Observations from the seader are turned into commands by the seader
+            // Observations from the leader are turned into commands by the leader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
                 ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
         }
@@ -504,7 +496,7 @@ namespace Apian
         public override void OnLocalStateCheckpoint( long seqNum, long timeStamp, string stateHash, string serializedState)
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
-            if (LocalPeerIsLeader) // Only seader handles this
+            if (LocalPeerIsLeader) // Only leader handles this
             {
                 // Note that epoch is not in the params. AppCore doesn't know about epochs
                 LeaderData.StoreCompletedEpoch(seqNum, timeStamp, stateHash, serializedState);
@@ -531,7 +523,7 @@ namespace Apian
 
 
                 // TODO: use this to report hashes to check the "quality" of a save state
-                // (OTOH: since by definition the seader's version is true, it's probably not a big deal)
+                // (OTOH: since by definition the leader's version is true, it's probably not a big deal)
                 // LeaderData.HandleRemoteState(rMsg.SeqNum, rMsg.StateHash);
             }
 

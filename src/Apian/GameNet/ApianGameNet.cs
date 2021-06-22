@@ -51,11 +51,12 @@ namespace Apian
 
             _MsgDispatchers = new  Dictionary<string, Action<string, string, long, GameNetClientMessage>>()
             {
+                [ApianMessage.ApianGroupAnnounce] = (f,t,s,m) => this._DispatchGroupAnnounceMessage(f,t,s,m),
                 [ApianMessage.CliRequest] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
                 [ApianMessage.CliObservation] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
                 [ApianMessage.CliCommand] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
                 [ApianMessage.ApianClockOffset] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
-                [ApianMessage.GroupMessage] = (f,t,s,m) => this._DispatchGroupMessage(f,t,s,m),
+                [ApianMessage.GroupMessage] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
             };
         }
 
@@ -114,10 +115,7 @@ namespace Apian
         }
         protected void _OnGroupAnnounceMsg(GroupAnnounceMsg gaMsg)
         {
-            if (GroupRequestResults != null)
-                GroupRequestResults[gaMsg.GroupInfo.GroupId] = gaMsg.GroupInfo; // RequestGroupsAsync was called
-            else
-                Client.OnGroupAnnounce(gaMsg.GroupInfo); // TODO: should this happen even on an async request?
+
         }
 
         // Joining a group (or creating and joining one)
@@ -233,6 +231,13 @@ namespace Apian
             _MsgDispatchers[msg.clientMsgType](from, to, msSinceSent, msg);
         }
 
+        //
+        // TODO: Are both _DispatchApianMessage and _DispatchGroupMessage necessary?
+        // Don;t they really do exactly the same thing?
+        // In fact, isn't  DispatchApianMessage() just dropping messages to group "" on the floor?
+        // Shouldn't it route to all groups?
+        //
+
         protected void _DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             ApianMessage apMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload);
@@ -240,36 +245,23 @@ namespace Apian
 
             if (ApianInstances.ContainsKey(apMsg.DestGroupId))
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  apMsg,  msSinceSent);
-
+            else if (apMsg.DestGroupId == "") // Send to  all groups
+            {
+                foreach (ApianBase ap in ApianInstances.Values)
+                    ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);
+            }
         }
 
-        protected void _DispatchGroupMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
+        protected void _DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
-            ApianGroupMessage apMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload) as ApianGroupMessage;
-            logger.Verbose($"_DispatchGroupMessage() Type: {apMsg.GroupMsgType}, Group: {apMsg.DestGroupId}, src: {(from==LocalP2pId()?"Local":from)}");
+            // Special message only goes to client
+            GroupAnnounceMsg gaMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
+            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {gaMsg.GroupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
-            if (ApianInstances.ContainsKey(apMsg.DestGroupId)) // it's for a particular group
-                ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  apMsg,  msSinceSent);
-            else if (apMsg.DestGroupId == "") // It's a group message not sent to a particular group.
-            {
-                // TODO: This is kinda ugly, but sorta special-case. Still ugly, tho.
-                // Most group messages have a destination group.
-                // Example exceptions are (don't expect this list to be definitive):
-                //    GroupRequest, GroupAnnounce
-                // TODO: Are these expections maybe NOT really "GroupMessages" at all? Just regular Apian messages that happen
-                // to be *about* groups? Would that make this code cleaner?
-                switch(apMsg.GroupMsgType)
-                {
-                case ApianGroupMessage.GroupAnnounce:  // special case message
-                    _OnGroupAnnounceMsg( apMsg as GroupAnnounceMsg);
-                    break;
-
-                default: // Send to all instances
-                    foreach (ApianBase ap in ApianInstances.Values)
-                        ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);
-                    break;
-                }
-            }
+            if (GroupRequestResults != null)
+                GroupRequestResults[gaMsg.GroupInfo.GroupId] = gaMsg.GroupInfo; // RequestGroupsAsync was called
+            else
+                Client.OnGroupAnnounce(gaMsg.GroupInfo); // TODO: should this happen even on an async request?
         }
 
         public virtual ApianMessage DeserializeApianMessage(string msgType, string msgJSON)
