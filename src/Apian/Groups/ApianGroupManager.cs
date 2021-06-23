@@ -102,6 +102,7 @@ namespace Apian
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
+        ApianMessage DeserializeApianMessage(string msgTYpe, string msgJSON);
 
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
@@ -146,7 +147,7 @@ namespace Apian
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
         public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
-
+        public virtual ApianMessage DeserializeApianMessage(string msgTYpe, string msgJSON) => null; // by default don't deserialize any messages
     }
 
 }

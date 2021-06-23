@@ -15,7 +15,6 @@ namespace Apian
         Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs);
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
-        ApianMessage DeserializeApianMessage(string msgType, string msgJSON);
         PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
 
     }
@@ -231,20 +230,18 @@ namespace Apian
             _MsgDispatchers[msg.clientMsgType](from, to, msSinceSent, msg);
         }
 
-        //
-        // TODO: Are both _DispatchApianMessage and _DispatchGroupMessage necessary?
-        // Don;t they really do exactly the same thing?
-        // In fact, isn't  DispatchApianMessage() just dropping messages to group "" on the floor?
-        // Shouldn't it route to all groups?
-        //
-
         protected void _DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
-            ApianMessage apMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload);
-            logger.Verbose($"_DispatchApianMessage() Type: {apMsg.MsgType}, src: {(from==LocalP2pId()?"Local":from)}");
+            ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
+            logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (ApianInstances.ContainsKey(apMsg.DestGroupId))
-                ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  apMsg,  msSinceSent);
+            {
+                // Maybe the group manager defines/overrides the message
+                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].GroupMgr.DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload)
+                    ?? apMsg;
+                ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
+            }
             else if (apMsg.DestGroupId == "") // Send to  all groups
             {
                 foreach (ApianBase ap in ApianInstances.Values)
@@ -255,7 +252,7 @@ namespace Apian
         protected void _DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             // Special message only goes to client
-            GroupAnnounceMsg gaMsg = DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
+            GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
             logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {gaMsg.GroupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (GroupRequestResults != null)
@@ -264,12 +261,7 @@ namespace Apian
                 Client.OnGroupAnnounce(gaMsg.GroupInfo); // TODO: should this happen even on an async request?
         }
 
-        public virtual ApianMessage DeserializeApianMessage(string msgType, string msgJSON)
-        {
-            // This just deserialized the generic ApianMessage - it does NOT deserialge the Core message payload
-            // of an ApianWrappedCoreMessage
-            return ApianMessageDeserializer.FromJSON(msgType, msgJSON);
-        }
+
 
     }
 
