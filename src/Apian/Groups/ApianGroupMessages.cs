@@ -130,44 +130,46 @@ namespace Apian
             {ApianGroupMessage.GroupCheckpointReport, (s) => JsonConvert.DeserializeObject<GroupCheckpointReportMsg>(s) },
         };
 
-        private static Dictionary<string, int> deserializerRefCnts = new Dictionary<string, int>()
-        {
-            {ApianGroupMessage.GroupsRequest, 1 },
-            {ApianGroupMessage.GroupJoinRequest, 1 },
-            {ApianGroupMessage.GroupLeaveRequest,1 },
-            {ApianGroupMessage.GroupMemberStatus, 1 },
-            {ApianGroupMessage.GroupMemberJoined, 1 },
-            {ApianGroupMessage.GroupSyncRequest, 1 },
-            {ApianGroupMessage.GroupSyncData, 1 },
-            {ApianGroupMessage.GroupSyncCompletion, 1 },
-            {ApianGroupMessage.GroupCheckpointReport, 1 },
-        };
+        //
+        // I do not beleive this is needed, since GroupManagers now have a virtual DeserializeApianMessage() method
+        //
+        // private static Dictionary<string, int> deserializerRefCnts = new Dictionary<string, int>()
+        // {
+        //     {ApianGroupMessage.GroupsRequest, 1 },
+        //     {ApianGroupMessage.GroupJoinRequest, 1 },
+        //     {ApianGroupMessage.GroupLeaveRequest,1 },
+        //     {ApianGroupMessage.GroupMemberStatus, 1 },
+        //     {ApianGroupMessage.GroupMemberJoined, 1 },
+        //     {ApianGroupMessage.GroupSyncRequest, 1 },
+        //     {ApianGroupMessage.GroupSyncData, 1 },
+        //     {ApianGroupMessage.GroupSyncCompletion, 1 },
+        //     {ApianGroupMessage.GroupCheckpointReport, 1 },
+        // };
 
-        public static void AddDeserializer(string msgSubType, Func<string, ApianMessage> deSerFunc)
-        {
-            if (!deserializers.Keys.Contains(msgSubType))
-            {
-                deserializers[msgSubType] = deSerFunc;
-                deserializerRefCnts[msgSubType] = 1;
-            } else {
-                deserializerRefCnts[msgSubType] = deserializerRefCnts[msgSubType] + 1;
-            }
-        }
+        // // public static void AddDeserializer(string msgSubType, Func<string, ApianMessage> deSerFunc)
+        // {
+        //     if (!deserializers.Keys.Contains(msgSubType))
+        //     {
+        //         deserializers[msgSubType] = deSerFunc;
+        //         deserializerRefCnts[msgSubType] = 1;
+        //     } else {
+        //         deserializerRefCnts[msgSubType] = deserializerRefCnts[msgSubType] + 1;
+        //     }
+        // }
 
-        public static void RemoveDeserializer(string msgSubType)
-        {
-            if (deserializers.Keys.Contains(msgSubType))
-            {
-                if ( deserializerRefCnts[msgSubType] < 2 )
-                {
-                    deserializers.Remove(msgSubType);
-                    deserializerRefCnts.Remove(msgSubType);
-                } else {
-                    deserializerRefCnts[msgSubType] = deserializerRefCnts[msgSubType] - 1;
-                }
-            }
-        }
-
+        // public static void RemoveDeserializer(string msgSubType)
+        // {
+        //     if (deserializers.Keys.Contains(msgSubType))
+        //     {
+        //         if ( deserializerRefCnts[msgSubType] < 2 )
+        //         {
+        //             deserializers.Remove(msgSubType);
+        //             deserializerRefCnts.Remove(msgSubType);
+        //         } else {
+        //             deserializerRefCnts[msgSubType] = deserializerRefCnts[msgSubType] - 1;
+        //         }
+        //     }
+        // }
 
         public static ApianGroupMessage FromJson(string msgSubType, string json)
         {
