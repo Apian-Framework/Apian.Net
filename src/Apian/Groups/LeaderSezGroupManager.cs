@@ -1,10 +1,6 @@
-using System.Xml.Linq;
-using System.Runtime.InteropServices;
 using System.Linq;
-using System.Net.Http;
 using System;
 using System.Collections.Generic;
-using P2pNet;
 using UniLog;
 using static UniLog.UniLogger; // for SID
 
@@ -65,7 +61,6 @@ namespace Apian
             public EpochData prevEpochData; // TODO: this needs to be a collection and should be persistent
             public UniLogger Logger;
 
-
             public LeaderOnlyData(ApianBase apInst, Dictionary<string,string> config)
             {
                 Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
@@ -109,6 +104,8 @@ namespace Apian
 
         private ApianGroupSynchronizer CmdSynchronizer;
 
+        private RatfishElection ElectionMgr;
+
         // IApianGroupManager
 
         public bool Intialized {get => GroupInfo != null; }
@@ -131,6 +128,7 @@ namespace Apian
         {
             _ParseConfig(config ?? DefaultConfig);
             CmdSynchronizer = new ApianGroupSynchronizer(apianInst, config);
+            ElectionMgr = new RatfishElection(apianInst, config);
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
@@ -242,7 +240,7 @@ namespace Apian
         private void _SendCheckpointCommand(long curApainMs)
         {
             ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
-            ApianCommand cpCmd = new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCommand cpCmd = new RatfishApianCommand(ElectionMgr.CurrentTerm, LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
             LeaderData.StartNewEpoch(cpCmd.SequenceNum); // sending out a checkpoint cmds ends the current epoch
@@ -266,7 +264,7 @@ namespace Apian
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
             {
                 Logger.Debug($"OnApianRequest(): upgrading {msg.CoreMsgType} from {SID(msgSrc)} to Command");
-                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
+                ApianInst.GameNet.SendApianMessage(msgChan, new RatfishApianCommand(ElectionMgr.CurrentTerm, LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
             }
         }
 
@@ -274,7 +272,7 @@ namespace Apian
         {
             // Observations from the leader are turned into commands by the leader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
-                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
+                ApianInst.GameNet.SendApianMessage(msgChan, new RatfishApianCommand(ElectionMgr.CurrentTerm, LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), msg));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)
@@ -529,5 +527,11 @@ namespace Apian
 
         }
 
+        public override ApianMessage DeserializeApianMessage(string msgType, string msgJSON)
+        {
+            return RatfishMessageDeserializer.FromJSON(msgType, msgJSON) ?? null;
+        }
+
     }
+
 }
