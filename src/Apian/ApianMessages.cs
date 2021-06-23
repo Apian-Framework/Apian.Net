@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+
 namespace Apian
 {
     // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
@@ -28,9 +29,9 @@ namespace Apian
         public const string ApianGroupAnnounce = "APga"; // NOT a GroupMessage, since apian instance never read it (it's just for clients)
         public const string GroupMessage = "APGrp";
         public const string CheckpointMsg = "APchk";
+
         public string DestGroupId; // Can be empty
         public string MsgType;
-       // ReSharper enable MemberCanBeProtected.Global
         protected ApianMessage(string gid, string typ) { DestGroupId = gid; MsgType = typ; }
         protected ApianMessage() {}
     }
