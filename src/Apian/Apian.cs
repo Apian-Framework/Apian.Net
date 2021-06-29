@@ -61,6 +61,7 @@ namespace Apian
         // Command-related stuff
         public Dictionary<long, ApianCommand> AppliedCommands; // All commands we have applied // TODO: write out/prune periodically?
         public  long MaxAppliedCmdSeqNum {get; private set;} // largest seqNum we have applied, inits to -1
+        public  long MaxReceivedCmdSeqNum {get; private set;} // largest seqNum we have *received*, inits to -1
 
         protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             GameNet = gn;
@@ -78,7 +79,8 @@ namespace Apian
             ApMsgHandlers[ApianMessage.ApianClockOffset] = (f,t,m,d) => this.OnApianClockOffsetMsg(f,t,m,d);
 
             AppliedCommands = new Dictionary<long, ApianCommand>();
-            MaxAppliedCmdSeqNum = -1; // this +1 is what we expect to see enxt
+            MaxAppliedCmdSeqNum = -1; // this+1 is what we expect to apply next
+            MaxReceivedCmdSeqNum = -1; //  this is the largest we'vee seen - even if we haven't applied it yet
 
         }
 
@@ -127,9 +129,11 @@ namespace Apian
 
             case ApianCommandStatus.kStashedInQueue:
                 Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                MaxReceivedCmdSeqNum = Math.Max(cmd.SequenceNum, MaxReceivedCmdSeqNum); // is valid. we just aren;t ready for it
                 break;
             case ApianCommandStatus.kShouldApply:
                 Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                MaxReceivedCmdSeqNum = Math.Max(cmd.SequenceNum, MaxReceivedCmdSeqNum);
                 ApplyApianCommand(cmd);
                 break;
 

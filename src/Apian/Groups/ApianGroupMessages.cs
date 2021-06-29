@@ -117,7 +117,7 @@ namespace Apian
     static public class ApianGroupMessageDeserializer
     {
 
-       private static Dictionary<string, Func<string, ApianMessage>> deserializers = new  Dictionary<string, Func<string, ApianMessage>>()
+       private static Dictionary<string, Func<string, ApianGroupMessage>> deserializers = new  Dictionary<string, Func<string, ApianGroupMessage>>()
         {
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
             {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },
@@ -173,7 +173,8 @@ namespace Apian
 
         public static ApianGroupMessage FromJson(string msgSubType, string json)
         {
-            return deserializers[msgSubType](json) as ApianGroupMessage;
+            // If subType not defned here just decode ApianGroupMessage
+            return deserializers.ContainsKey(msgSubType) ? deserializers[msgSubType](json) : JsonConvert.DeserializeObject<ApianGroupMessage>(json);
         }
     }
 

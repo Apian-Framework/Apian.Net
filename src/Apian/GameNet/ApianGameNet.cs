@@ -238,7 +238,7 @@ namespace Apian
             if (ApianInstances.ContainsKey(apMsg.DestGroupId))
             {
                 // Maybe the group manager defines/overrides the message
-                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].GroupMgr.DeserializeApianMessage(clientMessage.clientMsgType,clientMessage.payload)
+                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].GroupMgr.DeserializeApianMessage(apMsg, clientMessage.payload)
                     ?? apMsg;
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
             }

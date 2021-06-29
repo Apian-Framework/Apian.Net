@@ -148,11 +148,12 @@ namespace Apian
 
         public static ApianMessage FromJSON(string msgType, string json)
         {
-            // Deserialize once. May have to do it again
-            ApianMessage aMsg = deserializers[msgType](json) as ApianMessage;
+            // Deserialize once. May have to do it again - if type not deifined here just stop at ApianMessage
+            ApianMessage aMsg = deserializers.ContainsKey(msgType) ? deserializers[msgType](json) : JsonConvert.DeserializeObject<ApianMessage>(json);
 
             string subType = ApianMessageDeserializer.GetSubType(aMsg);
 
+            // group deser will do the same thing: it may just go as far as ApianGroupMessage
             return  aMsg.MsgType == ApianMessage.GroupMessage ? ApianGroupMessageDeserializer.FromJson(subType, json) : aMsg;
         }
 

@@ -48,7 +48,7 @@ namespace Apian
         private long MaxAppliedCmdSeqNum {get => ApianInst?.MaxAppliedCmdSeqNum ?? -1;}
 
 
-        // Sending commands to syn other peers
+        // Sending commands to sync other peers
         public int MaxSyncCmdsToSendPerUpdate {get; private set;}
         public Dictionary<string, SyncingPeerData> syncingPeers;
 

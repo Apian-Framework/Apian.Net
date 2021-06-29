@@ -13,6 +13,8 @@ namespace Apian
         public const string kGroupTypeName = "LeaderSez";
         public override string GroupTypeName {get => kGroupTypeName; }
 
+        public string GroupLeaderId {get => ElectionMgr.CurrentLeaderId;}
+
         public const int kAllowedSkippedCommands = 2;
         // This is a bit of a hack to deal with small message ordering issues.
         // If a command is missed, allow a couple more to come in (and get stashed) before requesting a resync
@@ -32,8 +34,8 @@ namespace Apian
             public long EpochNum;
             public long StartCmdSeqNumber; // first command in the epoch
             public long EndCmdSeqNumber; // This is the seq # of the LAST command - which is a checkpoint request
-            public long TimeStamp;
-            public string StateHash;
+            public long TimeStamp;  // TODO: Start of end of epoch - rename to make clear (I'm pretty sure end)
+            public string EndStateHash;
             public string SerializedStateData;
             // TODO: add this dict and make the stashedStateData member of LeaderOnly a dict
             // and keep a couple of them - tracking how well they (hashes) were agreed with.
@@ -91,7 +93,7 @@ namespace Apian
                 // TODO: this needs to do something persistent with the data, too
                 prevEpochData.EndCmdSeqNumber = lastSeqNum;
                 prevEpochData.TimeStamp = timeStamp;
-                prevEpochData.StateHash = stateHash;
+                prevEpochData.EndStateHash = stateHash;
                 prevEpochData.SerializedStateData = serializedState;
 
                 // TODO: when this returns, the caller needs to dispatch any ApianGroupMsgs waiting for it (sync requests)
@@ -103,7 +105,6 @@ namespace Apian
         private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
 
         private ApianGroupSynchronizer CmdSynchronizer;
-
         private RatfishElection ElectionMgr;
 
         // IApianGroupManager
@@ -122,13 +123,13 @@ namespace Apian
 
         private LeaderOnlyData LeaderData;
         public bool LocalPeerIsLeader {get => LeaderData != null;}
-        private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond; // FIXME: replace with testable construct
 
         public LeaderSezGroupManager(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
             _ParseConfig(config ?? DefaultConfig);
             CmdSynchronizer = new ApianGroupSynchronizer(apianInst, config);
-            ElectionMgr = new RatfishElection(apianInst, config);
+            ElectionMgr = new RatfishElection(this, apianInst, config);
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
@@ -139,6 +140,9 @@ namespace Apian
                 {ApianGroupMessage.GroupSyncData, OnGroupSyncData },
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
+                {RatfishHeartBeatMsg.MsgTypeId, OnHeartbeatMsg },
+                {RatfishVoteRequestMsg.MsgTypeId, OnVoteRequestMsg },
+                {RatfishVoteReplyMsg.MsgTypeId, OnVoteReplyMsg },
             };
         }
 
@@ -204,10 +208,12 @@ namespace Apian
 
         public override void Update()
         {
+            ElectionMgr.Update();
+
             if (LocalPeerIsLeader)
                 _LeaderUpdate();
 
-            if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if calling it caught us up.
+            if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if we were behind and calling it caught us up.
             {
                 if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing && SysMsNow > DontRequestSyncBeforeMs)
                 {
@@ -249,6 +255,9 @@ namespace Apian
 
         public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
+            // TODO: rename this to OnApianGroupMessage()
+            // Note that Apian only routes GROUP messages here.
+            // Commands are also sent when received - but only via EvaluateCommand()
             if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
             {
                 ApianGroupMessage gMsg = msg as ApianGroupMessage;
@@ -280,6 +289,9 @@ namespace Apian
             // Too early
             if (LocalMember == null)
                 return ApianCommandStatus.kLocalPeerNotReady;
+
+            // send raw to the Electionmanager
+            ElectionMgr.OnApianCommand(msg, msgSrc);
 
             // Valid if from the creator
             if (msgSrc != GroupCreatorId)
@@ -368,7 +380,7 @@ namespace Apian
                 _SendMemberJoinedMessages(jreq.PeerId);
 
                 // Just approve. Don't add (happens in OnGroupMemberJoined())
-                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
+               RatfishMemberJoinedMsg jmsg = new RatfishMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson, ElectionMgr.CurrentTerm);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
                 // Now send status updates (from "joined") for any member that has changed status
@@ -395,10 +407,10 @@ namespace Apian
         {
             // Send a newly-approved member all of the Join messages for the other member
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
-            List<GroupMemberJoinedMsg> joinMsgs = Members.Values
+            List<RatfishMemberJoinedMsg> joinMsgs = Members.Values
                 .Where( m => m.PeerId != toWhom)
-                .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerId, m.AppDataJson)).ToList();
-            foreach (GroupMemberJoinedMsg msg in joinMsgs)
+                .Select( (m) =>  new RatfishMemberJoinedMsg(GroupId, m.PeerId, m.AppDataJson, ElectionMgr.CurrentTerm)).ToList();
+            foreach (RatfishMemberJoinedMsg msg in joinMsgs)
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
@@ -412,23 +424,42 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
+        protected void OnHeartbeatMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            ElectionMgr.OnHeartbeatMsg(msg, msgSrc);
+        }
+
+        protected void OnVoteRequestMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            ElectionMgr.OnVoteRequestMsg(msg, msgSrc);
+        }
+        protected void OnVoteReplyMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            ElectionMgr.OnVoteReplyMsg(msg, msgSrc);
+        }
+
         protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // If from GroupCreator then it's valid
             if (msgSrc == GroupCreatorId)
             {
-                GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
+                RatfishMemberJoinedMsg joinedMsg = (msg as RatfishMemberJoinedMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {joinedMsg.PeerId}");
 
                 ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
 
                 ApianInst.OnGroupMemberJoined(m); // inform local apian
 
-                // Unless we are the group creator AND this is OUR join message
-                if (joinedMsg.PeerId == LocalPeerId && LocalPeerIsLeader)
+                // Is this OUR join message?
+                if (joinedMsg.PeerId == LocalPeerId)
                 {
-                    // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
-                    ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
+                    if  (LocalPeerIsLeader) // are we the leader?
+                    {
+                        // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
+                        ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
+                    }
+
+                    ElectionMgr.OnGroupJoined(msgSrc, joinedMsg.ElectionTerm);
                 }
 
             }
@@ -467,7 +498,7 @@ namespace Apian
                 EpochData state = LeaderData.prevEpochData;
                 if (state != null)
                 {
-                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.StateHash, state.SerializedStateData));
+                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.EndStateHash, state.SerializedStateData));
                     firstCmdToSend = state.EndCmdSeqNumber + 1;
                     Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.EndCmdSeqNumber}");
                 }
@@ -527,9 +558,10 @@ namespace Apian
 
         }
 
-        public override ApianMessage DeserializeApianMessage(string msgType, string msgJSON)
+        public override ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJSON)
         {
-            return RatfishMessageDeserializer.FromJSON(msgType, msgJSON) ?? null;
+            // genMsg is the result of generic ApianMessage.Deser()
+            return RatfishMessageDeserializer.FromJSON(genMsg, msgJSON) ?? null;
         }
 
     }
