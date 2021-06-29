@@ -400,7 +400,7 @@ namespace Apian
             List<GroupMemberJoinedMsg> joinMsgs = Members.Values
                 .Where( m => m.PeerId != toWhom)
                 .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerId, m.AppDataJson)).ToList();
-            foreach (RatfishMemberJoinedMsg msg in joinMsgs)
+            foreach (GroupMemberJoinedMsg msg in joinMsgs)
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
@@ -420,7 +420,7 @@ namespace Apian
             // If from GroupCreator then it's valid
             if (msgSrc == GroupCreatorId)
             {
-                RatfishMemberJoinedMsg joinedMsg = (msg as RatfishMemberJoinedMsg);
+                GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {joinedMsg.PeerId}");
 
                 ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
@@ -530,12 +530,6 @@ namespace Apian
                 // LeaderData.HandleRemoteState(rMsg.SeqNum, rMsg.StateHash);
             }
 
-        }
-
-        public override ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJSON)
-        {
-            // genMsg is the result of generic ApianMessage.Deser()
-            return RatfishMessageDeserializer.FromJSON(genMsg, msgJSON) ?? null;
         }
 
     }
