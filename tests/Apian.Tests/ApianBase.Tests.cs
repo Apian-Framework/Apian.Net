@@ -14,16 +14,18 @@ namespace ApianTests
 
     public class TestApianBase : ApianBase //  We need a public ctor
     {
+        public Mock<IApianGroupManager> GrpMgrMock;
         public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
         {
             ApianGroupMember local = new ApianGroupMember("localPeerId", null);
             local.CurStatus = ApianGroupMember.Status.Active;
 
-            Mock<IApianGroupManager> mGrpMgr = new Mock<IApianGroupManager>();
-            mGrpMgr.Setup( g => g.LocalMember).Returns( local );
+            GrpMgrMock = new Mock<IApianGroupManager>();
+            GrpMgrMock.Setup( g => g.LocalMember).Returns( local );
+            GrpMgrMock.Setup( g => g.SendApianObservation(It.IsAny<ApianCoreMessage>()));
 
             ApianClock = clock;
-            GroupMgr = mGrpMgr.Object;
+            GroupMgr = GrpMgrMock.Object;
 
         }
 
@@ -152,7 +154,7 @@ namespace ApianTests
 
             apian.EndObservationSet();
 
-            mockGameNet.Verify(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianObservation>()), Times.Exactly(3));
+            apian.GrpMgrMock.Verify(g => g.SendApianObservation(It.IsAny<ApianCoreMessage>()), Times.Exactly(3));
         }
     }
 

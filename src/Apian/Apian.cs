@@ -179,7 +179,7 @@ namespace Apian
                 Logger.Debug($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
                 return;
             }
-            GameNet.SendApianMessage(GroupMgr.GroupId, new ApianRequest(GroupMgr.GroupId, msg));
+            GroupMgr.SendApianRequest(msg);
         }
 
         // IApianAppCore - only the AppCore calls these
@@ -194,7 +194,7 @@ namespace Apian
             }
 
             if (batchedObservations == null)
-                GameNet.SendApianMessage(GroupMgr.GroupId, new ApianObservation(GroupMgr.GroupId, msg));
+                GroupMgr.SendApianObservation(msg);
             else
                 batchedObservations.Add( msg);
         }
@@ -257,7 +257,7 @@ namespace Apian
             foreach (ApianCoreMessage obs in obsToSend)
             {
                 //Logger.Warn($"Type: {obs.ClientMsg.MsgType} TS: {obs.ClientMsg.TimeStamp}");
-                GameNet.SendApianMessage(GroupMgr.GroupId, new ApianObservation(GroupMgr.GroupId, obs)); // send the in acsending time order
+                GroupMgr.SendApianObservation(obs); // send the in acsending time order
             }
             //Logger.Warn($"^^^^ -  End Obs batch send  - ^^^^");
 

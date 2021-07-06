@@ -69,6 +69,14 @@ namespace Apian
         {
 
         }
+        public override void SendApianRequest( ApianCoreMessage coreMsg )
+        {
+            ApianInst.GameNet.SendApianMessage(GroupId, new ApianRequest(GroupId, coreMsg));
+        }
+        public override void SendApianObservation( ApianCoreMessage coreMsg )
+        {
+            ApianInst.GameNet.SendApianMessage(GroupId, new ApianObservation(GroupId, coreMsg));
+        }
 
         public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {

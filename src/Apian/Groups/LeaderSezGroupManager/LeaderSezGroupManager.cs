@@ -253,6 +253,23 @@ namespace Apian
             // but the prev epoch's data can;t be filled in until the local peer's response comes back.
         }
 
+        public override void SendApianRequest( ApianCoreMessage coreMsg )
+        {
+            ApianInst.GameNet.SendApianMessage(GroupId, new ApianRequest(GroupId, coreMsg));
+        }
+
+        public override void SendApianObservation( ApianCoreMessage coreMsg )
+        {
+            if (LocalPeerIsLeader)
+                ApianInst.GameNet.SendApianMessage(GroupId, new ApianObservation(GroupId, coreMsg));
+        //    else
+        //    {
+        //         // This next line is too verbose for even Debug-level
+        //         //Logger.Debug($"SendApianObservation() We are not server, so don't send observations.");
+        //    }
+
+        }
+
         public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
         {
             // TODO: rename this to OnApianGroupMessage()

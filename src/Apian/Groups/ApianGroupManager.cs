@@ -97,6 +97,8 @@ namespace Apian
         void JoinGroup(string localMemberJson);
         void LeaveGroup();
         void Update();
+        void SendApianRequest( ApianCoreMessage coreMsg );
+        void SendApianObservation( ApianCoreMessage coreMsg );
         void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
@@ -137,11 +139,16 @@ namespace Apian
             return Members[peerId];
         }
 
+        // TODO: There may be good default implmentations for some of these methods
+        // that ought to just live here
+
         public abstract void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         public abstract void SetupExistingGroup(ApianGroupInfo info);
         public abstract void JoinGroup(string localMemberJson);
         public abstract void LeaveGroup();
         public abstract void Update();
+        public abstract void SendApianRequest( ApianCoreMessage coreMsg );
+        public abstract void SendApianObservation( ApianCoreMessage coreMsg );
         public abstract void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
