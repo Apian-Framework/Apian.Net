@@ -147,12 +147,7 @@ namespace Apian
         {
             ApianCoreMessage coreMsg = AppCore.DeserializeCoreMessage(cmd);
             MaxAppliedCmdSeqNum = cmd.SequenceNum;
-            if (coreMsg.MsgType == ApianMessage.CheckpointMsg)
-                AppCore.OnCheckpointCommand(cmd.SequenceNum, coreMsg.TimeStamp); // TODO: resolve "special-case-hack vs. CheckpointCommand needs to be a real command" issue
-            else
-            {
-                AppCore.OnApianCommand(cmd.SequenceNum, coreMsg);
-            }
+            AppCore.OnApianCommand(cmd.SequenceNum, coreMsg);
             AppliedCommands[cmd.SequenceNum] = cmd;
         }
 

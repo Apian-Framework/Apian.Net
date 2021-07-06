@@ -13,7 +13,6 @@ namespace Apian
         // And subclass ApianGroupMember to do the same
         void SetApianReference(ApianBase apian);
         void OnApianCommand(long cmdSeqNum, ApianCoreMessage coreMsg);
-        void OnCheckpointCommand(long seqNum, long timeStamp);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
         ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
@@ -32,7 +31,7 @@ namespace Apian
         public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
         public abstract void SetApianReference(ApianBase apian);
         public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
-        public abstract void OnCheckpointCommand(long seqNum, long timeStamp);
+        public abstract void OnCheckpointCommand(ApianCheckpointMsg msg, long seqNum);
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
         // Validation
