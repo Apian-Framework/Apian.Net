@@ -99,7 +99,7 @@ namespace Apian
         void Update();
         void SendApianRequest( ApianCoreMessage coreMsg );
         void SendApianObservation( ApianCoreMessage coreMsg );
-        void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
+        void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
@@ -149,7 +149,7 @@ namespace Apian
         public abstract void Update();
         public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );
-        public abstract void OnApianMessage(ApianMessage msg, string msgSrc, string msgChan); // TODO: replace with specific methods (OnApianRequest...)
+        public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);

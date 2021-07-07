@@ -96,6 +96,7 @@ namespace Apian
 
         public virtual void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
         {
+            // TODO: throw exception (or warn?) when MsgType isn't in the dictionary
             ApMsgHandlers[msg.MsgType](fromId, toId, msg, lagMs);
         }
 
@@ -154,7 +155,7 @@ namespace Apian
         public virtual void OnApianGroupMessage(string fromId, string toId, ApianMessage msg, long lagMs)
         {
             Logger.Debug($"OnApianGroupMessage(): {((msg as ApianGroupMessage).GroupMsgType)}");
-            GroupMgr.OnApianMessage(msg, fromId, toId);
+            GroupMgr.OnApianGroupMessage(msg as ApianGroupMessage, fromId, toId);
         }
 
         public virtual void OnApianClockOffsetMsg(string fromId, string toId, ApianMessage msg, long lagMs)

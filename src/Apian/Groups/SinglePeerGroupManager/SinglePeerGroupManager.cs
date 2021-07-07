@@ -78,15 +78,13 @@ namespace Apian
             ApianInst.GameNet.SendApianMessage(GroupId, new ApianObservation(GroupId, coreMsg));
         }
 
-        public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
+        public override void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
+            // Note that Apian only routes GROUP messages here.
+            if (msg != null )
             {
-                ApianGroupMessage gMsg = msg as ApianGroupMessage;
-                GroupMsgHandlers[gMsg.GroupMsgType](gMsg, msgSrc, msgChannel);
+                GroupMsgHandlers[msg.GroupMsgType](msg, msgSrc, msgChannel);
             }
-            else
-                Logger.Warn($"OnApianMessage(): unexpected APianMsg Type: {msg?.MsgType}");
         }
 
         public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)

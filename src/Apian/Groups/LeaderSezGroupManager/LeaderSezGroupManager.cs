@@ -270,18 +270,13 @@ namespace Apian
 
         }
 
-        public override void OnApianMessage(ApianMessage msg, string msgSrc, string msgChannel)
+        public override void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // TODO: rename this to OnApianGroupMessage()
             // Note that Apian only routes GROUP messages here.
-            // Commands are also sent when received - but only via EvaluateCommand()
-            if (msg != null && msg.MsgType == ApianMessage.GroupMessage)
+            if (msg != null )
             {
-                ApianGroupMessage gMsg = msg as ApianGroupMessage;
-                GroupMsgHandlers[gMsg.GroupMsgType](gMsg, msgSrc, msgChannel);
+                GroupMsgHandlers[msg.GroupMsgType](msg, msgSrc, msgChannel);
             }
-            else
-                Logger.Warn($"OnApianMessage(): unexpected ApianMsg Type: {msg?.MsgType}");
         }
 
         public override void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan)
