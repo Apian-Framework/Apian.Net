@@ -50,12 +50,12 @@ namespace Apian
 
             _MsgDispatchers = new  Dictionary<string, Action<string, string, long, GameNetClientMessage>>()
             {
-                [ApianMessage.ApianGroupAnnounce] = (f,t,s,m) => this._DispatchGroupAnnounceMessage(f,t,s,m),
-                [ApianMessage.CliRequest] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
-                [ApianMessage.CliObservation] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
-                [ApianMessage.CliCommand] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
-                [ApianMessage.ApianClockOffset] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
-                [ApianMessage.GroupMessage] = (f,t,s,m) => this._DispatchApianMessage(f,t,s,m),
+                [ApianMessage.ApianGroupAnnounce] = (f,t,s,m) => this.DispatchGroupAnnounceMessage(f,t,s,m),
+                [ApianMessage.CliRequest] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
+                [ApianMessage.CliObservation] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
+                [ApianMessage.CliCommand] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
+                [ApianMessage.ApianClockOffset] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
+                [ApianMessage.GroupMessage] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
             };
         }
 
@@ -112,10 +112,12 @@ namespace Apian
             GroupRequestResults = null;
             return results;
         }
-        protected void _OnGroupAnnounceMsg(GroupAnnounceMsg gaMsg)
-        {
 
-        }
+
+        // protected void _OnGroupAnnounceMsg(GroupAnnounceMsg gaMsg)
+        // {
+        //     // TODO: At some poin tI thought I needed an OnGroupAnnounceMsg() method. If not - get rid of this entirely
+        // }
 
         // Joining a group (or creating and joining one)
         //
@@ -222,7 +224,7 @@ namespace Apian
             Client.OnGroupMemberStatus( groupId, peerId, newStatus, prevStatus);
         }
 
-        protected override void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)
+        protected override void HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)
         {
             // This is called by GameNetBase.OnClientMessage()
             // We want to pass messages through a dispatch table.
@@ -230,7 +232,7 @@ namespace Apian
             _MsgDispatchers[msg.clientMsgType](from, to, msSinceSent, msg);
         }
 
-        protected void _DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
+        protected void DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
             logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
@@ -249,7 +251,7 @@ namespace Apian
             }
         }
 
-        protected void _DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
+        protected void DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             // Special message only goes to client
             GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;

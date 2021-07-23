@@ -28,7 +28,7 @@ namespace Apian
             public long MaxTimeoutMs {get; private set;}
             public long CurExpiryTimeMs {get; private set;}
 
-            public bool IsExpired => CurExpiryTimeMs > 0 ? CurExpiryTimeMs < NowMs() : false;
+            public bool IsExpired => CurExpiryTimeMs > 0 && CurExpiryTimeMs < NowMs();
 
             public RfTimer(long minTimeoutMs, long maxTimeoutMs=0)
             {
@@ -94,8 +94,8 @@ namespace Apian
         protected string VotedFor; // this term
 
         // Timers
-        RfTimer HeartbeatTimer; // for Leader only - if expired broadcast a heartbeat
-        RfTimer ElectionTimer; // if expires, followers should think about becoming candidates
+        protected RfTimer HeartbeatTimer; // for Leader only - if expired broadcast a heartbeat
+        protected RfTimer ElectionTimer; // if expires, followers should think about becoming candidates
 
 
         // env
@@ -107,7 +107,7 @@ namespace Apian
         private long MinElectionTimeoutMs;
         private long MaxElectionTimeoutMs;
 
-        UniLogger Logger;
+        public UniLogger Logger;
 
         public RatfishElection(IApianGroupManager _groupMgr, ApianBase _apianInst,  Dictionary<string,string> _config = null)
         {
@@ -198,7 +198,7 @@ namespace Apian
         {
             RatfishApianCommand rCmd = cmd as RatfishApianCommand;
             Logger.Verbose($"Cmd (heartbeat) from {SID(msgSrc)}");
-            _OnHeartbeat( msgSrc, rCmd.ElectionTerm, rCmd.SequenceNum );
+            OnHeartbeat( msgSrc, rCmd.ElectionTerm, rCmd.SequenceNum );
         }
 
         public void OnVoteRequestMsg(ApianGroupMessage msg, string msgSrc)
@@ -214,10 +214,10 @@ namespace Apian
         {
             RatfishHeartBeatMsg hbMsg = msg as RatfishHeartBeatMsg; // message is From group leader 'cause its ratfish
             Logger.Verbose($"Heartbeat from {SID(msgSrc)}");
-            _OnHeartbeat( msgSrc, hbMsg.ElectionTerm, hbMsg.LastCmdSeqNum);
+            OnHeartbeat( msgSrc, hbMsg.ElectionTerm, hbMsg.LastCmdSeqNum);
         }
 
-        protected void _OnHeartbeat(string leaderId, long electionTerm, long lastCmdSeqNum)
+        protected void OnHeartbeat(string leaderId, long electionTerm, long lastCmdSeqNum)
         {
             // Important point: In RAFT AppendEntries() is acked with success and the recipient's term.
 

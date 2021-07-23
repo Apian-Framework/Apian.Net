@@ -84,7 +84,7 @@ namespace GameNet
         protected virtual IP2pNet P2pNetFactory(string p2pConnectionString)
         {
             // P2pConnectionString is <p2p implmentation name>::<imp-dependent connection string>
-            IP2pNet ip2p = null;
+            IP2pNet ip2p;
             string[] parts = p2pConnectionString.Split(new string[]{"::"},StringSplitOptions.None); // Yikes! This is fugly.
 
             switch(parts[0].ToLower())
@@ -241,16 +241,16 @@ namespace GameNet
             GameNetClientMessage gameNetClientMessage = JsonConvert.DeserializeObject<GameNetClientMessage>(payload);
 
             if (from == LocalP2pId())
-                loopedBackMessageHandlers.Enqueue( () => _HandleClientMessage(from, to, msSinceSent, gameNetClientMessage));
+                loopedBackMessageHandlers.Enqueue( () => HandleClientMessage(from, to, msSinceSent, gameNetClientMessage));
             else
-                _HandleClientMessage(from, to, msSinceSent, gameNetClientMessage);
+                HandleClientMessage(from, to, msSinceSent, gameNetClientMessage);
 
         }
 
         // Derived classes Must implment this, as well as client-specific messages
         // that call _SendClientMessage()
 
-        protected abstract void _HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage);
+        protected abstract void HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage);
 
 
         public void SendClientMessage(string _toChan, string _clientMsgType, string _payload)

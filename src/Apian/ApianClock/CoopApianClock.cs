@@ -58,11 +58,11 @@ namespace Apian
                 if (_sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
                 {
                     // CurrentTime = sysMs + peerOffset + peerAppOffset;
-                    _DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
+                    DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
                     Logger.Verbose($"OnApianClockOffset() - Set clock to match {p2pId}");
                 }
             } else {
-                UpdateForOtherPeers();
+                _UpdateForOtherPeers();
             }
         }
 
@@ -78,7 +78,7 @@ namespace Apian
         }
 
         // Internals
-        private void UpdateForOtherPeers()
+        private void _UpdateForOtherPeers()
         {
             long localErrSum = 0;
             int peerCount = 0;
@@ -102,7 +102,7 @@ namespace Apian
 
                 // Try to correct half of the error in kOffsetAnnounceBaseMs
                 float newRate = 1.0f + (.5f * localErrMs / OffsetAnnouncementPeriodMs);
-                _DoSet(CurrentTime, newRate);
+                DoSet(CurrentTime, newRate);
                 Logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");
             }
             else

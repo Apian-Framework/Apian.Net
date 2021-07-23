@@ -117,7 +117,7 @@ namespace Apian
     static public class ApianGroupMessageDeserializer
     {
 
-       private static Dictionary<string, Func<string, ApianGroupMessage>> deserializers = new  Dictionary<string, Func<string, ApianGroupMessage>>()
+       private static readonly Dictionary<string, Func<string, ApianGroupMessage>> deserializers = new  Dictionary<string, Func<string, ApianGroupMessage>>()
         {
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
             {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },

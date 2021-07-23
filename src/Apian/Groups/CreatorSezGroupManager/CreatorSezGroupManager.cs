@@ -20,7 +20,6 @@ namespace Apian
         // just in case it's a simple delivery order issue.
         // Admittedly, this shouldn't happen - but it's easy to account for.
 
-        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
         {
             {"CheckpointMs", "5000"},  // request a checkpoint this often
@@ -376,14 +375,14 @@ namespace Apian
                 Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
 
                 // Send current members to new joinee - do it bfore sending the new peers join msg
-                _SendMemberJoinedMessages(jreq.PeerId);
+                SendMemberJoinedMessages(jreq.PeerId);
 
                 // Just approve. Don't add (happens in OnGroupMemberJoined())
                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
                 // Now send status updates (from "joined") for any member that has changed status
-                _SendMemberStatusUpdates(jreq.PeerId);
+                SendMemberStatusUpdates(jreq.PeerId);
 
             }
         }
@@ -402,7 +401,7 @@ namespace Apian
             }
         }
 
-        protected void _SendMemberJoinedMessages(string toWhom)
+        protected void SendMemberJoinedMessages(string toWhom)
         {
             // Send a newly-approved member all of the Join messages for the other member
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
@@ -413,7 +412,7 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
-        protected void _SendMemberStatusUpdates(string toWhom)
+        protected void SendMemberStatusUpdates(string toWhom)
         {
             // Send a newly-approved member the status of every non-"Joining" member (since a joinmessage was already sent)
             List<GroupMemberStatusMsg> statusMsgs = Members.Values
@@ -424,7 +423,7 @@ namespace Apian
         }
 
 
-            protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // If from GroupCreator then it's valid
             if (msgSrc == GroupCreatorId)

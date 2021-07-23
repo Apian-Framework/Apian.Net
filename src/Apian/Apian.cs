@@ -69,14 +69,16 @@ namespace Apian
             AppCore.SetApianReference(this);
             Logger = UniLogger.GetLogger("Apian");
 
-            ApMsgHandlers = new Dictionary<string, Action<string, string, ApianMessage, long>>();
             // Add any truly generic handlers here
             // params are:  from, to, apMsg, msSinceSent
-            ApMsgHandlers[ApianMessage.CliRequest] = (f,t,m,d) => this.OnApianRequest(f,t,m,d);
-            ApMsgHandlers[ApianMessage.CliObservation] = (f,t,m,d) => this.OnApianObservation(f,t,m,d);
-            ApMsgHandlers[ApianMessage.CliCommand] = (f,t,m,d) => this.OnApianCommand(f,t,m,d);
-            ApMsgHandlers[ApianMessage.GroupMessage] = (f,t,m,d) => this.OnApianGroupMessage(f,t,m,d);
-            ApMsgHandlers[ApianMessage.ApianClockOffset] = (f,t,m,d) => this.OnApianClockOffsetMsg(f,t,m,d);
+            ApMsgHandlers = new Dictionary<string, Action<string, string, ApianMessage, long>>()
+            {
+                {ApianMessage.CliRequest, (f,t,m,d) => this.OnApianRequest(f,t,m,d) },
+                {ApianMessage.CliObservation, (f,t,m,d) => this.OnApianObservation(f,t,m,d) },
+                {ApianMessage.CliCommand, (f,t,m,d) => this.OnApianCommand(f,t,m,d) },
+                {ApianMessage.GroupMessage, (f,t,m,d) => this.OnApianGroupMessage(f,t,m,d) },
+                {ApianMessage.ApianClockOffset, (f,t,m,d) => this.OnApianClockOffsetMsg(f,t,m,d) }
+            };
 
             AppliedCommands = new Dictionary<long, ApianCommand>();
             MaxAppliedCmdSeqNum = -1; // this+1 is what we expect to apply next

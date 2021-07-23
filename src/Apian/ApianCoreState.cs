@@ -17,7 +17,7 @@ namespace Apian
         public long CommandSequenceNumber { get; protected set; } = -1;
 
 
-        public  string ApianSerializedBaseData(object args=null)
+        public string ApianSerializedBaseData(object args=null)
         {
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{

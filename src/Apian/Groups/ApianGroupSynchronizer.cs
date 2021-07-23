@@ -43,7 +43,7 @@ namespace Apian
         // Stashing commands we aren't ready for yet so we
         // can apply them once we've caught up,
         private int StashedCmdsToApplyPerUpdate {get; set;}
-        private Dictionary<long, ApianCommand> CommandStash; // commands we have save up LOCALLY until we have been sync'ed up to that point
+        private readonly Dictionary<long, ApianCommand> CommandStash; // commands we have save up LOCALLY until we have been sync'ed up to that point
         private long MaxStashedCmdSeqNum; // largest we have received
         private long MaxAppliedCmdSeqNum {get => ApianInst?.MaxAppliedCmdSeqNum ?? -1;}
 

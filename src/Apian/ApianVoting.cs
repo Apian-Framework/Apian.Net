@@ -84,7 +84,7 @@ namespace Apian
             public void SetComplete() => IsComplete = true;
         }
 
-        protected virtual int MajorityVotes(int peerCount) => peerCount / 2 + 1;
+        private int _MajorityVotes(int peerCount) => peerCount / 2 + 1;
         private Dictionary<T, VoteData> _voteDict;
         protected long TimeoutMs {get;}
         protected long CleanupMs {get;}
@@ -121,15 +121,15 @@ namespace Apian
                     vd.AddVote(votingPeer, msgTime);
                     vd.UpdateStatus(SysMs);
                     _voteDict[candidate] = vd; // VoteData is a struct (value) so must be re-added
-                    Logger.Debug($"Vote.Add: +1 for: {candidate.ToString()}, Votes: {vd.PeerIds.Count}");
+                    Logger.Debug($"Vote.Add: +1 for: {candidate}, Votes: {vd.PeerIds.Count}");
                 }
             } catch (KeyNotFoundException) {
-                int majorityCnt = MajorityVotes(totalPeers);
+                int majorityCnt = _MajorityVotes(totalPeers);
                 vd = new VoteData(majorityCnt, msgTime, SysMs+TimeoutMs, SysMs+CleanupMs);
                 vd.PeerIds.Add(votingPeer);
                 vd.UpdateStatus(SysMs);
                 _voteDict[candidate] = vd;
-                Logger.Debug($"Vote.Add: New: {candidate.ToString()}, Majority: {majorityCnt}");
+                Logger.Debug($"Vote.Add: New: {candidate}, Majority: {majorityCnt}");
             }
         }
 

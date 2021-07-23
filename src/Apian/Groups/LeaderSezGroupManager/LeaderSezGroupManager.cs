@@ -389,14 +389,14 @@ namespace Apian
                 Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
 
                 // Send current members to new joinee - do it bfore sending the new peers join msg
-                _SendMemberJoinedMessages(jreq.PeerId);
+                SendMemberJoinedMessages(jreq.PeerId);
 
                 // Just approve. Don't add (happens in OnGroupMemberJoined())
                RatfishMemberJoinedMsg jmsg = new RatfishMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson, ElectionMgr.CurrentTerm);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
                 // Now send status updates (from "joined") for any member that has changed status
-                _SendMemberStatusUpdates(jreq.PeerId);
+                SendMemberStatusUpdates(jreq.PeerId);
 
             }
         }
@@ -415,7 +415,7 @@ namespace Apian
             }
         }
 
-        protected void _SendMemberJoinedMessages(string toWhom)
+        protected void SendMemberJoinedMessages(string toWhom)
         {
             // Send a newly-approved member all of the Join messages for the other member
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
@@ -426,7 +426,7 @@ namespace Apian
                 ApianInst.SendApianMessage(toWhom, msg);
         }
 
-        protected void _SendMemberStatusUpdates(string toWhom)
+        protected void SendMemberStatusUpdates(string toWhom)
         {
             // Send a newly-approved member the status of every non-"Joining" member (since a joinmessage was already sent)
             List<GroupMemberStatusMsg> statusMsgs = Members.Values

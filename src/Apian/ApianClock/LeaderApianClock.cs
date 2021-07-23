@@ -5,7 +5,7 @@ using UniLog;
 
 namespace Apian
 {
-    // ReSharper disable once UnusedType.Global
+    //ReSharper disable once UnusedType.Global
     public class LeaderApianClock : ApianClockBase
     {
         protected string GroupCreatorId { get => _apian.GroupMgr.GroupCreatorId;}
@@ -74,14 +74,14 @@ namespace Apian
             {
                 Logger.Verbose($"OnPeerApianOffset() Idle. Just set.");
                 // CurrentTime = sysMs + peerOffset + peerAppOffset;
-                _DoSet( SystemTime + _leaderSysOffset + _leaderApianOffset );
+                DoSet( SystemTime + _leaderSysOffset + _leaderApianOffset );
             } else {
 
                 long localErr = SystemTime + _leaderSysOffset + _leaderApianOffset - CurrentTime;
 
                 // Try to correct half of the error in kOffsetAnnounceBaseMs
                 float newRate = 1.0f + (.5f * localErr / OffsetAnnouncementPeriodMs);
-                _DoSet(CurrentTime, newRate);
+                DoSet(CurrentTime, newRate);
                 Logger.Verbose($"Update: local error: {localErr}, New Rate: {newRate}");
             }
         }

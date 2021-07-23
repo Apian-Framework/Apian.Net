@@ -82,10 +82,10 @@ namespace Apian
         public void Set(long desiredTimeMs, float rate=1.0f )
         {
             Logger.Verbose("Set({desiredTimeMs}, Rate: {rate})");
-            _DoSet(desiredTimeMs, rate);
+            DoSet(desiredTimeMs, rate);
         }
 
-        protected void _DoSet(long desiredTimeMs, float rate=1.0f )
+        protected void DoSet(long desiredTimeMs, float rate=1.0f )
         {
             // We only want to send an annoucement if we explicitly set it
             _apianTimeBase = desiredTimeMs;
