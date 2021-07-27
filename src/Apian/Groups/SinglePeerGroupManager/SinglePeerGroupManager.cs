@@ -44,11 +44,11 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
-            if (!info.GroupType.Equals(GroupType))
+            if (!info.GroupType.Equals(GroupType, StringComparison.Ordinal))
                 Logger.Error($"SetupNewGroup(): incorrect GroupType: {info.GroupType} in info. Should be: GroupType");
 
             GroupInfo = info;
-            ApianInst.ApianClock.Set(0); // Need to start it running - we're the only peer
+            ApianInst.ApianClock.SetTime(0); // Need to start it running - we're the only peer
         }
 
         public override void SetupExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");

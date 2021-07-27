@@ -32,7 +32,7 @@ namespace GameNet
         void LeaveNetwork();
         string LocalP2pId();
         string CurrentNetworkId();
-        void Loop(); /// <summary> needs to be called periodically (drives message pump + group handling)</summary>
+        void Update(); /// <summary> needs to be called periodically (drives message pump + group handling)</summary>
     }
 
     public interface IGameNetClient
@@ -56,8 +56,8 @@ namespace GameNet
         //
         // This is a single game GameNet base implementation
         //
-        protected IGameNetClient client = null;
-        protected IP2pNet p2p = null;
+        protected IGameNetClient client;
+        protected IP2pNet p2p;
         public UniLogger logger;
 
         // Some client callbacks can happen as a direct result of a call, but we would like for
@@ -68,7 +68,7 @@ namespace GameNet
         protected Queue<Action> callbacksForNextPoll;
         protected Queue<Action> loopedBackMessageHandlers; // messages that come from this node (loopbacks) get handled at the end of the loop
 
-        public GameNetBase()
+        protected GameNetBase()
         {
             callbacksForNextPoll = new Queue<Action>();
             loopedBackMessageHandlers  = new Queue<Action>();
@@ -87,7 +87,7 @@ namespace GameNet
             IP2pNet ip2p;
             string[] parts = p2pConnectionString.Split(new string[]{"::"},StringSplitOptions.None); // Yikes! This is fugly.
 
-            switch(parts[0].ToLower())
+            switch(parts[0])
             {
                 case "p2ploopback":
                     ip2p = new P2pLoopback(this, null);
@@ -95,9 +95,6 @@ namespace GameNet
                 default:
                     throw( new Exception($"Invalid connection type: {parts[0]}"));
             }
-
-            if (ip2p == null)
-                throw( new Exception("p2p Connect failed"));
 
             return ip2p;
         }
@@ -145,7 +142,7 @@ namespace GameNet
 
             JoinNetworkCompletion = new TaskCompletionSource<PeerJoinedNetworkData>();
             JoinNetwork(netP2pChannel, netLocalData);
-            return await JoinNetworkCompletion.Task.ContinueWith<PeerJoinedNetworkData>( t => {JoinNetworkCompletion=null; return t.Result;} );
+            return await JoinNetworkCompletion.Task.ContinueWith( t => {JoinNetworkCompletion=null; return t.Result;},  TaskScheduler.Default).ConfigureAwait(false);
         }
 
         public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
@@ -179,7 +176,7 @@ namespace GameNet
             p2p.RemoveSubchannel(subChannelId);
         }
 
-        public virtual void Loop()
+        public virtual void Update()
         {
             // Dispatch any locally-enqueued actions
             while(callbacksForNextPoll.Count != 0)
@@ -250,7 +247,7 @@ namespace GameNet
         // Derived classes Must implment this, as well as client-specific messages
         // that call _SendClientMessage()
 
-        protected abstract void HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage);
+        protected abstract void HandleClientMessage(string from, string dest, long msSinceSent, GameNetClientMessage clientMessage);
 
 
         public void SendClientMessage(string _toChan, string _clientMsgType, string _payload)

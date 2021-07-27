@@ -1,8 +1,14 @@
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using P2pNet;
 using UniLog;
 
+// TODO: figure out what I ought to be doing here
+// For instance: how do you manage versioning? Having it hard-coded here is clearly not
+// the right thing.
+[assembly: AssemblyVersionAttribute("1.0.4")]
+[assembly:CLSCompliant(false)]
 namespace Apian
 {
     // ApianBase must (it IS abstract) be subclassed.

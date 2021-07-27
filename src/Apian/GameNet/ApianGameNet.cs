@@ -43,7 +43,7 @@ namespace Apian
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
 
-        public ApianGameNetBase() : base()
+        protected ApianGameNetBase() : base()
         {
             ApianInstances = new Dictionary<string, ApianBase>();
             Peers = new Dictionary<string,ApianNetworkPeer>();
@@ -107,7 +107,7 @@ namespace Apian
             GroupRequestResults = new Dictionary<string, ApianGroupInfo>();
             logger.Verbose($"RequestGroupsAsync()");
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
-            await Task.Delay(timeoutMs);
+            await Task.Delay(timeoutMs).ConfigureAwait(false);
             Dictionary<string, ApianGroupInfo> results = GroupRequestResults;
             GroupRequestResults = null;
             return results;
@@ -244,7 +244,7 @@ namespace Apian
                     ?? apMsg;
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
             }
-            else if (apMsg.DestGroupId == "") // Send to  all groups
+            else if (string.IsNullOrEmpty(apMsg.DestGroupId)) // Send to  all groups
             {
                 foreach (ApianBase ap in ApianInstances.Values)
                     ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);

@@ -39,7 +39,7 @@ namespace Apian
         public const long DefaultCleanupMs = 900;
         private static long SysMs => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;  // don;t use apian time for wait/expire stuff
 
-        public struct VoteData
+        private struct VoteData
         {
             public bool IsComplete {get; private set;}
             public int NeededVotes {get;}

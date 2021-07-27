@@ -17,7 +17,7 @@ namespace Apian
             kLeader = 3,
         };
 
-        public class RfTimer
+        protected class RfTimer
         {
             protected static System.Random RandInst = new System.Random();
             protected static long RangeRand(long low, long high) {return (long)(RandInst.NextDouble() * (high - low) + low);}
@@ -48,13 +48,13 @@ namespace Apian
 
         }
 
-        public class VotingData
+        protected class VotingData
         {
             // data needed while running and election or pre-vote
             public int requiredVotes; // how many votes what was a "majority" when vot Started
             public int yeas; // if either gets to required then it's over
             public int nays;
-            public RfTimer voteTimer; // uses electioTimeout times.
+            protected RfTimer voteTimer; // uses electioTimeout times.
 
             public VotingData(int _requiredVotes, long minTimeoutMs, long maxTimeoutMs)
             {

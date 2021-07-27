@@ -158,13 +158,13 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
-            if (!info.GroupType.Equals(GroupType))
+            if (!info.GroupType.Equals(GroupType, StringComparison.Ordinal))
                 Logger.Error($"SetupNewGroup(): incorrect GroupType: {info.GroupType} in info. SHould be: GroupType");
 
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
             LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're leader we need leaderdata
-            ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
+            ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
             NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
         }
 

@@ -10,7 +10,7 @@ namespace Apian
     {
         // ReSharper disable UnusedMemberInSuper.Global,UnusedMember.Global
         long CurrentTime { get;} // This is the ApianTime
-        void Set(long desiredTimeMs, float rate=1.0f );
+        void SetTime(long desiredTimeMs, float rate=1.0f );
         bool IsIdle { get;}  // hasn't been set yet
         long SystemTime { get;}  // local system clock
         long SysClockOffset {get; } // The current offset from local system time to apian:  localSysClock + offset = apianClock
@@ -57,7 +57,7 @@ namespace Apian
         protected long NewNextOffsetAnnounceTime {get =>  SystemTime + OffsetAnnouncementPeriodMs + new Random().Next(OffsetAnnouncementPeriodMs/4); }
         protected long _nextOffsetAnnounceTime;
 
-        public ApianClockBase(ApianBase apian)
+        protected ApianClockBase(ApianBase apian)
         {
             _apian = apian;
             Logger = UniLogger.GetLogger("ApianClock");
@@ -79,7 +79,7 @@ namespace Apian
         }
 
         // Set the time
-        public void Set(long desiredTimeMs, float rate=1.0f )
+        public void SetTime(long desiredTimeMs, float rate=1.0f )
         {
             Logger.Verbose("Set({desiredTimeMs}, Rate: {rate})");
             DoSet(desiredTimeMs, rate);

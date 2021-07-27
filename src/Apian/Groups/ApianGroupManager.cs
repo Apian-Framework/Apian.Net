@@ -28,10 +28,10 @@ namespace Apian
         public static ApianGroupInfo Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupInfo>(jsonString);
         public bool IsEquivalentTo(ApianGroupInfo agi2)
         {
-            return ( GroupType.Equals(agi2.GroupType)
+            return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
                 && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
-                && GroupCreatorId.Equals(agi2.GroupCreatorId)
-                && GroupName.Equals(agi2.GroupName) );
+                && GroupCreatorId.Equals(agi2.GroupCreatorId, System.StringComparison.Ordinal)
+                && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal);
         }
     }
 
@@ -125,7 +125,7 @@ namespace Apian
         protected ApianBase ApianInst {get; }
         protected Dictionary<string, ApianGroupMember> Members {get;}
 
-        public ApianGroupManagerBase(ApianBase apianInst)
+        protected ApianGroupManagerBase(ApianBase apianInst)
         {
             Logger = UniLogger.GetLogger("ApianGroup");
             ApianInst = apianInst;

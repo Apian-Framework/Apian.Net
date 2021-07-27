@@ -19,7 +19,7 @@ namespace Apian
             {"MaxSyncCmdsToSendPerUpdate", "10"} // sending commands to another peer to "catch it up"
         };
 
-        public class SyncingPeerData
+        protected class SyncingPeerData
         {
             public string peerId;
             public long nextCommandToSend;
@@ -50,7 +50,7 @@ namespace Apian
 
         // Sending commands to sync other peers
         public int MaxSyncCmdsToSendPerUpdate {get; private set;}
-        public Dictionary<string, SyncingPeerData> syncingPeers;
+        protected Dictionary<string, SyncingPeerData> syncingPeers;
 
         public ApianGroupSynchronizer(ApianBase apianInst, Dictionary<string,string> config)
         {

@@ -65,11 +65,11 @@ namespace Apian
             {
                 Logger = UniLogger.GetLogger("ApianGroup");    // re-use same logger (put class name in msgs)
                 ApianInst = apInst;
-                _LoadConfig(config);
+                LoadConfig(config);
                 curEpochData = new EpochData(0,0,-1); // -1 means we aren't done yet
             }
 
-            private void _LoadConfig(Dictionary<string,string> configDict)
+            private void LoadConfig(Dictionary<string,string> configDict)
             {
 
             }
@@ -151,13 +151,13 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
 
-            if (!info.GroupType.Equals(GroupType))
+            if (!info.GroupType.Equals(GroupType, StringComparison.Ordinal))
                 Logger.Error($"SetupNewGroup(): incorrect GroupType: {info.GroupType} in info. SHould be: GroupType");
 
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
             LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're leader we need leaderdata
-            ApianInst.ApianClock.Set(0); // we're the group leader so we need to start our clock
+            ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
             NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
         }
 
