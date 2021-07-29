@@ -8,8 +8,6 @@
 
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <!-- <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors> -->
-    <!-- <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild> -->
     <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 

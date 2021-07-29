@@ -192,7 +192,7 @@ namespace GameNet
                 action();
             }
 
-            p2p?.Loop();
+            p2p?.Update();
 
         }
 
