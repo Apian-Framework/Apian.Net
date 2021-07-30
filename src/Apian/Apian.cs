@@ -56,7 +56,7 @@ namespace Apian
 
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
         // To be batched-up and then ordered and checked for conflict before being sent out.
-        protected List<ApianCoreMessage> batchedObservations;
+        private List<ApianCoreMessage> batchedObservations;
 
         // Command-related stuff
         public Dictionary<long, ApianCommand> AppliedCommands; // All commands we have applied // TODO: write out/prune periodically?
