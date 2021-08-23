@@ -65,6 +65,8 @@ namespace ApianTests
 
         public class MockAppCore : IApianAppCore
         {
+            public event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt;
+
             public Dictionary<string,Func<ApianCoreMessage,ApianCoreMessage,(ApianConflictResult, string)>> conflictFuncs;
             public MockAppCore()
             {

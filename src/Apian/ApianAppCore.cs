@@ -3,14 +3,16 @@ using System.Collections.Generic;
 
 namespace Apian
 {
-    // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,UnusedMember.Global
 
+    public class NewCoreStateEventArgs : EventArgs {
+        public ApianCoreState coreState;
+        public NewCoreStateEventArgs(ApianCoreState _coreState) { coreState = _coreState;}
+    }
 
     public interface IApianAppCore
     {
-        // This is generally part of a AppCore definition
-        // Most apps will subclass this to include app-relevant data
-        // And subclass ApianGroupMember to do the same
+        event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt;
+
         void SetApianReference(ApianBase apian);
         void OnApianCommand(long cmdSeqNum, ApianCoreMessage coreMsg);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
@@ -26,7 +28,13 @@ namespace Apian
 
     public abstract class ApianAppCore : IApianAppCore
     {
+        public event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt;
         protected Dictionary<string, Action<ApianCoreMessage, long>> ClientMsgCommandHandlers;
+
+        protected virtual void OnNewCoreState(ApianCoreState newState = null)
+        {
+            NewCoreStateEvt?.Invoke(this, new NewCoreStateEventArgs(newState));
+        }
 
         public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
         public abstract void SetApianReference(ApianBase apian);
