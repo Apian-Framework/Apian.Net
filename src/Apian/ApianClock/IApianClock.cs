@@ -81,7 +81,7 @@ namespace Apian
         // Set the time
         public void SetTime(long desiredTimeMs, float rate=1.0f )
         {
-            Logger.Verbose("Set({desiredTimeMs}, Rate: {rate})");
+            Logger.Verbose($"Set({desiredTimeMs}, Rate: {rate})");
             DoSet(desiredTimeMs, rate);
         }
 
