@@ -63,6 +63,17 @@ namespace Apian
         // *** IGameNet Overrides
         //
 
+        public override void Update()
+        {
+            base.Update();
+
+            foreach (ApianBase ap in ApianInstances.Values)
+            {
+                ap.Update();
+            }
+
+        }
+
         // void Connect( string p2pConectionString );
         // void Disconnect();
 

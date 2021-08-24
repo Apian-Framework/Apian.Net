@@ -54,6 +54,8 @@ namespace Apian
         public string GroupId { get => GroupMgr.GroupId; }
         public string GroupType { get => GroupMgr.GroupType; }
 
+        public bool LocalPeerIsActive { get => GroupMgr.LocalMember?.CurStatus == ApianGroupMember.Status.Active; }
+
         // Observation Sets allow observations that are noticed during a CoreState "loop" (frame)
         // To be batched-up and then ordered and checked for conflict before being sent out.
         private List<ApianCoreMessage> batchedObservations;
@@ -86,7 +88,7 @@ namespace Apian
 
         }
 
-        public abstract bool Update(); // Returns TRUE is local peer is in active state
+        public abstract void Update();
 
         // Apian Messages
 
