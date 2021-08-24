@@ -61,7 +61,7 @@ namespace ApianTests
             throw new NotImplementedException();
         }
 
-        public override bool Update()
+        public override Call_validator_validated Update()
         {
             throw new NotImplementedException();
         }
