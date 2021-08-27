@@ -84,6 +84,9 @@ namespace Apian
             // returns FALSE otherwise - whether we did anything or not
             for(int i=0; i<StashedCmdsToApplyPerUpdate;i++)
             {
+                if (CommandStash.Count == 0)
+                    break;
+
                 long expectedSeqNum = MaxAppliedCmdSeqNum+1; // note that MaxAppliedCmdSeqNum gets updated by Apian.ApplyStashedCommand. Kinda ugly?
                 if (CommandStash.ContainsKey(expectedSeqNum))
                 {
@@ -95,7 +98,10 @@ namespace Apian
                 else
                 {
                     // This is NOT a bad thing unless we are synchronizing.
-                    Logger.Debug($"{this.GetType().Name}.ApplyStashedCommands(). Next expected command #{expectedSeqNum} not found in stash.");
+                    // NOTE: Implmenting the above TODO (deleting commands < what has been applied) makes the
+                    // uncertainty go away and this condition is always a bad thing.
+                    if (MaxAppliedCmdSeqNum < MaxStashedCmdSeqNum)
+                        Logger.Debug($"{this.GetType().Name}.ApplyStashedCommands(). Next expected command #{expectedSeqNum} not found in stash.");
                     break;
                 }
             }
