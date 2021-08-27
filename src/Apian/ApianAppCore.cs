@@ -29,15 +29,26 @@ namespace Apian
     public abstract class ApianAppCore : IApianAppCore
     {
         public event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt;
+
+        public ApianBase ApianBase {get; private set;}
+
         protected Dictionary<string, Action<ApianCoreMessage, long>> ClientMsgCommandHandlers;
 
+        public string LocalPeerId { get => ApianBase?.GameNet.LocalP2pId(); }
+        public string ApianNetId => ApianBase?.NetworkId;
+        public string ApianGroupName => ApianBase?.GroupName;
+        public string ApianGroupId => ApianBase?.GroupId;
+
+        public virtual void SetApianReference(ApianBase apian)
+        {
+            ApianBase = apian;
+        }
         protected virtual void OnNewCoreState(ApianCoreState newState = null)
         {
             NewCoreStateEvt?.Invoke(this, new NewCoreStateEventArgs(newState));
         }
 
         public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
-        public abstract void SetApianReference(ApianBase apian);
         public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
         public abstract void OnCheckpointCommand(ApianCheckpointMsg msg, long seqNum);
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
