@@ -22,6 +22,14 @@ namespace Apian
             GroupName = groupName;
         }
 
+        public ApianGroupInfo(ApianGroupInfo srcGrp)
+        {
+            GroupType = srcGrp.GroupType;
+            GroupChannelInfo = srcGrp.GroupChannelInfo;
+            GroupCreatorId = srcGrp.GroupCreatorId;
+            GroupName = srcGrp.GroupName;
+        }
+
         public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
 
         public string Serialized() =>  JsonConvert.SerializeObject(this);
