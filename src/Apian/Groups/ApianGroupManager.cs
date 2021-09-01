@@ -13,21 +13,15 @@ namespace Apian
         public string GroupId { get => GroupChannelInfo?.id;} // channel
         public string GroupCreatorId;
         public string GroupName;
+        public Dictionary<string, string> GroupParams;
 
-        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorId, string groupName)
+        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorId, string groupName, Dictionary<string, string> grpParams = null)
         {
             GroupType = groupType;
             GroupChannelInfo = groupChannel;
             GroupCreatorId = creatorId;
             GroupName = groupName;
-        }
-
-        public ApianGroupInfo(ApianGroupInfo srcGrp)
-        {
-            GroupType = srcGrp.GroupType;
-            GroupChannelInfo = srcGrp.GroupChannelInfo;
-            GroupCreatorId = srcGrp.GroupCreatorId;
-            GroupName = srcGrp.GroupName;
+            GroupParams = grpParams ?? new Dictionary<string, string>();
         }
 
         public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
@@ -39,7 +33,8 @@ namespace Apian
             return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
                 && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
                 && GroupCreatorId.Equals(agi2.GroupCreatorId, System.StringComparison.Ordinal)
-                && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal);
+                && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal)
+                && GroupParams.Equals(agi2.GroupParams);
         }
     }
 
