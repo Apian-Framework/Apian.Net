@@ -24,6 +24,17 @@ namespace Apian
             GroupParams = grpParams ?? new Dictionary<string, string>();
         }
 
+        public ApianGroupInfo(ApianGroupInfo agi)
+        {
+            // This ctor makes it easier for applications to subclass AGI and add app-specific GroupParams
+            // and top-level properties to expose them
+            GroupType = agi.GroupType;
+            GroupChannelInfo = agi.GroupChannelInfo;
+            GroupCreatorId = agi.GroupCreatorId;
+            GroupName = agi.GroupName;
+            GroupParams = agi.GroupParams;
+        }
+
         public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
 
         public string Serialized() =>  JsonConvert.SerializeObject(this);
