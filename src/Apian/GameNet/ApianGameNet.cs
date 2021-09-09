@@ -8,14 +8,33 @@ using System.Threading.Tasks;
 
 namespace Apian
 {
+    public class PeerJoinedGroupData
+    {
+        public string PeerId {get; private set;}
+        public ApianGroupInfo GroupInfo {get; private set;}
+        public bool Success {get; private set;}
+        public string Message {get; private set;}
+        public PeerJoinedGroupData (string peerId, ApianGroupInfo groupInfo, bool success, string message = null)
+        {
+            PeerId = peerId;
+            GroupInfo = groupInfo;
+            Success = success;
+            Message = message;
+        }
+    }
+
     public interface IApianGameNet : IGameNet
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
         Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs);
+
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
+
+        // Called by Apian
+         void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
 
     }
 
@@ -228,6 +247,22 @@ namespace Apian
         public void AddApianInstance( ApianBase instance, string groupId)
         {
             ApianInstances[groupId] = instance;
+        }
+
+        public virtual void OnPeerJoinedGroup( string peerId, string groupId, bool joinSuccess, string message = null)
+        {
+
+            if (ApianInstances.ContainsKey(groupId))
+            {
+                ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, joinSuccess, message);
+
+                // For local async join requests
+                // if (peerId == LocalP2pId() && JoinGroupCompletion != null)
+                //    JoinGroupCompletion.TrySetResult(joinData);
+
+                Client.OnPeerJoinedGroup(joinData);
+            }
         }
 
         public void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)

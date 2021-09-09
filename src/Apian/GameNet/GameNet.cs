@@ -128,7 +128,6 @@ namespace GameNet
         //     callbacksForNextPoll.Enqueue( () => client.OnNetworkCreated(newId));
         // }
 
-
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
             if (netLocalData != null)

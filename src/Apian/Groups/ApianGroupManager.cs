@@ -97,6 +97,7 @@ namespace Apian
 
 
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global        ApianGroupInfo GroupInfo {get;}
+        ApianGroupInfo GroupInfo {get; }
         string GroupId {get; }
         string GroupName {get; }
         string GroupType {get;}
@@ -105,6 +106,7 @@ namespace Apian
         string LocalPeerId {get;}
         ApianGroupMember LocalMember {get;}
         ApianGroupMember GetMember(string peerId); // returns null if not there
+        int MemberCount { get; }
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
@@ -134,6 +136,7 @@ namespace Apian
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public ApianGroupMember LocalMember {protected set; get;}
+        public int MemberCount {get => Members.Count; }
         public UniLogger Logger;
 
         protected ApianBase ApianInst {get; }

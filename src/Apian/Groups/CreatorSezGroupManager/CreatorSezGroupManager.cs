@@ -129,6 +129,7 @@ namespace Apian
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
+                {ApianGroupMessage.GroupJoinFailed, OnGroupJoinFailed },
                 {ApianGroupMessage.GroupLeaveRequest, OnGroupLeaveRequest },
                 {ApianGroupMessage.GroupMemberJoined, OnGroupMemberJoined },
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
@@ -372,17 +373,29 @@ namespace Apian
             if (LocalPeerIsLeader)
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
-                Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} from {jreq.PeerId}");
 
-                // Send current members to new joinee - do it bfore sending the new peers join msg
-                SendMemberJoinedMessages(jreq.PeerId);
+                string failureReason = ApianInst.ValidateJoinRequest(jreq); // non-null is refusal
+                if (failureReason == null)
+                {
+                    Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} req from {SID(jreq.PeerId)}");
 
-                // Just approve. Don't add (happens in OnGroupMemberJoined())
-               GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
-                ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
+                    // Send current members to new joinee - do it bfore sending the new peers join msg
+                    SendMemberJoinedMessages(jreq.PeerId);
 
-                // Now send status updates (from "joined") for any member that has changed status
-                SendMemberStatusUpdates(jreq.PeerId);
+                    // Don't add (happens in OnGroupMemberJoined())
+                    GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
+                    ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
+
+                    // Now send status updates (from "joined") for any member that has changed status
+                    SendMemberStatusUpdates(jreq.PeerId);
+                }
+                else
+                {
+                    Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): FAILING {SID(jreq.PeerId)} because \"{failureReason}\"");
+                    // Nope.
+                    GroupJoinFailedMsg rmsg = new GroupJoinFailedMsg(GroupId, jreq.PeerId, failureReason);
+                    ApianInst.SendApianMessage(jreq.PeerId, rmsg);
+                }
 
             }
         }
@@ -429,7 +442,7 @@ namespace Apian
             if (msgSrc == GroupCreatorId)
             {
                 GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-                Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {joinedMsg.PeerId}");
+                Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {SID(joinedMsg.PeerId)}");
 
                 ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
 
@@ -446,6 +459,21 @@ namespace Apian
                 }
             }
         }
+
+        protected void OnGroupJoinFailed(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            // If from GroupCreator then it's valid
+            if (msgSrc == GroupCreatorId)
+            {
+                GroupJoinFailedMsg failedMsg = (msg as GroupJoinFailedMsg);
+                Logger.Info($"{this.GetType().Name}.OnGroupJoinFailed() from boss: {failedMsg.DestGroupId} not joined by {SID(failedMsg.PeerId)} because \"{failedMsg.FailureReason}\" ");
+
+                // Should only come to requestor, and needs to be reported to the Application via gamenet
+                if (failedMsg.PeerId == LocalPeerId)
+                    ApianInst.OnGroupJoinFailed(failedMsg.PeerId, failedMsg.FailureReason); // inform local apian
+            }
+        }
+
 
         protected void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {

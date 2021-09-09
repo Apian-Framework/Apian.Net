@@ -10,5 +10,6 @@ namespace Apian
         void AddAppCore(IApianAppCore coreInstance);
         void OnGroupAnnounce(ApianGroupInfo groupInfo);
         void OnGroupMemberStatus(string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
+        void OnPeerJoinedGroup(PeerJoinedGroupData data);
     }
 }

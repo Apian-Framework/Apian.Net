@@ -49,6 +49,7 @@ namespace Apian
         public IApianGameNet GameNet {get; private set;}
         public IApianAppCore AppCore {get; private set;}
 
+        public ApianGroupInfo GroupInfo { get => GroupMgr.GroupInfo; }
         public string GroupName { get => GroupMgr.GroupName; }
         public string NetworkId { get => GameNet.CurrentNetworkId(); }
         public string GroupId { get => GroupMgr.GroupId; }
@@ -285,23 +286,37 @@ namespace Apian
         }
 
         // FROM GroupManager
+
+         // Is there an App reason for refusing? Return NULL to allow, failure reason otherwise
+        abstract public string ValidateJoinRequest( GroupJoinRequestMsg requestMsg);
+
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
         {
-            // By default just helps getting ApianClock set up.
+            // By default just helps getting ApianClock set up and reports back to GameNet/Client
             // App-specific Apian instance needs to field this if it cares for any other reason.
             // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
             // But it usually DOES care about the LOCAL peer's group membership status.
 
-            if (member.PeerId != GameNet.LocalP2pId() &&  ApianClock != null)
+            if (member.PeerId != GameNet.LocalP2pId() )
             {
-                PeerClockSyncData syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
-                if (syncData == null)
-                    Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
-                else
+
+                if (ApianClock != null)
                 {
-                    ApianClock.OnNewPeer(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
+                    PeerClockSyncData syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
+                    if (syncData == null)
+                        Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
+                    else
+                        ApianClock.OnNewPeer(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
                 }
             }
+
+            GameNet.OnPeerJoinedGroup( member.PeerId, GroupId, true, null);
+
+        }
+
+        public virtual void OnGroupJoinFailed(string peerId, string failureReason)
+        {
+            GameNet.OnPeerJoinedGroup( peerId, GroupId, false,  failureReason );
         }
 
         public virtual void OnGroupMemberLeft(string groupId, string peerId)
