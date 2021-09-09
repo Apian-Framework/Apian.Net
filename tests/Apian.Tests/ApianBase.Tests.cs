@@ -61,6 +61,11 @@ namespace ApianTests
             throw new NotImplementedException();
         }
 
+        public override string ValidateJoinRequest(GroupJoinRequestMsg msg)
+        {
+            throw new NotImplementedException();            
+        }
+
         public override void Update()
         {
             throw new NotImplementedException();
@@ -97,6 +102,8 @@ namespace ApianTests
 
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(p => p.LocalP2pId()).Returns(localP2pId);
+            
+            mockGameNet.Setup(p => p.OnPeerJoinedGroup(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>() ));         
 
             // If peerId is "noSync" it returns null
             mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>())).Returns(peerSyncData);
