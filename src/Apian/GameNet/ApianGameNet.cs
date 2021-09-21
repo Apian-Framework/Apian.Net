@@ -62,6 +62,8 @@ namespace Apian
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
 
+        private Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>> JoinGroupAsyncCompletionSources;
+
         protected ApianGameNetBase() : base()
         {
             ApianInstances = new Dictionary<string, ApianBase>();
@@ -76,6 +78,8 @@ namespace Apian
                 [ApianMessage.ApianClockOffset] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
                 [ApianMessage.GroupMessage] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
             };
+
+            JoinGroupAsyncCompletionSources = new Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>>();
         }
 
         //
@@ -144,16 +148,10 @@ namespace Apian
         }
 
 
-        // protected void _OnGroupAnnounceMsg(GroupAnnounceMsg gaMsg)
-        // {
-        //     // TODO: At some poin tI thought I needed an OnGroupAnnounceMsg() method. If not - get rid of this entirely
-        // }
-
         // Joining a group (or creating and joining one)
         //
-        // Eventual result is hopefully a call to:
-        //    OnGroupMemberStatusChange(_Member) where member is the local peer and CurStatus is "Active"
-        //
+        // Eventual result is hopefully a call to caller's:
+        //    OnPeerJoinedGroup() with result info including failure results)
 
         public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
@@ -170,6 +168,34 @@ namespace Apian
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
             apian.JoinGroup(localGroupData); //
         }
+
+        // Async versions of the above group joining methods which return success/failure results
+
+        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        {
+             if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
+                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
+
+            JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
+            JoinExistingGroup( groupInfo,  apian,  localGroupData);
+            return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
+                t => {  JoinGroupAsyncCompletionSources[groupInfo.GroupId]=null; return t.Result;}, TaskScheduler.Default
+                ).ConfigureAwait(false);
+        }
+
+        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        {
+             if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
+                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
+
+            JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
+            CreateAndJoinGroup( groupInfo,  apian,  localGroupData);
+            return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
+                t => {  JoinGroupAsyncCompletionSources[groupInfo.GroupId]=null; return t.Result;}, TaskScheduler.Default
+                ).ConfigureAwait(false);
+        }
+
+
 
         public void LeaveGroup(string groupId)
         {
@@ -258,8 +284,8 @@ namespace Apian
                 PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, joinSuccess, message);
 
                 // For local async join requests
-                // if (peerId == LocalP2pId() && JoinGroupCompletion != null)
-                //    JoinGroupCompletion.TrySetResult(joinData);
+                if (peerId == LocalP2pId() && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+                    JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
 
                 Client.OnPeerJoinedGroup(joinData);
             }
