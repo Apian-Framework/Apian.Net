@@ -224,9 +224,16 @@ namespace Apian
 
         public override void OnPeerLeft(string channelId, string p2pId)
         {
+            logger.Info($"OnPeerLeft() - channel: {channelId}, Peer: {p2pId}");
+            if (!Peers.ContainsKey(p2pId))
+            {
+                logger.Info($"OnPeerLeft(): Ignoring. Not a known peer.");
+                return;
+            }
 
             if (channelId == CurrentNetworkId()) // P2pNet Peer left main game channel.
             {
+                logger.Info($"OnPeerLeft() - Is main network channel. Informing all groups.");
                 // Leave any groups
                 foreach (ApianBase ap in ApianInstances.Values)
                     ap.OnGroupMemberLeft(channelId, p2pId);
