@@ -107,10 +107,9 @@ namespace Apian
         {
             // No need to validate source, since it;s local
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-            _Member = new ApianGroupMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
-            if (joinedMsg.PeerId==LocalPeerId) // In this case, had BETTER be true;
-                LocalMember = _Member;
-            _Member.CurStatus = ApianGroupMember.Status.Joining;
+
+            _Member = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+
             ApianInst.OnGroupMemberJoined(_Member);
 
             // Go ahead an mark/announce "active"

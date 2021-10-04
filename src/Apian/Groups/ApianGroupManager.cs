@@ -64,7 +64,7 @@ namespace Apian
         public string PeerId {get;}
         public Status CurStatus {get; set;}
 
-        public string AppDataJson; // This is ApianClient-relevant data. It's Apian doesn;t read it
+        public string AppDataJson; // This is ApianClient-relevant data. Apian doesn't read it
 
         public ApianGroupMember(string peerId, string appDataJson)
         {
@@ -106,6 +106,7 @@ namespace Apian
         string LocalPeerId {get;}
         ApianGroupMember LocalMember {get;}
         ApianGroupMember GetMember(string peerId); // returns null if not there
+        Dictionary<string, ApianGroupMember> Members {get;}
         int MemberCount { get; }
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
@@ -140,7 +141,7 @@ namespace Apian
         public UniLogger Logger;
 
         protected ApianBase ApianInst {get; }
-        protected Dictionary<string, ApianGroupMember> Members {get;}
+        public Dictionary<string, ApianGroupMember> Members {get;}
 
         protected ApianGroupManagerBase(ApianBase apianInst)
         {
@@ -155,6 +156,20 @@ namespace Apian
                 return null;
             return Members[peerId];
         }
+
+        protected ApianGroupMember _AddMember(string peerId, string appMemberDataJson )
+        {
+            // Calls ApianInstance CreateGroupMember() to allow it to create an app-specific derived class
+            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
+            //ApianGroupMember newMember =  new ApianGroupMember(peerId, appMemberDataJson);
+            ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerId, appMemberDataJson);
+            newMember.CurStatus = ApianGroupMember.Status.Joining;
+            Members[peerId] = newMember;
+            if (peerId==LocalPeerId)
+                LocalMember = newMember;
+            return newMember;
+        }
+
 
         // TODO: There may be good default implmentations for some of these methods
         // that ought to just live here

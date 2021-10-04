@@ -195,17 +195,6 @@ namespace Apian
             // Maybe we should just do it here? Nah.
         }
 
-        private ApianGroupMember _AddMember(string peerId, string appDataJson)
-        {
-            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
-            ApianGroupMember newMember =  new ApianGroupMember(peerId, appDataJson);
-            newMember.CurStatus = ApianGroupMember.Status.Joining;
-            Members[peerId] = newMember;
-            if (peerId==LocalPeerId)
-                LocalMember = newMember;
-            return newMember;
-        }
-
         public override void Update()
         {
             ElectionMgr.Update();

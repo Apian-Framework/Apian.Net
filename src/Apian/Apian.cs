@@ -274,6 +274,11 @@ namespace Apian
 
         // Group-related
 
+        // Called by the GroupManager. The absolute minimum for this would be:
+        // CreateGroupMember(string peerId, string appMemberDataJson) => new ApianGroupMember(peerId, appMemberDataJson);
+        // But the whole point is to subclass ApianGroupMember, so don't do that.
+        public abstract ApianGroupMember CreateGroupMember(string peerId, string appMemberDataJson);
+
         public void SetupNewGroup(ApianGroupInfo info) => GroupMgr.SetupNewGroup(info);
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);

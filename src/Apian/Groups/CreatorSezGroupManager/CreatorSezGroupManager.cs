@@ -189,17 +189,6 @@ namespace Apian
             // Maybe we should just do it here? Nah.
         }
 
-        private ApianGroupMember _AddMember(string peerId, string appDataJson)
-        {
-            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
-            ApianGroupMember newMember =  new ApianGroupMember(peerId, appDataJson);
-            newMember.CurStatus = ApianGroupMember.Status.Joining;
-            Members[peerId] = newMember;
-            if (peerId==LocalPeerId)
-                LocalMember = newMember;
-            return newMember;
-        }
-
         public override void Update()
         {
             if (LocalPeerIsLeader)
@@ -487,9 +476,15 @@ namespace Apian
                     ApianGroupMember.Status old = m.CurStatus;
                     m.CurStatus = sMsg.MemberStatus;
                     ApianInst.OnGroupMemberStatusChange(m, old);
+
+                    if (sMsg.MemberStatus == ApianGroupMember.Status.Removed)
+                    {
+                        Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): Removing Member {sMsg.PeerId}");
+                        Members.Remove(sMsg.PeerId);
+                    }
                 }
                 else
-                    Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): Member {sMsg.PeerId} not present" );
+                    Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): No action.  {sMsg.PeerId} is not a member." );
             }
         }
 
