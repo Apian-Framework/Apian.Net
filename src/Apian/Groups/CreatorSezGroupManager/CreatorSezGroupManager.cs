@@ -363,29 +363,17 @@ namespace Apian
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
 
-                string failureReason = ApianInst.ValidateJoinRequest(jreq); // non-null is refusal
-                if (failureReason == null)
-                {
-                    Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} req from {SID(jreq.PeerId)}");
+                Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} req from {SID(jreq.PeerId)}");
 
-                    // Send current members to new joinee - do it bfore sending the new peers join msg
-                    SendMemberJoinedMessages(jreq.PeerId);
+                // Send current members to new joinee - do it bfore sending the new peers join msg
+                SendMemberJoinedMessages(jreq.PeerId);
 
-                    // Don't add (happens in OnGroupMemberJoined())
-                    GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
-                    ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
+                // Don't add (happens in OnGroupMemberJoined())
+                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
+                ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
-                    // Now send status updates (from "joined") for any member that has changed status
-                    SendMemberStatusUpdates(jreq.PeerId);
-                }
-                else
-                {
-                    Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): FAILING {SID(jreq.PeerId)} because \"{failureReason}\"");
-                    // Nope.
-                    GroupJoinFailedMsg rmsg = new GroupJoinFailedMsg(GroupId, jreq.PeerId, failureReason);
-                    ApianInst.SendApianMessage(jreq.PeerId, rmsg);
-                }
-
+                // Now send status updates (from "joined") for any member that has changed status
+                SendMemberStatusUpdates(jreq.PeerId);
             }
         }
 

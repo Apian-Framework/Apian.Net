@@ -292,8 +292,9 @@ namespace Apian
 
         // FROM GroupManager
 
+        // TODO: put this back when I'm actually ready for it.
          // Is there an App reason for refusing? Return NULL to allow, failure reason otherwise
-        abstract public string ValidateJoinRequest( GroupJoinRequestMsg requestMsg);
+        //abstract public string ValidateJoinRequest( GroupJoinRequestMsg requestMsg);
 
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
         {
