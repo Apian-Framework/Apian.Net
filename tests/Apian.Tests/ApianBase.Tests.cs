@@ -66,11 +66,6 @@ namespace ApianTests
             throw new NotImplementedException();
         }
 
-        public override string ValidateJoinRequest(GroupJoinRequestMsg msg)
-        {
-            throw new NotImplementedException();
-        }
-
         public override void Update()
         {
             throw new NotImplementedException();
