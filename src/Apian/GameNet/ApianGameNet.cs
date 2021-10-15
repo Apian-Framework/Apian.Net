@@ -290,9 +290,7 @@ namespace Apian
                 ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
                 PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, joinSuccess, message);
 
-                // For local async join requests
-                if (peerId == LocalP2pId() && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
-                    JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
+                // local async join requests aren't considered complete until the peer has Active status
 
                 Client.OnPeerJoinedGroup(joinData);
             }
@@ -300,6 +298,14 @@ namespace Apian
 
         public void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)
         {
+            //  For Async Join request, local application isn't told that it has "joined" a group until it is Active
+            if (peerId == LocalP2pId() && newStatus == ApianGroupMember.Status.Active && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+            {
+                ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, true);
+                JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
+            }
+
             Client.OnGroupMemberStatus( groupId, peerId, newStatus, prevStatus);
         }
 
