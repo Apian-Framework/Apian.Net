@@ -60,6 +60,14 @@ namespace Apian
             ActiveMemberCount = mCnt;
             OtherStatus = otherStatus ?? new Dictionary<string, string>();
         }
+
+        public ApianGroupStatus(ApianGroupStatus ags)
+        {
+            // Subclasses can use this as : base(apianStatus)
+            ActiveMemberCount = ags.ActiveMemberCount;
+            OtherStatus = ags.OtherStatus;
+        }
+
         public ApianGroupStatus() {} // required by Newtonsoft JSON stuff
 
         public string Serialized() =>  JsonConvert.SerializeObject(this);
