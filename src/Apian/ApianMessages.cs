@@ -64,11 +64,15 @@ namespace Apian
     public class GroupAnnounceMsg : ApianMessage // Send on main channel - no DestGroupId
     {
         public string groupInfoJson;
+        public string groupStatusJson;
         public ApianGroupInfo DecodeGroupInfo() => ApianGroupInfo.Deserialize(groupInfoJson);
+        public ApianGroupStatus DecodeGroupStatus() => ApianGroupStatus.Deserialize(groupStatusJson);
+
         public GroupAnnounceMsg() : base() {}
-        public GroupAnnounceMsg(ApianGroupInfo info) : base("", ApianGroupAnnounce)
+        public GroupAnnounceMsg(ApianGroupInfo info, ApianGroupStatus curStatus) : base("", ApianGroupAnnounce)
         {
             groupInfoJson = info.Serialized();
+            groupStatusJson = curStatus.Serialized();
         }
     }
 

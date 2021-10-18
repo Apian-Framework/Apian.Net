@@ -350,7 +350,7 @@ namespace Apian
             if (LocalPeerIsLeader)
             {
                 Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest, sending response.");
-                GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo);
+                GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo, ApianInst.CurrentGroupStatus());
                 ApianInst.SendApianMessage(msgSrc, amsg);
             }
         }

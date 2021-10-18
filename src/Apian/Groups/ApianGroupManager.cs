@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
@@ -48,6 +48,24 @@ namespace Apian
                 && GroupParams.Equals(agi2.GroupParams);
         }
     }
+
+    public class ApianGroupStatus
+    {
+        public int ActiveMemberCount { get; set;  }
+
+        public Dictionary<string, string> OtherStatus;
+
+        public ApianGroupStatus(int mCnt, Dictionary<string, string> otherStatus = null)
+        {
+            ActiveMemberCount = mCnt;
+            OtherStatus = otherStatus ?? new Dictionary<string, string>();
+        }
+        public ApianGroupStatus() {} // required by Newtonsoft JSON stuff
+
+        public string Serialized() =>  JsonConvert.SerializeObject(this);
+        public static ApianGroupStatus Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupStatus>(jsonString);
+    }
+
 
     public class ApianGroupMember
     {
@@ -108,6 +126,7 @@ namespace Apian
         ApianGroupMember GetMember(string peerId); // returns null if not there
         Dictionary<string, ApianGroupMember> Members {get;}
         int MemberCount { get; }
+        int ActiveMemberCount { get; }
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
@@ -138,6 +157,8 @@ namespace Apian
         public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
+        public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
+
         public UniLogger Logger;
 
         protected ApianBase ApianInst {get; }

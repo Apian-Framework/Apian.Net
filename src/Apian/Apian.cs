@@ -292,6 +292,11 @@ namespace Apian
 
         // FROM GroupManager
 
+        public virtual ApianGroupStatus CurrentGroupStatus()
+        {
+            return new ApianGroupStatus(GroupMgr.ActiveMemberCount);
+        }
+
         // TODO: put this back when I'm actually ready for it.
          // Is there an App reason for refusing? Return NULL to allow, failure reason otherwise
         //abstract public string ValidateJoinRequest( GroupJoinRequestMsg requestMsg);
