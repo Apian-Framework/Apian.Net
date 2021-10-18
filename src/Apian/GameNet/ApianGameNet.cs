@@ -340,12 +340,13 @@ namespace Apian
         {
             // Special message only goes to client
             GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
-            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {gaMsg.GroupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
+            ApianGroupInfo groupInfo = gaMsg.DecodeGroupInfo();
+            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (GroupRequestResults != null)
-                GroupRequestResults[gaMsg.GroupInfo.GroupId] = gaMsg.GroupInfo; // RequestGroupsAsync was called
+                GroupRequestResults[groupInfo.GroupId] = groupInfo; // RequestGroupsAsync was called
             else
-                Client.OnGroupAnnounce(gaMsg.GroupInfo); // TODO: should this happen even on an async request?
+                Client.OnGroupAnnounce(groupInfo); // TODO: should this happen even on an async request?
         }
 
 
