@@ -27,7 +27,7 @@ namespace Apian
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
-        Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs);
+        Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
 
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
@@ -133,16 +133,16 @@ namespace Apian
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
-        private Dictionary<string, ApianGroupInfo> GroupRequestResults;
+        private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
 
-        public async Task<Dictionary<string, ApianGroupInfo>> RequestGroupsAsync(int timeoutMs)
+        public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
         {
             // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
-            GroupRequestResults = new Dictionary<string, ApianGroupInfo>();
+            GroupRequestResults = new Dictionary<string, GroupAnnounceResult>();
             logger.Verbose($"RequestGroupsAsync()");
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
             await Task.Delay(timeoutMs).ConfigureAwait(false);
-            Dictionary<string, ApianGroupInfo> results = GroupRequestResults;
+            Dictionary<string, GroupAnnounceResult> results = GroupRequestResults;
             GroupRequestResults = null;
             return results;
         }
@@ -341,10 +341,11 @@ namespace Apian
             // Special message only goes to client
             GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
             ApianGroupInfo groupInfo = gaMsg.DecodeGroupInfo();
+            ApianGroupStatus groupStatus = gaMsg.DecodeGroupStatus();
             logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (GroupRequestResults != null)
-                GroupRequestResults[groupInfo.GroupId] = groupInfo; // RequestGroupsAsync was called
+                GroupRequestResults[groupInfo.GroupId] = new GroupAnnounceResult(groupInfo, groupStatus); // RequestGroupsAsync was called
             else
                 Client.OnGroupAnnounce(groupInfo); // TODO: should this happen even on an async request?
         }

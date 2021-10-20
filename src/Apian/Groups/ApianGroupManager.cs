@@ -51,6 +51,7 @@ namespace Apian
 
     public class ApianGroupStatus
     {
+        // Created via Apian.CurrentGroupStatus()
         public int ActiveMemberCount { get; set;  }
 
         public Dictionary<string, string> OtherStatus;
@@ -74,6 +75,12 @@ namespace Apian
         public static ApianGroupStatus Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupStatus>(jsonString);
     }
 
+    public class GroupAnnounceResult
+    {
+        public ApianGroupInfo GroupInfo { get; private set; }
+        public ApianGroupStatus GroupStatus { get; private set; }
+        public GroupAnnounceResult(ApianGroupInfo info, ApianGroupStatus status) { GroupInfo = info; GroupStatus = status; }
+    }
 
     public class ApianGroupMember
     {
