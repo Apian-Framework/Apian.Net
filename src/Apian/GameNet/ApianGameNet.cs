@@ -179,7 +179,7 @@ namespace Apian
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
             JoinExistingGroup( groupInfo,  apian,  localGroupData);
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
-                t => {  JoinGroupAsyncCompletionSources[groupInfo.GroupId]=null; return t.Result;}, TaskScheduler.Default
+                t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
 
@@ -191,7 +191,7 @@ namespace Apian
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
             CreateAndJoinGroup( groupInfo,  apian,  localGroupData);
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
-                t => {  JoinGroupAsyncCompletionSources[groupInfo.GroupId]=null; return t.Result;}, TaskScheduler.Default
+                t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
 
