@@ -39,7 +39,6 @@ namespace Apian
             CommandSequenceNumber = newCmdSeqNumber;
         }
 
-
         public string ApianSerializedBaseData(object args=null)
         {
             // return the "base part"
@@ -60,8 +59,6 @@ namespace Apian
         //public static DerivedCoreStateType FromApianSerialized( string serializedData, <other class-dependent-args>)
 
         public abstract string ApianSerialized(object args=null);
-
-
     }
 
 
