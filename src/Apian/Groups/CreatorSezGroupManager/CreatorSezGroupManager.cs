@@ -316,9 +316,17 @@ namespace Apian
                 }
 
             } else {
+                // Apian.Net issue #37 makes newly joined peers ask immediately for sync data, rather than
+                // waiting for a command to arrive. This is necessary in order to support Apian.Net#36 which
+                // creates the idea of "Apian Quorum", under which commands are not issued unless previously
+                // spcified quorum conditions (# of peers, for instance) are met. Needsless to say, if commands
+                // aren;t getting sent out because there is only 1 peers and 3 are required, under the "wait
+                // for a command before asking to sync" system no other peer could ever join.
+
                 // TODO: This is how we enter Sync mode. Maybe it should be more explicit?
-                if (LocalMember.CurStatus == ApianGroupMember.Status.Joining)
-                    _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                // if (LocalMember.CurStatus == ApianGroupMember.Status.Joining)
+                //     _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+
                 CmdSynchronizer.StashCommand(msg);
                 return ApianCommandStatus.kStashedInQueue;
             }
@@ -337,7 +345,7 @@ namespace Apian
             Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} 1st Stashed: {syncRequest.FirstStashedCmdSeqNum}");
             ApianInst.SendApianMessage(GroupCreatorId, syncRequest);
 
-            // the local short-circuit...
+            // the local short-circuit... so we do the right thing when data arrives
             ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
             LocalMember.CurStatus = ApianGroupMember.Status.Syncing;
             ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
@@ -432,6 +440,9 @@ namespace Apian
                     {
                         // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
                         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
+                    } else {
+                        // Not leader - request data sync.
+                        _RequestSync(-1, -1); // we've neither applied nor stashed any commands
                     }
                 }
             }
@@ -495,7 +506,10 @@ namespace Apian
                     firstCmdToSend = state.EndCmdSeqNumber + 1;
                     Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.EndCmdSeqNumber}");
                 }
-                CmdSynchronizer.AddSyncingPeer(msgSrc, firstCmdToSend, sMsg.FirstStashedCmdSeqNum );
+
+                long firstCmdPeerHas = (sMsg.FirstStashedCmdSeqNum >= 0) ? sMsg.FirstStashedCmdSeqNum : ApianInst.MaxAppliedCmdSeqNum;
+
+                CmdSynchronizer.AddSyncingPeer(msgSrc, firstCmdToSend, firstCmdPeerHas );
             }
         }
 
