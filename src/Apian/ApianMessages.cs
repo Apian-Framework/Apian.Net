@@ -28,7 +28,8 @@ namespace Apian
         public const string ApianClockOffset = "APclk";
         public const string ApianGroupAnnounce = "APga"; // NOT a GroupMessage, since apian instance never read it (it's just for clients)
         public const string GroupMessage = "APGrp";
-        public const string CheckpointMsg = "APchk";
+        public const string CheckpointMsg = "APchk"; // pseudo CoreMessage - ends up getting wrapped and in the Command stream, which
+        public const string GroupQuorumStatus = "APqms";  // another pseudo CoreMessage. Inserts quorum status (yea,nay) into the stream
 
         public string DestGroupId; // Can be empty
         public string MsgType;
@@ -113,12 +114,33 @@ namespace Apian
         public ApianClockOffsetMsg() : base() {}
     }
 
+    //
+    // Hack warning - these next 2 "pseudo CoreMessages" need to be deserialized by the Group message deserializer.
+    // TODO: make them somehow part of a "parent" deserializer that application code inherits from?
 
     public class ApianCheckpointMsg : ApianCoreMessage
     {
         // This is a "mock core message" for an ApianCommand to wrap and insert int he command stream.
+        // When it gets "applied" as a command the AppCore sends a report to Apian describing the current CoreState
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
     }
+
+    public class GroupQuorumStatusMsg : ApianCoreMessage
+    {
+        // This is another "mock core message"
+        // When wrapped in an ApianCommand and delivered this is used by a receiving Apian instance to know that it should start or stop issuing
+        // comamnds (if it's responsible for that) and/or whether to expect any commands.
+        // When delivered to the AppCore it is used to react to whether the consensus mechanism is operating or paused
+        //
+        // All CoreMessages require a timestamp.
+        public bool hasQuorum;
+        public  GroupQuorumStatusMsg( long timeStamp, bool _hasQuorum) : base(ApianMessage.GroupQuorumStatus, timeStamp)
+        {
+            hasQuorum = _hasQuorum;
+        }
+    }
+
+
 
     static public class ApianMessageDeserializer
     {
@@ -163,6 +185,29 @@ namespace Apian
 
     }
 
+    public abstract class ApianCoreMessageDeserializer
+    {
+        // Subclass this and include your own core message definitions and then use it
+        // in you apian instance to decode core messages that will then include the
+        // standard Apian "pseudo CoreMesages"
+
+        protected Dictionary<string, Func<string, ApianCoreMessage>> coreDeserializers;
+
+        protected ApianCoreMessageDeserializer()
+        {
+
+            coreDeserializers = new  Dictionary<string, Func<string, ApianCoreMessage>>()
+            {
+                {ApianMessage.CheckpointMsg, (s) => JsonConvert.DeserializeObject<ApianCheckpointMsg>(s) },
+                {ApianMessage.GroupQuorumStatus, (s) => JsonConvert.DeserializeObject<GroupQuorumStatusMsg>(s) },
+            };
+        }
+
+        public ApianCoreMessage FromJSON(string coreMsgType, string json)
+        {
+            return  coreDeserializers[coreMsgType](json) as ApianCoreMessage;
+        }
+    }
 
 
 }
