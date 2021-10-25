@@ -322,6 +322,7 @@ namespace Apian
                 // spcified quorum conditions (# of peers, for instance) are met. Needsless to say, if commands
                 // aren;t getting sent out because there is only 1 peers and 3 are required, under the "wait
                 // for a command before asking to sync" system no other peer could ever join.
+                // TODO: remove all this comment and code...
 
                 // TODO: This is how we enter Sync mode. Maybe it should be more explicit?
                 // if (LocalMember.CurStatus == ApianGroupMember.Status.Joining)
