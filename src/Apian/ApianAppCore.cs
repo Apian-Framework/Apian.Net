@@ -17,7 +17,7 @@ namespace Apian
         void OnApianCommand(long cmdSeqNum, ApianCoreMessage coreMsg);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
-        ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
+        ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg);
 
         // Validation
         bool CommandIsValid(ApianCoreMessage cmdMsg);
@@ -48,7 +48,7 @@ namespace Apian
             NewCoreStateEvt?.Invoke(this, new NewCoreStateEventArgs(newState));
         }
 
-        public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg);
+        public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg);
         public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
         public abstract void OnCheckpointCommand(ApianCheckpointMsg msg, long seqNum);
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);

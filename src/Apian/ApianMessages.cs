@@ -37,28 +37,32 @@ namespace Apian
         protected ApianMessage() {}
     }
 
-    public class ApianWrappedCoreMessage : ApianMessage
+    public class ApianWrappedMessage : ApianMessage
     {
-        public string CoreMsgType;
-        public long  CoreMsgTimeStamp;
-        public string SerializedCoreMsg;
+        public const int kAppCore = 1;
+        public const int kGroupMgr = 2;
+        public int PayloadSubSys;
+        public string PayloadMsgType;
+        public long  PayloadTimeStamp; // TODO: get rid of this property (I think?)
+        public string SerializedPayload;
 
-        public ApianWrappedCoreMessage(string gid, string apianMsgType, ApianCoreMessage coreMsg) : base(gid, apianMsgType)
+        public ApianWrappedMessage(string gid, string apianMsgType, ApianCoreMessage payload) : base(gid, apianMsgType)
         {
-            CoreMsgType = coreMsg.MsgType;
-            CoreMsgTimeStamp = coreMsg.TimeStamp;
-            SerializedCoreMsg =   JsonConvert.SerializeObject(coreMsg); // FIXME? This is maybe NOT the right type to serialize?
+            PayloadSubSys = kAppCore;
+            PayloadMsgType = payload.MsgType;
+            PayloadTimeStamp = payload.TimeStamp;
+            SerializedPayload =   JsonConvert.SerializeObject(payload); // FIXME? This is maybe NOT the right type to serialize?
         }
 
-        public ApianWrappedCoreMessage(string apianMsgType, ApianWrappedCoreMessage inMsg) : base(inMsg.DestGroupId, apianMsgType)
+        public ApianWrappedMessage(string apianMsgType, ApianWrappedMessage inMsg) : base(inMsg.DestGroupId, apianMsgType)
         {
             // Use this convert a request or obs to a command
-            CoreMsgType = inMsg.CoreMsgType;
-            CoreMsgTimeStamp = inMsg.CoreMsgTimeStamp;
-            SerializedCoreMsg = inMsg.SerializedCoreMsg;
+            PayloadMsgType = inMsg.PayloadMsgType;
+            PayloadTimeStamp = inMsg.PayloadTimeStamp;
+            SerializedPayload = inMsg.SerializedPayload;
         }
 
-        public ApianWrappedCoreMessage() : base() {}
+        public ApianWrappedMessage() : base() {}
 
     }
 
@@ -77,26 +81,26 @@ namespace Apian
         }
     }
 
-    public class ApianRequest : ApianWrappedCoreMessage
+    public class ApianRequest : ApianWrappedMessage
     {
         public ApianRequest(string gid, ApianCoreMessage coreMsg) : base(gid, CliRequest, coreMsg) {}
         public ApianRequest() : base() {}
     }
 
-    public class ApianObservation : ApianWrappedCoreMessage
+    public class ApianObservation : ApianWrappedMessage
     {
         public ApianObservation(string gid,ApianCoreMessage coreMsg) : base(gid, CliObservation, coreMsg) {}
         public ApianObservation() : base() {}
     }
 
-    public class ApianCommand : ApianWrappedCoreMessage {
+    public class ApianCommand : ApianWrappedMessage {
         public long Epoch;
         public long SequenceNum;
         public ApianCommand(long ep, long seqNum, string gid, ApianCoreMessage coreMsg) : base(gid, CliCommand, coreMsg)
         {
             Epoch=ep; SequenceNum=seqNum;
         }
-        public ApianCommand(long ep, long seqNum, ApianWrappedCoreMessage wrappedMsg) : base(CliCommand, wrappedMsg)
+        public ApianCommand(long ep, long seqNum, ApianWrappedMessage wrappedMsg) : base(CliCommand, wrappedMsg)
         {
             Epoch=ep;
             SequenceNum=seqNum;
@@ -125,22 +129,6 @@ namespace Apian
         public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
     }
 
-    public class GroupQuorumStatusMsg : ApianCoreMessage
-    {
-        // This is another "mock core message"
-        // When wrapped in an ApianCommand and delivered this is used by a receiving Apian instance to know that it should start or stop issuing
-        // comamnds (if it's responsible for that) and/or whether to expect any commands.
-        // When delivered to the AppCore it is used to react to whether the consensus mechanism is operating or paused
-        //
-        // All CoreMessages require a timestamp.
-        public bool hasQuorum;
-        public  GroupQuorumStatusMsg( long timeStamp, bool _hasQuorum) : base(ApianMessage.GroupQuorumStatus, timeStamp)
-        {
-            hasQuorum = _hasQuorum;
-        }
-    }
-
-
 
     static public class ApianMessageDeserializer
     {
@@ -160,9 +148,9 @@ namespace Apian
         public static Dictionary<string, Func<ApianMessage, string>> subTypeExtractor = new  Dictionary<string, Func<ApianMessage, string>>()
         {
             {ApianMessage.ApianGroupAnnounce, (msg) => null },
-            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).CoreMsgType }, // Need to use App-level message deserializer to fully decode
-            {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).CoreMsgType },
-            {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).CoreMsgType },
+            {ApianMessage.CliRequest, (msg) => (msg as ApianRequest).PayloadMsgType }, // Need to use App-level message deserializer to fully decode
+            {ApianMessage.CliObservation, (msg) => (msg as ApianObservation).PayloadMsgType },
+            {ApianMessage.CliCommand, (msg) => (msg as ApianCommand).PayloadMsgType },
             {ApianMessage.GroupMessage, (msg) => (msg as ApianGroupMessage).GroupMsgType }, // Need to use ApianGroupMessageDeserializer to fully decode
             {ApianMessage.ApianClockOffset, (msg) => null },
         };
@@ -199,8 +187,7 @@ namespace Apian
             coreDeserializers = new  Dictionary<string, Func<string, ApianCoreMessage>>()
             {
                 {ApianMessage.CheckpointMsg, (s) => JsonConvert.DeserializeObject<ApianCheckpointMsg>(s) },
-                {ApianMessage.GroupQuorumStatus, (s) => JsonConvert.DeserializeObject<GroupQuorumStatusMsg>(s) },
-            };
+             };
         }
 
         public ApianCoreMessage FromJSON(string coreMsgType, string json)

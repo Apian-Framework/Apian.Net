@@ -273,7 +273,7 @@ namespace Apian
         {
             ElectionTerm = term;
         }
-        public RatfishApianCommand(long term, long ep, long seqNum, ApianWrappedCoreMessage wrappedMsg) : base(ep, seqNum, wrappedMsg)
+        public RatfishApianCommand(long term, long ep, long seqNum, ApianWrappedMessage wrappedMsg) : base(ep, seqNum, wrappedMsg)
         {
             ElectionTerm = term;
         }

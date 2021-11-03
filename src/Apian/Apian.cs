@@ -127,24 +127,24 @@ namespace Apian
                 Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet");
                 break;
             case ApianCommandStatus.kBadSource:
-                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType }");
+                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
                 break;
             case ApianCommandStatus.kAlreadyReceived:
-                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 break;
 
             case ApianCommandStatus.kStashedInQueue:
-                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Stashing Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 MaxReceivedCmdSeqNum = Math.Max(cmd.SequenceNum, MaxReceivedCmdSeqNum); // is valid. we just aren;t ready for it
                 break;
             case ApianCommandStatus.kShouldApply:
-                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                Logger.Verbose($"ApianBase.OnApianCommand() Group: {cmd.DestGroupId}, Applying Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 MaxReceivedCmdSeqNum = Math.Max(cmd.SequenceNum, MaxReceivedCmdSeqNum);
                 ApplyApianCommand(cmd);
                 break;
 
             default:
-                Logger.Error($"ApianBase.OnApianCommand(): Unknown command status: {cmdStat}: Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType}");
+                Logger.Error($"ApianBase.OnApianCommand(): Unknown command status: {cmdStat}: Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 break;
             }
         }
@@ -347,7 +347,7 @@ namespace Apian
 
         public virtual void ApplyStashedApianCommand(ApianCommand cmd)
         {
-            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.CoreMsgType} TS: {cmd.CoreMsgTimeStamp}");
+            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}"); //&&&& TS: {cmd.PayloadTimeStamp}");
 
             // If your AppCore includes running-time code that looks for future events in order to report observations
             // then you may want to override this and include a call to something like:
