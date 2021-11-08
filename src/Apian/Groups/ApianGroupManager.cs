@@ -115,8 +115,6 @@ namespace Apian
         kBadSource, // Ignore it and complain about the source
         kStashedInQueue, // Higher seq# than we can apply. Cache it and, if not already, ask to be sync'ed up
         kShouldApply, // It's good. Apply it to the state
-
-
         kStashedInQueued, // means that seq# was higher than we can apply. GroupMgr will ask for missing ones
     }
 
