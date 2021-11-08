@@ -185,7 +185,7 @@ namespace ApianTests
                 throw new NotImplementedException();
             }
 
-            public ApianCoreMessage DeserializeCoreMessage(ApianWrappedCoreMessage aMsg)
+            public ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg)
             {
                 throw new NotImplementedException();
             }
