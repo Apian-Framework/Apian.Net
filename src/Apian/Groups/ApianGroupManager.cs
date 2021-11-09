@@ -220,7 +220,7 @@ namespace Apian
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
         public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
-        public virtual ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJSON) => null; // by default don't re-deserialize any messages
+        public virtual ApianMessage DeserializeApianMessage(ApianMessage genApMsg, string msgJSON) => null; // by default don't deserialize any messages
     }
 
 }

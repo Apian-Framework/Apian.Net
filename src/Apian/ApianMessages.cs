@@ -178,9 +178,7 @@ namespace Apian
         // Subclass this and include your own core message definitions and then use it
         // in you apian instance to decode core messages that will then include the
         // standard Apian "pseudo CoreMesages"
-
         protected Dictionary<string, Func<string, ApianCoreMessage>> coreDeserializers;
-
         protected ApianCoreMessageDeserializer()
         {
 

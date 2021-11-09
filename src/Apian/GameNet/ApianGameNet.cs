@@ -319,13 +319,14 @@ namespace Apian
 
         protected void DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
+            // Decode generic (non-group) ApianMessage. If it's an ApianGroupMessage we'll let the group instance decode it in more detail
             ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
             logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
 
             if (ApianInstances.ContainsKey(apMsg.DestGroupId))
             {
-                // Maybe the group manager defines/overrides the message
-                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].GroupMgr.DeserializeApianMessage(apMsg, clientMessage.payload)
+                // Maybe the group instance defines/overrides the message
+                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].DeserializeApianMessage(apMsg, clientMessage.payload)
                     ?? apMsg;
                 ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
             }

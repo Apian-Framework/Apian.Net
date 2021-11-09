@@ -93,6 +93,18 @@ namespace Apian
 
         // Apian Messages
 
+        public virtual ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJson)
+        {
+           // GenMsg has already been through the static ApianMessage and ApianGroupMessage deserializers
+
+            // If your ApianBase subclass (not the groupMgr) has any messages of it's own then override this and decode them.
+
+
+            // In any case, pass it through the GroupManager instance, which is independent of the app and Apian instance and
+            // is relatively likely to have agreement-protocol messages.
+            return GroupMgr?.DeserializeApianMessage(genMsg, msgJson) ?? genMsg;
+        }
+
         public virtual void SendApianMessage(string toChannel, ApianMessage msg)
         {
             Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgTYpe: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
