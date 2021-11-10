@@ -13,11 +13,15 @@ namespace Apian
     public class ApianCoreMessage
     {
         // Client game or app messages derive from this
+        // As do internal GroupManager protocol Messages
+        public const int kAppCore = 1;
+        public const int kGroupMgr = 2;
+
+        public int SubSys;
         public string MsgType;
         public long TimeStamp; // Apian time when core message happened or gets applied. Not related to network timing.
-        public ApianCoreMessage(string t, long ts) {MsgType = t; TimeStamp = ts;}
+        public ApianCoreMessage(int sys, string t, long ts) {SubSys=sys; MsgType = t; TimeStamp = ts;}
         public ApianCoreMessage() {}
-
     }
 
     public class ApianMessage
@@ -28,8 +32,6 @@ namespace Apian
         public const string ApianClockOffset = "APclk";
         public const string ApianGroupAnnounce = "APga"; // NOT a GroupMessage, since apian instance never read it (it's just for clients)
         public const string GroupMessage = "APGrp";
-        public const string CheckpointMsg = "APchk"; // pseudo CoreMessage - ends up getting wrapped and in the Command stream, which
-        public const string GroupQuorumStatus = "APqms";  // another pseudo CoreMessage. Inserts quorum status (yea,nay) into the stream
 
         public string DestGroupId; // Can be empty
         public string MsgType;
@@ -39,8 +41,6 @@ namespace Apian
 
     public class ApianWrappedMessage : ApianMessage
     {
-        public const int kAppCore = 1;
-        public const int kGroupMgr = 2;
         public int PayloadSubSys;
         public string PayloadMsgType;
         public long  PayloadTimeStamp; // TODO: get rid of this property (I think?)
@@ -48,15 +48,17 @@ namespace Apian
 
         public ApianWrappedMessage(string gid, string apianMsgType, ApianCoreMessage payload) : base(gid, apianMsgType)
         {
-            PayloadSubSys = kAppCore;
+            PayloadSubSys = payload.SubSys;
             PayloadMsgType = payload.MsgType;
             PayloadTimeStamp = payload.TimeStamp;
-            SerializedPayload =   JsonConvert.SerializeObject(payload); // FIXME? This is maybe NOT the right type to serialize?
+            SerializedPayload =   JsonConvert.SerializeObject(payload);
         }
+
 
         public ApianWrappedMessage(string apianMsgType, ApianWrappedMessage inMsg) : base(inMsg.DestGroupId, apianMsgType)
         {
             // Use this convert a request or obs to a command
+            PayloadSubSys = inMsg.PayloadSubSys;
             PayloadMsgType = inMsg.PayloadMsgType;
             PayloadTimeStamp = inMsg.PayloadTimeStamp;
             SerializedPayload = inMsg.SerializedPayload;
@@ -100,6 +102,12 @@ namespace Apian
         {
             Epoch=ep; SequenceNum=seqNum;
         }
+
+        public ApianCommand(long ep, long seqNum, string gid, GroupManagerMessage gmMsg) : base(gid, CliCommand, gmMsg)
+        {
+            Epoch=ep; SequenceNum=seqNum;
+        }
+
         public ApianCommand(long ep, long seqNum, ApianWrappedMessage wrappedMsg) : base(CliCommand, wrappedMsg)
         {
             Epoch=ep;
@@ -117,18 +125,6 @@ namespace Apian
         public ApianClockOffsetMsg(string gid, string pid, long offset) : base(gid, ApianClockOffset) {PeerId=pid; ClockOffset=offset;}
         public ApianClockOffsetMsg() : base() {}
     }
-
-    //
-    // Hack warning - these next 2 "pseudo CoreMessages" need to be deserialized by the Group message deserializer.
-    // TODO: make them somehow part of a "parent" deserializer that application code inherits from?
-
-    public class ApianCheckpointMsg : ApianCoreMessage
-    {
-        // This is a "mock core message" for an ApianCommand to wrap and insert int he command stream.
-        // When it gets "applied" as a command the AppCore sends a report to Apian describing the current CoreState
-        public  ApianCheckpointMsg( long timeStamp) : base(ApianMessage.CheckpointMsg, timeStamp) {}
-    }
-
 
     static public class ApianMessageDeserializer
     {
@@ -179,15 +175,14 @@ namespace Apian
         // in you apian instance to decode core messages that will then include the
         // standard Apian "pseudo CoreMesages"
         protected Dictionary<string, Func<string, ApianCoreMessage>> coreDeserializers;
+
         protected ApianCoreMessageDeserializer()
         {
 
             coreDeserializers = new  Dictionary<string, Func<string, ApianCoreMessage>>()
-            {
-                {ApianMessage.CheckpointMsg, (s) => JsonConvert.DeserializeObject<ApianCheckpointMsg>(s) },
-             };
+            {  // currently no default "generic" CoreMessage typs
+            };
         }
-
         public ApianCoreMessage FromJSON(string coreMsgType, string json)
         {
             return  coreDeserializers[coreMsgType](json) as ApianCoreMessage;

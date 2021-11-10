@@ -269,7 +269,7 @@ namespace Apian
         // Like a regular command, but with "ElectionTerm" in it
         public long ElectionTerm;
 
-        public RatfishApianCommand(long term, long ep, long seqNum, string gid, ApianCoreMessage coreMsg) : base(ep, seqNum, gid, coreMsg)
+        public RatfishApianCommand(long term, long ep, long seqNum, string gid, GroupManagerMessage gmMsg) : base(ep, seqNum, gid, gmMsg)
         {
             ElectionTerm = term;
         }

@@ -163,7 +163,7 @@ namespace Apian
 
         protected void ApplyApianCommand(ApianCommand cmd)
         {
-            ApianCoreMessage coreMsg = AppCore.DeserializeCoreMessage(cmd);
+            ApianCoreMessage coreMsg = cmd.PayloadSubSys == ApianCoreMessage.kAppCore ? AppCore.DeserializeCoreMessage(cmd) : GroupMgr.DeserializeGroupMessage(cmd);
             MaxAppliedCmdSeqNum = cmd.SequenceNum;
             AppCore.OnApianCommand(cmd.SequenceNum, coreMsg);
             AppliedCommands[cmd.SequenceNum] = cmd;

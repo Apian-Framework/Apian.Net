@@ -154,6 +154,7 @@ namespace Apian
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         ApianMessage DeserializeApianMessage(ApianMessage apianMsg,  string msgJSON); // pass the generically-deserialized msg
+        ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg);
 
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedMemberInSuper.Global
     }
@@ -171,11 +172,12 @@ namespace Apian
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
-
         public UniLogger Logger;
 
         protected ApianBase ApianInst {get; }
         public Dictionary<string, ApianGroupMember> Members {get;}
+
+        protected GroupManagerMessageDeserializer groupMgrMsgDeser;
 
         protected ApianGroupManagerBase(ApianBase apianInst)
         {
@@ -221,6 +223,10 @@ namespace Apian
         public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
         public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         public virtual ApianMessage DeserializeApianMessage(ApianMessage genApMsg, string msgJSON) => null; // by default don't deserialize any messages
+        public virtual ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg)
+        {
+            return groupMgrMsgDeser.FromJSON(aMsg.PayloadMsgType, aMsg.SerializedPayload);
+        }
     }
 
 }

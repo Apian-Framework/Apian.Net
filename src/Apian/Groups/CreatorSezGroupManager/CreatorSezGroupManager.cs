@@ -138,6 +138,8 @@ namespace Apian
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
              };
+
+            groupMgrMsgDeser = new GroupManagerMessageDeserializer();
         }
 
         private void _ParseConfig( Dictionary<string,string> config)
@@ -226,7 +228,7 @@ namespace Apian
 
         private void _SendCheckpointCommand(long curApainMs)
         {
-            ApianCheckpointMsg cpMsg = new ApianCheckpointMsg(NextCheckPointMs);
+            CheckpointRequestMsg cpMsg = new CheckpointRequestMsg(NextCheckPointMs);
             ApianCommand cpCmd = new ApianCommand( LeaderData.CurrentEpochNum, LeaderData.GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
             ApianInst.SendApianMessage(GroupId, cpCmd);
