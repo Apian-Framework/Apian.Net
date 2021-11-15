@@ -22,7 +22,7 @@ namespace ApianTests
 
         public class StupidTestMsg : ApianCoreMessage
         {
-            public StupidTestMsg(long ts) : base(kStupidMsg, ts) {}
+            public StupidTestMsg(long ts) : base(kAppCore, kStupidMsg, ts) {}
             public StupidTestMsg() : base() {}
         }
 
@@ -30,7 +30,7 @@ namespace ApianTests
         {
             public string thingName;
             public int place;
-            public PutThingMsg(long ts, string tn, int tp) : base(kPutThing, ts)
+            public PutThingMsg(long ts, string tn, int tp) : base(kAppCore, kPutThing, ts)
             {
                 thingName = tn;
                 place = tp;
@@ -42,7 +42,7 @@ namespace ApianTests
         {
             public string thingName;
             public int place;
-            public GetThingMsg(long ts, string tn, int tp) : base(kGetThing, ts)
+            public GetThingMsg(long ts, string tn, int tp) : base(kAppCore, kGetThing, ts)
             {
                 thingName = tn;
                 place = tp;
@@ -55,7 +55,7 @@ namespace ApianTests
         {
             public string thingName;
             public int place;
-            public SeeThingMsg(long ts, string tn, int tp) : base(kSeeThing, ts)
+            public SeeThingMsg(long ts, string tn, int tp) : base(kAppCore, kSeeThing, ts)
             {
                 thingName = tn;
                 place = tp;

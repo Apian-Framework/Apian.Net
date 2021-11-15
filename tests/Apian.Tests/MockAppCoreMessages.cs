@@ -14,7 +14,7 @@ namespace ApianTests
     // CoreMessages
     public class MockCoreMessage : ApianCoreMessage
     {
-        public MockCoreMessage(string typ, long ts) : base(typ, ts) {}
+        public MockCoreMessage(string typ, long ts) : base(kAppCore, typ, ts) {}
         public MockCoreMessage() : base() {}
 
         // types
