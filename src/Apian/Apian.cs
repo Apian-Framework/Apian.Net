@@ -93,16 +93,24 @@ namespace Apian
 
         // Apian Messages
 
-        public virtual ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJson)
+        public virtual ApianMessage DeserializeCustomApianMessage(string apianMsgType, string msgJson)
         {
-           // GenMsg has already been through the static ApianMessage and ApianGroupMessage deserializers
+            // Custom Apian messages? OVERRIDE THIS!!
+            // If you want to add an *application*-dependent Apian message, deserialize it in your
+            // <App>Apian subclass by overrideing this method.
 
-            // If your ApianBase subclass (not the groupMgr) has any messages of it's own then override this and decode them.
+            // If, on the other hand, you are writing a GroupManager (an agreement protocol type) and want to
+            // define protocol-specific ApianMessages then the place to do it is in the GroupManager itself,
+            // via: IApianGroupManager.DeserializeApianMessage
 
+            // First ask the groupManager instance if it wants to decode it...
+            // It will return null if it doesn't.
+            ApianMessage apMsg =  GroupMgr?.DeserializeCustomApianMessage(apianMsgType, msgJson);
 
-            // In any case, pass it through the GroupManager instance, which is independent of the app and Apian instance and
-            // is relatively likely to have agreement-protocol messages.
-            return GroupMgr?.DeserializeApianMessage(genMsg, msgJson) ?? genMsg;
+            // This default method implmentation doesn't define any Application-custom messages,
+            // so just return whatever the GroupManager returned (quite likely null)
+            return apMsg;
+
         }
 
         public virtual void SendApianMessage(string toChannel, ApianMessage msg)

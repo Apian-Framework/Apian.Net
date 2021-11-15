@@ -317,25 +317,54 @@ namespace Apian
             _MsgDispatchers[msg.clientMsgType](from, to, msSinceSent, msg);
         }
 
+        // protected void OldDispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
+        // {
+        //     // Decode generic (non-group) ApianMessage. If it's an ApianGroupMessage we'll let the group instance decode it in more detail
+        //     ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
+        //     logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
+
+        //     if (ApianInstances.ContainsKey(apMsg.DestGroupId))
+        //     {
+        //         // Maybe the group instance defines/overrides the message
+        //         ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].DeserializeApianMessage(apMsg, clientMessage.payload)
+        //             ?? apMsg;
+        //         ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
+        //     }
+        //     else if (string.IsNullOrEmpty(apMsg.DestGroupId)) // Send to  all groups
+        //     {
+        //         foreach (ApianBase ap in ApianInstances.Values)
+        //             ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);
+        //     }
+        // }
+
         protected void DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
-            // Decode generic (non-group) ApianMessage. If it's an ApianGroupMessage we'll let the group instance decode it in more detail
-            ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
             logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
 
-            if (ApianInstances.ContainsKey(apMsg.DestGroupId))
+            // Who's it for?
+            string destGroupId = ApianMessageDeserializer.DecodeDestGroup(clientMessage.payload);
+
+            if (string.IsNullOrEmpty(destGroupId))
             {
-                // Maybe the group instance defines/overrides the message
-                ApianMessage gApMsg = ApianInstances[apMsg.DestGroupId].DeserializeApianMessage(apMsg, clientMessage.payload)
-                    ?? apMsg;
-                ApianInstances[apMsg.DestGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
-            }
-            else if (string.IsNullOrEmpty(apMsg.DestGroupId)) // Send to  all groups
-            {
+                // It has no destination group, so we can use the static message deserializer. (No dest group means it's
+                // "for all groups" and so can't be a group-specific message type)
+                ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
+
                 foreach (ApianBase ap in ApianInstances.Values)
                     ap.OnApianMessage( from,  to,  apMsg,  msSinceSent);
             }
+            else if (ApianInstances.ContainsKey(destGroupId))
+            {
+                // For a specific group. It's possible that the group instance defines (or overrides) the message
+                ApianMessage gApMsg = ApianInstances[destGroupId].DeserializeCustomApianMessage(clientMessage.clientMsgType, clientMessage.payload)
+                    ?? ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload); // ...else pass it to the default DeSer
+                ApianInstances[destGroupId].OnApianMessage( from,  to,  gApMsg,  msSinceSent);
+            } else {
+                logger.Warn($"DispatchApianMessage() Received ApianMsg type: {clientMessage.clientMsgType} to unknown Group: {destGroupId}");
+            }
+
         }
+
 
         protected void DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {

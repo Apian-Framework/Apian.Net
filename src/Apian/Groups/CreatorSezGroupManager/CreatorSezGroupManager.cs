@@ -139,7 +139,7 @@ namespace Apian
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
              };
 
-            groupMgrMsgDeser = new GroupManagerMessageDeserializer();
+            groupMgrMsgDeser = new GroupCoreMessageDeserializer();
         }
 
         private void _ParseConfig( Dictionary<string,string> config)

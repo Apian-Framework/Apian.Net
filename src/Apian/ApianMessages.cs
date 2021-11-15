@@ -103,7 +103,7 @@ namespace Apian
             Epoch=ep; SequenceNum=seqNum;
         }
 
-        public ApianCommand(long ep, long seqNum, string gid, GroupManagerMessage gmMsg) : base(gid, CliCommand, gmMsg)
+        public ApianCommand(long ep, long seqNum, string gid, GroupCoreMessage gmMsg) : base(gid, CliCommand, gmMsg)
         {
             Epoch=ep; SequenceNum=seqNum;
         }
@@ -154,6 +154,12 @@ namespace Apian
         public static string GetSubType(ApianMessage msg)
         {
             return subTypeExtractor[msg.MsgType](msg);
+        }
+
+        public static string DecodeDestGroup(string apiamMsgJson)
+        {
+            // Use this to fetch the destgroup from a serialized message
+            return JsonConvert.DeserializeObject<ApianMessage>(apiamMsgJson)?.DestGroupId;
         }
 
         public static ApianMessage FromJSON(string msgType, string json)

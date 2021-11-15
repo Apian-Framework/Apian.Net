@@ -145,7 +145,7 @@ namespace Apian
                 {RatfishVoteReplyMsg.MsgTypeId, OnVoteReplyMsg },
             };
 
-            groupMgrMsgDeser = new GroupManagerMessageDeserializer();
+            groupMgrMsgDeser = new GroupCoreMessageDeserializer();
         }
 
         private void _ParseConfig( Dictionary<string,string> config)
@@ -561,10 +561,10 @@ namespace Apian
 
         }
 
-        public override ApianMessage DeserializeApianMessage(ApianMessage genMsg, string msgJSON)
+        public override ApianMessage DeserializeCustomApianMessage(string msgType, string msgJSON)
         {
             // genMsg is the result of generic ApianMessage.Deser()
-            return RatfishMessageDeserializer.FromJSON(genMsg, msgJSON) ?? null;
+            return null; //  RatfishMessageDeserializer.FromJSON(genMsg, msgJSON) ?? null;
         }
 
     }
