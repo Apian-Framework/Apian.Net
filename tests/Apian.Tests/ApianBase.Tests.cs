@@ -70,6 +70,11 @@ namespace ApianTests
         {
             throw new NotImplementedException();
         }
+
+        public override (bool, string) CheckQuorum()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [TestFixture]
