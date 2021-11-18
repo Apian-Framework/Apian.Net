@@ -91,6 +91,8 @@ namespace Apian
 
         public abstract void Update();
 
+        public abstract (bool, string) CheckQuorum(); // returns (bIsQuorum, ReasonIfNot)
+
         // Apian Messages
 
         public virtual ApianMessage DeserializeCustomApianMessage(string apianMsgType, string msgJson)
