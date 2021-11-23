@@ -61,11 +61,6 @@ namespace ApianTests
             throw new NotImplementedException();
         }
 
-        public override void SendCheckpointState(long timeStamp, long seqNum, string serializedState)
-        {
-            throw new NotImplementedException();
-        }
-
         public override void Update()
         {
             throw new NotImplementedException();

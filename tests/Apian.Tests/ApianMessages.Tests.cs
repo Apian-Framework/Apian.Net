@@ -175,7 +175,7 @@ namespace ApianTests
                 throw new NotImplementedException();
             }
 
-            public void OnCheckpointCommand(long seqNum, long timeStamp)
+            public string DoCheckpointCoreState(long seqNum, long timeStamp)
             {
                 throw new NotImplementedException();
             }
@@ -189,6 +189,8 @@ namespace ApianTests
             {
                 throw new NotImplementedException();
             }
+
+
         }
 
 
