@@ -8,6 +8,7 @@ namespace Apian
 {
     public static class ApianHash
     {
+        // FIXME: Re-add Nethereum to the project and use a REAL hash!!!
         public static string HashString(string input)
         {
             // Create a new Stringbuilder to collect the bytes
