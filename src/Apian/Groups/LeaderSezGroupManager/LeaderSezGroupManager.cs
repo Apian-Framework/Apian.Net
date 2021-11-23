@@ -100,10 +100,6 @@ namespace Apian
             }
         }
 
-
-        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
-        private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-
         private ApianGroupSynchronizer CmdSynchronizer;
         private RatfishElection ElectionMgr;
 
@@ -143,6 +139,10 @@ namespace Apian
                 {RatfishHeartBeatMsg.MsgTypeId, OnHeartbeatMsg },
                 {RatfishVoteRequestMsg.MsgTypeId, OnVoteRequestMsg },
                 {RatfishVoteReplyMsg.MsgTypeId, OnVoteReplyMsg },
+            };
+
+            GroupCoreCmdHandlers = new Dictionary<string, Action<long, GroupCoreMessage>> {
+                {GroupCoreMessage.CheckpointRequest , OnCheckpointRequestCmd },
             };
 
             groupMgrMsgDeser = new GroupCoreMessageDeserializer();
@@ -523,6 +523,11 @@ namespace Apian
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");
                 ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Active));
             }
+        }
+
+        protected void OnCheckpointRequestCmd(long seqNum, GroupCoreMessage msg)
+        {
+            throw new NotImplementedException();
         }
 
         public override void OnLocalStateCheckpoint( long seqNum, long timeStamp, string stateHash, string serializedState)

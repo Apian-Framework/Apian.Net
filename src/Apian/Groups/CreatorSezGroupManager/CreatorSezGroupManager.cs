@@ -98,10 +98,6 @@ namespace Apian
             }
         }
 
-
-        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
-        private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-
         private ApianGroupSynchronizer CmdSynchronizer;
 
         // IApianGroupManager
@@ -138,6 +134,10 @@ namespace Apian
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
              };
+
+            GroupCoreCmdHandlers = new Dictionary<string, Action<long, GroupCoreMessage>> {
+                {GroupCoreMessage.CheckpointRequest , OnCheckpointRequestCmd },
+            };
 
             groupMgrMsgDeser = new GroupCoreMessageDeserializer();
         }
@@ -250,6 +250,7 @@ namespace Apian
         //         //Logger.Debug($"SendApianObservation() We are not server, so don't send observations.");
         //    }
         }
+
         public override void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // Note that Apian only routes GROUP messages here.
@@ -354,6 +355,17 @@ namespace Apian
             ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
             // when creator gets the sync request it'll broadcast an identical status change msg
         }
+
+        //  GroupCoreMessage Command Handlers
+
+        protected void OnCheckpointRequestCmd(long seqNum, GroupCoreMessage msg)
+        {
+           // TODO: really seems wrong for this to happen here rather than in the ApianInst
+           CheckpointRequestMsg cMsg = msg as CheckpointRequestMsg;
+           ApianInst.DoLocalAppCoreCheckpoint(msg.TimeStamp, seqNum);
+        }
+
+        // ApianGroupMessage handlers
 
         protected void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {

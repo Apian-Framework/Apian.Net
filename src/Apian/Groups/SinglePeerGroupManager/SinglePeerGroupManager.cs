@@ -17,9 +17,6 @@ namespace Apian
         public override string GroupTypeName {get => kGroupTypeName; }
 
        // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,FieldCanBeMadeReadOnly.Global
-
-        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
-        private readonly Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
         private ApianGroupMember _Member {get; set;}
 
         // IApianGroupManager

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
@@ -146,6 +147,7 @@ namespace Apian
         void JoinGroup(string localMemberJson);
         void LeaveGroup();
         void Update();
+        void ApplyGroupCoreCommand(long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
         void SendApianObservation( ApianCoreMessage coreMsg );
         void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
@@ -172,6 +174,12 @@ namespace Apian
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
+
+        public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
+        protected Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
+        protected Dictionary<string, Action<long, GroupCoreMessage>> GroupCoreCmdHandlers;
+
+
         public UniLogger Logger;
 
         protected ApianBase ApianInst {get; }
@@ -215,6 +223,11 @@ namespace Apian
         public abstract void JoinGroup(string localMemberJson);
         public abstract void LeaveGroup();
         public abstract void Update();
+
+        public virtual void ApplyGroupCoreCommand(long seqNum, GroupCoreMessage cmd)
+        {
+            GroupCoreCmdHandlers[cmd.MsgType](seqNum, cmd);
+        }
         public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);

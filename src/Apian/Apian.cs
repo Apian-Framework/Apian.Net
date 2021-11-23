@@ -173,9 +173,21 @@ namespace Apian
 
         protected void ApplyApianCommand(ApianCommand cmd)
         {
-            ApianCoreMessage coreMsg = cmd.PayloadSubSys == ApianCoreMessage.kAppCore ? AppCore.DeserializeCoreMessage(cmd) : GroupMgr.DeserializeGroupMessage(cmd);
+
+            switch (cmd.PayloadSubSys)
+            {
+                case ApianCoreMessage.kAppCore:
+                    AppCore.OnApianCommand(cmd.SequenceNum, AppCore.DeserializeCoreMessage(cmd) );
+                    break;
+                case ApianCoreMessage.kGroupMgr:
+                    AppCore.OnApianCommand(cmd.SequenceNum,null);
+                    GroupMgr.ApplyGroupCoreCommand(cmd.SequenceNum, GroupMgr.DeserializeGroupMessage(cmd) as GroupCoreMessage);
+                    break;
+                default:
+                    Logger.Warn($"ApplyApianCommand: Unknown command source: {cmd.PayloadSubSys}");
+                    break;
+            }
             MaxAppliedCmdSeqNum = cmd.SequenceNum;
-            AppCore.OnApianCommand(cmd.SequenceNum, coreMsg);
             AppliedCommands[cmd.SequenceNum] = cmd;
         }
 
@@ -306,6 +318,21 @@ namespace Apian
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
         public void LeaveGroup() => GroupMgr.LeaveGroup();
 
+        // checkpoints
+
+        public virtual void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum) // called by groupMgr
+        {
+            string serializedState = AppCore.DoCheckpointCoreState( seqNum,  chkApianTime);
+
+            string hash = ApianHash.HashString(serializedState);
+            Logger.Verbose($"SendStateCheckpoint(): SeqNum: {seqNum}, Hash: {hash}");
+
+            GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState);
+
+            GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.GroupId, seqNum, chkApianTime, hash);
+            GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
+        }
+
         public virtual void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
         {
             AppCore.ApplyCheckpointStateData( seqNum,  timeStamp,  stateHash,  stateData);
@@ -378,10 +405,6 @@ namespace Apian
             ApplyApianCommand(cmd);
 
         }
-
-
-        // called by AppCore
-        public abstract void SendCheckpointState(long timeStamp, long seqNum, string serializedState); // called by client app
 
 
         // Other stuff
