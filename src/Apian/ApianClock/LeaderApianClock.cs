@@ -18,13 +18,9 @@ namespace Apian
         }
         public override void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs)
         {
-
             Logger.Verbose($"OnNewPeer() from {remotePeerId}");
             if (remotePeerId == _apian.GroupMgr.LocalPeerId)
-            {
-                Logger.Debug("OnNewPeer(). Oops. It's me. Bailing");
                 return;
-            }
 
             OnPeerClockSync(remotePeerId, clockOffsetMs, netLagMs);
             if (!IsIdle)
