@@ -85,10 +85,18 @@ namespace Apian
             }
         }
 
-        public virtual void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs) { }
-        public virtual void OnPeerApianOffset(string remotePeerId, long apianOffset) { }
-        public virtual void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) { }
-        public virtual void OnPeerLeft(string peerId) { }
+        // Clocks neeed to implement these
+        public abstract void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs);
+        public abstract void OnPeerLeft(string peerId);
+
+        public abstract void OnPeerApianOffset(string remotePeerId, long apianOffset); // apian offset is the difference between the reporting
+                                                                                        // peer's system and Apian clocks. It does NOT
+                                                                                        // assume anything about the local peer's system or
+                                                                                        // Apian clocks.
+        public abstract void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs); // clock offset is the estimated offset
+                                                                                                      // between the 2 peers' system clocks
+                                                                                                      // as reported by P2pNet
+
 
     }
 

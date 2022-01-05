@@ -205,7 +205,6 @@ namespace Apian
         {
             // Calls ApianInstance CreateGroupMember() to allow it to create an app-specific derived class
             Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
-            //ApianGroupMember newMember =  new ApianGroupMember(peerId, appMemberDataJson);
             ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerId, appMemberDataJson);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
             Members[peerId] = newMember;

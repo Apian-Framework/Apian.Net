@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using UniLog;
+using static UniLog.UniLogger; // for SID()
 
 namespace Apian
 {
@@ -27,10 +28,20 @@ namespace Apian
                 SendApianClockOffset(); // tell the peer about us
         }
 
+        public override void OnPeerLeft(string peerId)
+        {
+            if (_sysOffsetsByPeer.ContainsKey(peerId))
+                _sysOffsetsByPeer.Remove(peerId);
+
+            if (_apianOffsetsByPeer.ContainsKey(peerId))
+                _apianOffsetsByPeer.Remove(peerId);
+
+        }
+
         public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // localSys + offset = PeerSys
         {
             // This is a P2pNet sync ( lag and sys clock offset determination )
-            Logger.Verbose($"OnPeerSync() from {remotePeerId}.");
+            Logger.Verbose($"OnPeerSync() from {SID(remotePeerId)}.");
             // save this
             _sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
         }
@@ -44,7 +55,7 @@ namespace Apian
             // and by "infer" I mean "kinda guess sorta"
             // remoteApianClk = sysMs + peerOffSet + peerApianOffset
             //
-            Logger.Verbose($"OnApianClockOffset() from peer {p2pId}");
+            Logger.Verbose($"OnApianClockOffset() from peer {SID(p2pId)}");
             if (p2pId == _apian.GroupMgr.LocalPeerId)
             {
                 Logger.Verbose("OnApianClockOffset(). Oops. It's me. Bailing");
@@ -59,23 +70,13 @@ namespace Apian
                 {
                     // CurrentTime = sysMs + peerOffset + peerAppOffset;
                     DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
-                    Logger.Verbose($"OnApianClockOffset() - Set clock to match {p2pId}");
+                    Logger.Verbose($"OnApianClockOffset() - Set clock to match {SID(p2pId)}");
                 }
             } else {
                 _UpdateForOtherPeers();
             }
         }
 
-        public override void OnPeerLeft(string peerId)
-        {
-            if (_sysOffsetsByPeer.ContainsKey(peerId))
-                _sysOffsetsByPeer.Remove(peerId);
-
-            if (_apianOffsetsByPeer.ContainsKey(peerId))
-                _apianOffsetsByPeer.Remove(peerId);
-
-            base.OnPeerLeft(peerId);
-        }
 
         // Internals
         private void _UpdateForOtherPeers()

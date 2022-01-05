@@ -352,6 +352,8 @@ namespace Apian
 
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
         {
+            // Note that this does NOT signal that the new member is Active. Just that it is joining.
+
             // By default just helps getting ApianClock set up and reports back to GameNet/Client
             // App-specific Apian instance needs to field this if it cares for any other reason.
             // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
@@ -362,7 +364,7 @@ namespace Apian
 
                 if (ApianClock != null)
                 {
-                    PeerClockSyncData syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
+                    PeerClockSyncInfo syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
                     if (syncData == null)
                         Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
                     else
@@ -411,6 +413,10 @@ namespace Apian
         public void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
         {
             // TODO: This is awkward.
+            // TODO++: ApianClocks don;t use this info when passed in. It gets stored until an ApianClockOffset msg
+            // comes frmo a peer. Since this data can be fetched at any time from p2pnet it would be simpler
+            // to do nothing here, and wait till an APianOffset msg comes in and then fetch it and send all the data to the
+            // clock at once.
             ApianClock?.OnPeerClockSync( remotePeerId,  clockOffsetMs,  netLagMs);
         }
 

@@ -16,6 +16,7 @@ namespace Apian
         {
 
         }
+
         public override void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs)
         {
             Logger.Verbose($"OnNewPeer() from {remotePeerId}");
@@ -28,6 +29,11 @@ namespace Apian
                 if (_apian.GroupMgr.LocalPeerId == GroupCreatorId)
                     SendApianClockOffset(); // announce our apian offset
             }
+        }
+
+        public override void OnPeerLeft(string peerId)
+        {
+            // Nothing to do, here.
         }
 
         public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // localSys + offset = PeerSys

@@ -120,6 +120,9 @@ namespace Apian
 
     public class ApianClockOffsetMsg : ApianMessage // Send on main channel
     {
+        // TODO: There should be a top-level ApianClockMessage type and Apian should route them to the ApianClock
+        // instance for decoding/action. This "offset message" should be a subclass of ApianClockMessage.
+        // OTOH, since this is currently the ONLY clock message it's not a priority ATM
         public string PeerId;
         public long ClockOffset;
         public ApianClockOffsetMsg(string gid, string pid, long offset) : base(gid, ApianClockOffset) {PeerId=pid; ClockOffset=offset;}

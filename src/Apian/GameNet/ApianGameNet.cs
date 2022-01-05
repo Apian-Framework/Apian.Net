@@ -31,7 +31,7 @@ namespace Apian
 
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
-        PeerClockSyncData GetP2pPeerClockSyncData(string P2pPeerId);
+        PeerClockSyncInfo GetP2pPeerClockSyncData(string P2pPeerId);
 
         // Called by Apian
          void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
@@ -272,7 +272,7 @@ namespace Apian
         // *** Additional ApianGameNet stuff
         //
 
-        public PeerClockSyncData GetP2pPeerClockSyncData(string p2pPeerId)
+        public PeerClockSyncInfo GetP2pPeerClockSyncData(string p2pPeerId)
         {
             return p2p.GetPeerClockSyncData(p2pPeerId);
         }
