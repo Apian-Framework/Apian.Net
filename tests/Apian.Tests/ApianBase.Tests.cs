@@ -98,7 +98,7 @@ namespace ApianTests
         {
             const string localP2pId = "localP2pId";
             const string remoteId = "remoteId";
-            PeerClockSyncData peerSyncData = new PeerClockSyncData(remoteId, 132, 17, 42);
+            PeerClockSyncInfo peerSyncData = new PeerClockSyncInfo(remoteId, 132, 17, 42);
 
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(p => p.LocalP2pId()).Returns(localP2pId);
@@ -107,7 +107,7 @@ namespace ApianTests
 
             // If peerId is "noSync" it returns null
             mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData(It.IsAny<string>())).Returns(peerSyncData);
-            mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData("noSync")).Returns(null as PeerClockSyncData);
+            mockGameNet.Setup(gn => gn.GetP2pPeerClockSyncData("noSync")).Returns(null as PeerClockSyncInfo);
 
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
