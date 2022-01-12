@@ -395,7 +395,7 @@ namespace Apian
         {
             if (ApianClock != null)
                 ApianClock.OnPeerLeft(peerId);
-
+            Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(peerId)}");
             OnApianMessage( GameNet.LocalP2pId(), GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Removed), 0);
         }
 
