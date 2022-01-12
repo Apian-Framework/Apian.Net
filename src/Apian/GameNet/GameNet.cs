@@ -41,7 +41,7 @@ namespace GameNet
         void OnPeerLeftNetwork(string p2pId, string netId);
         void OnPeerMissing(string p2pId, string networkId);
         void OnPeerReturned(string p2pId, string networkId);
-        void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs);
+        void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo info);
     }
 
     // used internally
@@ -207,10 +207,10 @@ namespace GameNet
         //
 
 
-        public virtual void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
+        public virtual void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo syncInfo)
         {
             // Note: ApianGameNet overrides this and DOESN'T call it - Apian deals with any sync stuff for apian apps
-            client.OnPeerSync(channelId, p2pId, clockOffsetMs, netLagMs);
+            client.OnPeerSync(channelId, p2pId, syncInfo);
         }
 
         public virtual void OnPeerLeft(string channelId, string p2pId)

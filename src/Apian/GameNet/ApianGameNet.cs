@@ -31,7 +31,7 @@ namespace Apian
 
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
-        PeerClockSyncInfo GetP2pPeerClockSyncData(string P2pPeerId);
+        PeerClockSyncInfo GetP2pClockSyncInfo(string P2pPeerId);
 
         // Called by Apian
          void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
@@ -43,9 +43,8 @@ namespace Apian
         // This is a GameNet/P2pNet peer. There is only one of these per node, no matter
         // how many ApianInstances/Groups there are.
 
-        public string P2pId;
-        public string P2NetpHelloData; // almost always JSON
-
+        public string P2pId { get; private set; }
+        public string P2NetpHelloData { get; private set; } // almost always JSON
         public ApianNetworkPeer(string p2pId, string helloData)
         {
             P2pId = p2pId;
@@ -259,20 +258,18 @@ namespace Apian
             base.OnPeerReturned(channelId, p2pId);
         }
 
-        public override void OnPeerSync(string channelId, string p2pId, long clockOffsetMs, long netLagMs)
+        public override void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo syncInfo)
         {
-            // TODO: Should this go to the gamenet client?
-
             // P2pNet sends this for each channel that wants it
             if (ApianInstances.ContainsKey(channelId))
-               ApianInstances[channelId].OnPeerClockSync(p2pId, clockOffsetMs, netLagMs);
+               ApianInstances[channelId].OnPeerClockSync(p2pId, syncInfo.sysClockOffsetMs, syncInfo.syncCount);
         }
 
         //
         // *** Additional ApianGameNet stuff
         //
 
-        public PeerClockSyncInfo GetP2pPeerClockSyncData(string p2pPeerId)
+        public PeerClockSyncInfo GetP2pClockSyncInfo(string p2pPeerId)
         {
             return p2p.GetPeerClockSyncData(p2pPeerId);
         }

@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
-using P2pNet;
+using P2pNet; // TODO: this is just for For PeerClockSyncInfo. Not sure I like the P2pNet dependency here
 using UniLog;
+using static UniLog.UniLogger; // for SID()
 
 namespace Apian
 {
@@ -17,7 +18,7 @@ namespace Apian
 
     public interface IApianClientServices
     {
-        // This is the interface that a client (almost certainly a GameNet) sees
+        // This is the interface that a client (almost certainly ApianGameNet) sees
         void SetupExistingGroup(ApianGroupInfo groupInfo);
         void SetupNewGroup(ApianGroupInfo groupInfo);
         void JoinGroup(string localGroupData);
@@ -25,7 +26,7 @@ namespace Apian
         void OnGroupMemberLeft(string groupChannelId, string p2pId);
         void OnPeerMissing(string groupChannelId, string p2pId);
         void OnPeerReturned(string groupChannelId, string p2pId);
-        void OnPeerClockSync(string peerId, long clockOffsetMs, long netLagMs);
+        void OnPeerClockSync(string remotePeerId, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
     }
 
@@ -199,8 +200,15 @@ namespace Apian
 
         public virtual void OnApianClockOffsetMsg(string fromId, string toId, ApianMessage msg, long lagMs)
         {
-            Logger.Verbose($"OnApianClockOffsetMsg(): from {fromId}");
-            ApianClock?.OnPeerApianOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+            //  Make sure the source is an active member of the group before sending to local clock
+            bool srcActive =  GroupMgr.GetMember(fromId)?.CurStatus == ApianGroupMember.Status.Active;
+            Logger.Verbose($"OnApianClockOffsetMsg(): from {SID(fromId)} Active: {srcActive}");
+            if (srcActive)
+                ApianClock?.OnPeerApianOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+
+            // Always send to groupMgr (a first Offset report can result in a status change to Active)
+            GroupMgr.OnApianClockOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+
         }
 
         // CoreApp -> Apian API
@@ -229,7 +237,7 @@ namespace Apian
             // See comments in SendRequest
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
             {
-                Logger.Info($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
+                Logger.Verbose($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
                 return;
             }
 
@@ -274,11 +282,11 @@ namespace Apian
                     switch (effect)
                     {
                         case ApianConflictResult.Validated:
-                            Logger.Info($"{obsUnderTest.MsgType} Observation Validated by {prevObs.MsgType}: {reason}");
+                            Logger.Verbose($"{obsUnderTest.MsgType} Observation Validated by {prevObs.MsgType}: {reason}");
                             isValid = true;
                             break;
                         case ApianConflictResult.Invalidated:
-                            Logger.Info($"{obsUnderTest.MsgType} Observation invalidated by {prevObs.MsgType}: {reason}");
+                            Logger.Verbose($"{obsUnderTest.MsgType} Observation invalidated by {prevObs.MsgType}: {reason}");
                             isValid = false;
                             break;
                         case ApianConflictResult.Unaffected:
@@ -290,7 +298,7 @@ namespace Apian
                 if (isValid)
                     obsToSend.Add(obsUnderTest);
                 else
-                    Logger.Info($"{obsUnderTest.MsgType} Observation rejected.");
+                    Logger.Verbose($"{obsUnderTest.MsgType} Observation rejected.");
             }
 
             //Logger.Warn($"vvvv - Start Obs batch send - vvvv");
@@ -325,12 +333,16 @@ namespace Apian
             string serializedState = AppCore.DoCheckpointCoreState( seqNum,  chkApianTime);
 
             string hash = ApianHash.HashString(serializedState);
-            Logger.Verbose($"SendStateCheckpoint(): SeqNum: {seqNum}, Hash: {hash}");
+            Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}");
 
             GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState);
 
-            GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.GroupId, seqNum, chkApianTime, hash);
-            GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
+            if ( GroupMgr.LocalMember.CurStatus == ApianGroupMember.Status.Active)
+            {
+                Logger.Verbose($"DoLocalAppCoreCheckpoint(): Sending GroupCheckpointReportMsg");
+                GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.GroupId, seqNum, chkApianTime, hash);
+                GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
+            }
         }
 
         public virtual void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
@@ -359,16 +371,14 @@ namespace Apian
             // Note that the local gameinstance usually doesn't care about a remote peer joining a group until a Player Joins the gameInst
             // But it usually DOES care about the LOCAL peer's group membership status.
 
+            // TODO: this used to look up the peer's clock sync data and pass it so as not to wait for a sync
+            // Is that necessary?
+
             if (member.PeerId != GameNet.LocalP2pId() )
             {
-
                 if (ApianClock != null)
                 {
-                    PeerClockSyncInfo syncData = GameNet.GetP2pPeerClockSyncData(member.PeerId);
-                    if (syncData == null)
-                        Logger.Warn($"ApianBase.OnGroupMemberJoined(): peer {member.PeerId} has no P2pClockSync data");
-                    else
-                        ApianClock.OnNewPeer(member.PeerId, syncData.clockOffsetMs, syncData.networkLagMs);
+                    ApianClock.OnNewPeer(member.PeerId); // so our clock can send it the current local apianoffset
                 }
             }
 
@@ -398,7 +408,7 @@ namespace Apian
 
         public virtual void ApplyStashedApianCommand(ApianCommand cmd)
         {
-            Logger.Info($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}"); //&&&& TS: {cmd.PayloadTimeStamp}");
+            Logger.Verbose($"BeamApian.ApplyApianCommand() Group: {cmd.DestGroupId}, Applying STASHED Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}"); //&&&& TS: {cmd.PayloadTimeStamp}");
 
             // If your AppCore includes running-time code that looks for future events in order to report observations
             // then you may want to override this and include a call to something like:
@@ -410,14 +420,14 @@ namespace Apian
 
 
         // Other stuff
-        public void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // sys + offset = apian
+
+        public void OnPeerClockSync(string remotePeerId,  long remoteClockOffset, long syncCount) // local + offset = remote time
         {
-            // TODO: This is awkward.
             // TODO++: ApianClocks don;t use this info when passed in. It gets stored until an ApianClockOffset msg
             // comes frmo a peer. Since this data can be fetched at any time from p2pnet it would be simpler
             // to do nothing here, and wait till an APianOffset msg comes in and then fetch it and send all the data to the
             // clock at once.
-            ApianClock?.OnPeerClockSync( remotePeerId,  clockOffsetMs,  netLagMs);
+            ApianClock?.OnPeerClockSync( remotePeerId, remoteClockOffset, syncCount);
         }
 
         // "Missing" is a little tricky. It's not like Joining or Leaving a group - it's more of a network-level

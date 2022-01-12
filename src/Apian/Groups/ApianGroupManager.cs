@@ -89,15 +89,16 @@ namespace Apian
         public enum Status
         {
             New,  // just created
-            Joining, // In the process of joining a group
-            Syncing, // In the process of syncing app state
+            Joining, // In the process of joining a group (mostly waiting for ApianClock to sync)
+            SyncingState, // In the process of syncing app state
+            SyncingClock, // In the process of syncing ApianClock (may have happened earlier)
             Active, // part of the gang
             Removed, // has left, or was missing long enough to be removed
         }
 
         public string PeerId {get;}
         public Status CurStatus {get; set;}
-
+        public bool ApianClockSynced; // means we've gotten an ApianOffset msg
         public string AppDataJson; // This is ApianClient-relevant data. Apian doesn't read it
 
         public ApianGroupMember(string peerId, string appDataJson)
@@ -105,6 +106,7 @@ namespace Apian
             CurStatus = Status.New;
             PeerId = peerId;
             AppDataJson = appDataJson;
+
         }
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedAutoPropertyAccessor.Global,NotAccessedField.Global
     }
@@ -150,6 +152,7 @@ namespace Apian
         void ApplyGroupCoreCommand(long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
         void SendApianObservation( ApianCoreMessage coreMsg );
+        void OnApianClockOffset(string peerId, long ApianClockOffset);
         void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
@@ -229,6 +232,14 @@ namespace Apian
         }
         public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );
+
+        public virtual void OnApianClockOffset(string peerId, long ApianClockOffset)
+        {
+            // This should generally be overridden. If the peer involved was in SYncingClock status
+            // then it should be made active.
+            GetMember(peerId).ApianClockSynced = true;
+        }
+
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);

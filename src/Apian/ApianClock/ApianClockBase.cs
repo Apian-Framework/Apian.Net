@@ -11,7 +11,7 @@ namespace Apian
         public bool IsIdle { get => (_currentRate == 0 && _apianTimeBase == 0);}  // hasn't been set yet
         public long SystemTime { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}  // system clock
         public long CurrentTime { get => (long)((SystemTime - _sysMsBase) * _currentRate) + _apianTimeBase;} // This is the ApianTime
-        public long SysClockOffset {get => CurrentTime - SystemTime; } // The current effective offset.
+        public long ApianClockOffset {get => CurrentTime - SystemTime; } // The current effective offset.
 
          public readonly UniLogger Logger;
 
@@ -81,22 +81,15 @@ namespace Apian
             if (_apian.GroupMgr != null)
             {
                 Logger.Verbose($"SendApianClockOffset() - Current Time: {CurrentTime}");
-                _apian.SendApianMessage(_apian.GroupMgr.GroupId, new ApianClockOffsetMsg( _apian.GroupMgr.GroupId, _apian.GroupMgr.LocalPeerId, SysClockOffset));
+                _apian.SendApianMessage(_apian.GroupMgr.GroupId, new ApianClockOffsetMsg( _apian.GroupMgr.GroupId, _apian.GroupMgr.LocalPeerId, ApianClockOffset));
             }
         }
 
         // Clocks neeed to implement these
-        public abstract void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs);
+        public abstract void OnNewPeer(string remotePeerId);
         public abstract void OnPeerLeft(string peerId);
-
-        public abstract void OnPeerApianOffset(string remotePeerId, long apianOffset); // apian offset is the difference between the reporting
-                                                                                        // peer's system and Apian clocks. It does NOT
-                                                                                        // assume anything about the local peer's system or
-                                                                                        // Apian clocks.
-        public abstract void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs); // clock offset is the estimated offset
-                                                                                                      // between the 2 peers' system clocks
-                                                                                                      // as reported by P2pNet
-
+        public abstract void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount);
+        public abstract void OnPeerApianOffset(string remotePeerId, long remoteApianOffset);
 
     }
 

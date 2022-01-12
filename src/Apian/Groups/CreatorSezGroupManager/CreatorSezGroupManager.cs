@@ -160,8 +160,8 @@ namespace Apian
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
             LeaderData = new LeaderOnlyData(ApianInst, ConfigDict);   // since we're leader we need leaderdata
-            ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
-            NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
+            //ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
+            //NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
         }
 
         public override void SetupExistingGroup(ApianGroupInfo info)
@@ -198,7 +198,7 @@ namespace Apian
 
             if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if we were behind and calling it caught us up.
             {
-                if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing && SysMsNow > DontRequestSyncBeforeMs)
+                if (LocalMember.CurStatus == ApianGroupMember.Status.SyncingState && SysMsNow > DontRequestSyncBeforeMs)
                 {
                     Logger.Info($"{this.GetType().Name}.Update(): Sending SyncCompletion request.");
                     ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
@@ -249,6 +249,19 @@ namespace Apian
         //         // This next line is too verbose for even Debug-level
         //         //Logger.Debug($"SendApianObservation() We are not server, so don't send observations.");
         //    }
+        }
+
+        public override void OnApianClockOffset(string peerId, long ApianClockOffset)
+        {
+            // If this comes in from a peer who is Syncing the clock, and we are the leader, make it Active
+            base.OnApianClockOffset(peerId, ApianClockOffset);
+
+            if (LocalPeerIsLeader && GetMember(peerId)?.CurStatus == ApianGroupMember.Status.SyncingClock)
+            {
+                Logger.Debug($"OnApianClockOffset(): Setting peer {SID(peerId)} to Active");
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Active));
+           }
+
         }
 
         public override void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChannel)
@@ -351,7 +364,7 @@ namespace Apian
 
             // the local short-circuit... so we do the right thing when data arrives
             ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
-            LocalMember.CurStatus = ApianGroupMember.Status.Syncing;
+            LocalMember.CurStatus = ApianGroupMember.Status.SyncingState;
             ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
             // when creator gets the sync request it'll broadcast an identical status change msg
         }
@@ -453,6 +466,9 @@ namespace Apian
                 {
                     if  (LocalPeerIsLeader) // are we the leader?
                     {
+                        // Now that we are joined, start the clock
+                        ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
+                        NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
                         // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
                         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
                     } else {
@@ -509,7 +525,7 @@ namespace Apian
                 GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
 
-                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Syncing));
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.SyncingState));
 
                 // Send out most recent state
                 long firstCmdToSend = sMsg.ExpectedCmdSeqNum;
@@ -540,7 +556,12 @@ namespace Apian
             {
                 GroupSyncCompletionMsg sMsg = (msg as GroupSyncCompletionMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");
-                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Active));
+                ApianGroupMember m = GetMember(msgSrc);
+
+                if (m.ApianClockSynced)
+                    ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Active));
+                else
+                    ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.SyncingClock));
             }
         }
 

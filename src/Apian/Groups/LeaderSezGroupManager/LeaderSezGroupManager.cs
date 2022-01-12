@@ -206,7 +206,7 @@ namespace Apian
 
             if (CmdSynchronizer?.ApplyStashedCommands() == true) // always tick this. returns true if we were behind and calling it caught us up.
             {
-                if (LocalMember.CurStatus == ApianGroupMember.Status.Syncing && SysMsNow > DontRequestSyncBeforeMs)
+                if (LocalMember.CurStatus == ApianGroupMember.Status.SyncingState && SysMsNow > DontRequestSyncBeforeMs)
                 {
                     Logger.Info($"{this.GetType().Name}.Update(): Sending SyncCompletion request.");
                     ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
@@ -354,7 +354,7 @@ namespace Apian
 
             // the local short-circuit...
             ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
-            LocalMember.CurStatus = ApianGroupMember.Status.Syncing;
+            LocalMember.CurStatus = ApianGroupMember.Status.SyncingState;
             ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
             // when creator gets the sync request it'll broadcast an identical status change msg
         }
@@ -493,7 +493,7 @@ namespace Apian
                 GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
 
-                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.Syncing));
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.SyncingState));
 
                 // Send out most recent state
                 long firstCmdToSend = sMsg.ExpectedCmdSeqNum;

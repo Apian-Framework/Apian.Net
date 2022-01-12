@@ -21,10 +21,9 @@ namespace Apian
         private readonly Dictionary<string, long> _apianOffsetsByPeer;
 
 
-        public override void OnNewPeer(string remotePeerId, long clockOffsetMs, long netLagMs)
+        public override void OnNewPeer(string remotePeerId)
         {
-            OnPeerClockSync(remotePeerId, clockOffsetMs, netLagMs);
-            if (!IsIdle)
+            if (!IsIdle && _apian.LocalPeerIsActive)
                 SendApianClockOffset(); // tell the peer about us
         }
 
@@ -38,7 +37,7 @@ namespace Apian
 
         }
 
-        public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long netLagMs) // localSys + offset = PeerSys
+        public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount)
         {
             // This is a P2pNet sync ( lag and sys clock offset determination )
             Logger.Verbose($"OnPeerSync() from {SID(remotePeerId)}.");
@@ -46,41 +45,49 @@ namespace Apian
             _sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
         }
 
-        public override void OnPeerApianOffset(string p2pId,  long remoteApianOffset)
+        public override void OnPeerApianOffset(string p2pId, long remoteApianOffset)
         {
-            // peer is reporting it's local apian offset (SysClockOffset to the peer, peerAppOffset to us)
-            // By using P2pNet's estimate for that peer's system offset vs our system clock
-            // ( ourSysTime + peerOffset = peerSysTime)
-            // we can infer what the difference is betwen our ApianClock and theirs.
-            // and by "infer" I mean "kinda guess sorta"
-            // remoteApianClk = sysMs + peerOffSet + peerApianOffset
+            // peer is reporting it's local ApianClockOffset, and our local Apian instance is reporting
+            // P2pNet's best estimate as to the remote peer's sysClock versus ours
+            // ( ourSysTime + peerSysOffset = peerSysTime)
+            // Using this we can infer what the difference is betwen our ApianClock and theirs.
+            // and by "infer" I mean "kinda guess sorta": remoteApianClk = localSysMs + peerSysOffSet + peerApianOffset
             //
             Logger.Verbose($"OnApianClockOffset() from peer {SID(p2pId)}");
             if (p2pId == _apian.GroupMgr.LocalPeerId)
             {
-                Logger.Verbose("OnApianClockOffset(). Oops. It's me. Bailing");
+                Logger.Verbose("OnApianClockOffset(). Ignoring local  message.");
                 return;
             }
 
+            // TODO: the idea is that Apian, before calling this, has verified that the sender is an Active group member
+            // Maybe we should check anyway?
+
             _apianOffsetsByPeer[p2pId] = remoteApianOffset;
 
-            if (IsIdle) // this is the first we've gotten. Set set ours to match theirs.
-            {
-                if (_sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
-                {
-                    // CurrentTime = sysMs + peerOffset + peerAppOffset;
-                    DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
-                    Logger.Verbose($"OnApianClockOffset() - Set clock to match {SID(p2pId)}");
-                }
-            } else {
-                _UpdateForOtherPeers();
-            }
-        }
+            _UpdateForOtherPeers();
 
+            // This is the old way, which set to match the first active peer we get a report from.
+            // Instead, lets try waiting until we have reports from 1/2 of the Active members.
+            //
+            // if (IsIdle) // this is the first update we've gotten. Just set ours to match theirs.
+            // {
+            //     if (_sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
+            //     {
+            //         // CurrentTime = sysMs + peerOffset + peerAppOffset;
+            //         DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
+            //         Logger.Verbose($"OnApianClockOffset() - Was idle, set clock to match {SID(p2pId)}");
+            //     }
+            // } else {
+            //     // Do some complicated stuff to compute the "group" Apian clock value
+            //     _UpdateForOtherPeers();
+            // }
+        }
 
         // Internals
         private void _UpdateForOtherPeers()
         {
+            long peerTimeSum = 0;
             long localErrSum = 0;
             int peerCount = 0;
             foreach (string pid in _sysOffsetsByPeer.Keys)
@@ -89,16 +96,30 @@ namespace Apian
                     if (pid != _apian.GroupMgr.LocalPeerId)
                     {
                         long peerSysOff = _sysOffsetsByPeer[pid]; // ( ourTime + offset = peerTime)
-                        long peerAppOff = _apianOffsetsByPeer[pid];
+                        long peerAppOff = _apianOffsetsByPeer[pid]; // will throw/continue if we don't have offset report for this one
                         // localErr = remoteAppClk - localAppClk = (sysMs + peerOffset + peerAppOffset) - CurrentTime
+                        peerTimeSum += SystemTime + peerSysOff + peerAppOff; // if we're Idle
                         localErrSum += SystemTime + peerSysOff + peerAppOff - CurrentTime;
                         peerCount++;
                     }
                 } catch(KeyNotFoundException) {}
             }
 
-            if (peerCount > 0)
+            if (peerCount == 0)
+                return;
+
+            if (IsIdle && peerCount < _apian.GroupMgr.ActiveMemberCount / 2)  // Don;t do initial set
             {
+                Logger.Info($"_UpdateForOtherPeers(): Only {peerCount} members or the active {_apian.GroupMgr.ActiveMemberCount} have reported.");
+                return;
+            }
+
+            if (IsIdle)
+            {
+                long newCurrentTime = peerTimeSum / peerCount;
+                DoSet(newCurrentTime);
+                Logger.Verbose($"First set ApianTime: {newCurrentTime}");
+            } else {
                 long localErrMs = localErrSum / peerCount;
 
                 // Try to correct half of the error in kOffsetAnnounceBaseMs
@@ -106,10 +127,7 @@ namespace Apian
                 DoSet(CurrentTime, newRate);
                 Logger.Verbose($"Update: local error: {localErrMs}, New Rate: {newRate}");
             }
-            else
-            {
-                Logger.Verbose("Update: No other peers.");
-            }
+
         }
 
     }
