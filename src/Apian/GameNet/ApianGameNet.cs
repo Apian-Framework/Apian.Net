@@ -1,10 +1,12 @@
-using System.Security.Cryptography;
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using GameNet;
 using P2pNet;
+
+#if !SINGLE_THREADED
 using System.Threading.Tasks;
+#endif
 
 namespace Apian
 {
@@ -27,14 +29,16 @@ namespace Apian
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
-        Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
-
         void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         PeerClockSyncInfo GetP2pClockSyncInfo(string P2pPeerId);
 
         // Called by Apian
          void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
+
+#if !SINGLE_THREADED
+        Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
+#endif
 
     }
 
@@ -61,7 +65,9 @@ namespace Apian
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
 
+#if !SINGLE_THREADED
         private Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>> JoinGroupAsyncCompletionSources;
+#endif
 
         protected ApianGameNetBase() : base()
         {
@@ -78,7 +84,9 @@ namespace Apian
                 [ApianMessage.GroupMessage] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
             };
 
+#if !SINGLE_THREADED
             JoinGroupAsyncCompletionSources = new Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>>();
+#endif
         }
 
         //
@@ -124,7 +132,6 @@ namespace Apian
         // ApianGameNet Client API
         //
 
-
         //  Request announcement of existing Apian groups
         public void RequestGroups()
         {
@@ -133,19 +140,6 @@ namespace Apian
         }
 
         private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
-
-        public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
-        {
-            // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
-            GroupRequestResults = new Dictionary<string, GroupAnnounceResult>();
-            logger.Verbose($"RequestGroupsAsync()");
-            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
-            await Task.Delay(timeoutMs).ConfigureAwait(false);
-            Dictionary<string, GroupAnnounceResult> results = GroupRequestResults;
-            GroupRequestResults = null;
-            return results;
-        }
-
 
         // Joining a group (or creating and joining one)
         //
@@ -169,6 +163,18 @@ namespace Apian
         }
 
         // Async versions of the above group joining methods which return success/failure results
+#if !SINGLE_THREADED
+        public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
+        {
+            // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
+            GroupRequestResults = new Dictionary<string, GroupAnnounceResult>();
+            logger.Verbose($"RequestGroupsAsync()");
+            SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
+            await Task.Delay(timeoutMs).ConfigureAwait(false);
+            Dictionary<string, GroupAnnounceResult> results = GroupRequestResults;
+            GroupRequestResults = null;
+            return results;
+        }
 
         public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
         {
@@ -193,8 +199,7 @@ namespace Apian
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
-
-
+#endif
 
         public void LeaveGroup(string groupId)
         {
@@ -295,6 +300,7 @@ namespace Apian
 
         public void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)
         {
+#if !SINGLE_THREADED
             //  For Async Join request, local application isn't told that it has "joined" a group until it is Active
             if (peerId == LocalP2pId() && newStatus == ApianGroupMember.Status.Active && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
             {
@@ -302,6 +308,7 @@ namespace Apian
                 PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, true);
                 JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
             }
+#endif
 
             Client.OnGroupMemberStatus( groupId, peerId, newStatus, prevStatus);
         }
