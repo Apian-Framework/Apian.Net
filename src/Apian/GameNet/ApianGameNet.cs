@@ -1,3 +1,4 @@
+//#define SINGLE_THREADED
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -139,8 +140,6 @@ namespace Apian
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
-        private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
-
         // Joining a group (or creating and joining one)
         //
         // Eventual result is hopefully a call to caller's:
@@ -164,6 +163,7 @@ namespace Apian
 
         // Async versions of the above group joining methods which return success/failure results
 #if !SINGLE_THREADED
+        private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
         public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
         {
             // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
@@ -378,10 +378,14 @@ namespace Apian
             ApianGroupStatus groupStatus = gaMsg.DecodeGroupStatus();
             logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
 
+            GroupAnnounceResult result =  new GroupAnnounceResult(groupInfo, groupStatus);
+
+#if !SINGLE_THREADED
             if (GroupRequestResults != null)
-                GroupRequestResults[groupInfo.GroupId] = new GroupAnnounceResult(groupInfo, groupStatus); // RequestGroupsAsync was called
+                GroupRequestResults[groupInfo.GroupId] = result;// RequestGroupsAsync was called
             else
-                Client.OnGroupAnnounce(groupInfo); // TODO: should this happen even on an async request?
+#endif
+                Client.OnGroupAnnounce(result); // TODO: should this happen even on an async request?
         }
 
 
