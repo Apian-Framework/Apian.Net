@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using P2pNet;
@@ -32,6 +33,7 @@ namespace GameNet
         void LeaveNetwork();
         string LocalP2pId();
         string CurrentNetworkId();
+        int NetworkPeerCount();
         void Update(); /// <summary> needs to be called periodically (drives message pump + group handling)</summary>
     }
 
@@ -148,6 +150,8 @@ namespace GameNet
             return await JoinNetworkCompletion.Task.ContinueWith( t => {JoinNetworkCompletion=null; return t.Result;},  TaskScheduler.Default).ConfigureAwait(false);
         }
 
+
+
         public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
         {
             // See P2pHelloData() comment regarding actual data struct
@@ -201,6 +205,8 @@ namespace GameNet
 
         public string LocalP2pId() => p2p?.GetId();
         public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
+
+        public int NetworkPeerCount() => p2p == null ? 0 : p2p.GetPeerIds().Count;
 
         //
         // IP2pNetClient
