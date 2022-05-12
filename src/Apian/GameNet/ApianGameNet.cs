@@ -223,7 +223,7 @@ namespace Apian
         {
             // This means a peer joined the main Game channel.
             Peers[p2pId] = new ApianNetworkPeer(p2pId, helloData);
-            base.OnPeerJoined(channelId, p2pId, helloData); // inform GameManager
+            base.OnPeerJoined(channelId, p2pId, helloData); // inform ApianApplication (Client)
         }
 
         public override void OnPeerLeft(string channelId, string p2pId)

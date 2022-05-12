@@ -13,7 +13,7 @@ namespace Apian
         public P2pNetChannelInfo GroupChannelInfo;
         public string GroupId { get => GroupChannelInfo?.id;} // channel
         public string GroupCreatorId;
-        public string GroupName;
+        public string GroupName; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
         public Dictionary<string, string> GroupParams;
 
         public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorId, string groupName, Dictionary<string, string> grpParams = null)
