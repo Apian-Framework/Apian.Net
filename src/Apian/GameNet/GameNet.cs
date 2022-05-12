@@ -33,6 +33,7 @@ namespace GameNet
         void LeaveNetwork();
         string LocalP2pId();
         string CurrentNetworkId();
+        P2pNetChannel CurrentNetworkChannel();
         int NetworkPeerCount();
         void Update(); /// <summary> needs to be called periodically (drives message pump + group handling)</summary>
     }
@@ -154,7 +155,7 @@ namespace GameNet
 
         public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
         {
-            // See P2pHelloData() comment regarding actual data struct
+            // "helloData" is almost certainly a serialized application-specific "GameNetworkPeer" class
             if (channel == CurrentNetworkId())
             {
                 PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(p2pId, CurrentNetworkId(), helloData);
@@ -205,13 +206,13 @@ namespace GameNet
 
         public string LocalP2pId() => p2p?.GetId();
         public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
+        public P2pNetChannel CurrentNetworkChannel() => p2p?.GetMainChannel();
 
         public int NetworkPeerCount() => p2p == null ? 0 : p2p.GetPeerIds().Count;
 
         //
         // IP2pNetClient
         //
-
 
         public virtual void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo syncInfo)
         {
