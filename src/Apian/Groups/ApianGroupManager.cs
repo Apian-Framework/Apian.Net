@@ -235,9 +235,10 @@ namespace Apian
 
         public virtual void OnApianClockOffset(string peerId, long ApianClockOffset)
         {
-            // This should generally be overridden. If the peer involved was in SYncingClock status
+            // This should generally be overridden. If the peer involved was in SyncingClock status
             // then it should be made active.
-            GetMember(peerId).ApianClockSynced = true;
+            ApianGroupMember peer = GetMember(peerId);
+            if (peer != null) peer.ApianClockSynced = true;
         }
 
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
