@@ -380,12 +380,13 @@ namespace Apian
 
             GroupAnnounceResult result =  new GroupAnnounceResult(groupInfo, groupStatus);
 
+            Client.OnGroupAnnounce(result); // Q: should this happen even on an async request? YES
+
 #if !SINGLE_THREADED
             if (GroupRequestResults != null)
                 GroupRequestResults[groupInfo.GroupId] = result;// RequestGroupsAsync was called
-            else
 #endif
-                Client.OnGroupAnnounce(result); // TODO: should this happen even on an async request?
+
         }
 
 
