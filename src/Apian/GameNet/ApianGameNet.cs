@@ -105,15 +105,26 @@ namespace Apian
 
         }
 
-        // void Connect( string p2pConectionString );
-        // void Disconnect();
+        // void SetupConnection( string p2pConectionString );
+        // void TearDownConnection();
 
         public override void AddClient(IGameNetClient _client)
         {
             base.AddClient(_client);
         }
 
-         // void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
+        private void initApianJoinData()
+        {
+            // State that should be reset before and cleaned up after, network join/leave
+            ApianInstances.Clear();
+            Peers.Clear();
+        }
+
+        public override void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
+        {
+            initApianJoinData();
+             base.JoinNetwork(netP2pChannel, netLocalData);
+        }
 
         public override void LeaveNetwork()
         {
@@ -121,9 +132,9 @@ namespace Apian
             {
                 ap.LeaveGroup(); // post leaveGroup requests. Even tho we aren't waiting around for them.
             }
-            // needs to clean up ApianInstances
-            ApianInstances.Clear();
-            Peers.Clear();
+
+            initApianJoinData(); // needs to clean up ApianInstances
+
             base.LeaveNetwork();
         }
 
