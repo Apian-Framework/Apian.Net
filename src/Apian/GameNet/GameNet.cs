@@ -121,21 +121,29 @@ namespace GameNet
         //
         // IGameNet
         //
+        private void initNetJoinState()
+        {
+           // Get rid of any pending incoming messages
+            callbacksForNextPoll = new Queue<Action>();
+            loopedBackMessageHandlers  = new Queue<Action>();
+        }
+
         public virtual void SetupConnection( string p2pConnectionString )
         {
+            initNetJoinState();
             p2p = P2pNetFactory(p2pConnectionString);
-            // XXX Is there GameNet-level state to init here?
         }
 
         public virtual void TearDownConnection()
         {
             if ( CurrentNetworkId() != null)
-                p2p.Leave();
+               LeaveNetwork();
             p2p = null;
         }
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
+            initNetJoinState();
             if (netLocalData != null)
                 p2p.Join(netP2pChannel, netLocalData);    // Results in "OnPeerJoined(localPeer)" call
             else
@@ -176,8 +184,7 @@ namespace GameNet
             p2p.Leave();
 
             // Get rid of any pending incoming messages
-            callbacksForNextPoll = new Queue<Action>();
-            loopedBackMessageHandlers  = new Queue<Action>();
+            initNetJoinState();
 
             // DO NOT get rid os p2pNet instance since it can Join again
         }
