@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
+
+#if !SINGLE_THREADED
+using System.Threading.Tasks;
+#endif
 
 namespace GameNet
 {
@@ -23,14 +26,15 @@ namespace GameNet
 
     public interface IGameNet
     {
-        void Connect( string p2pConectionString );
         void AddClient(IGameNetClient _client);
-        void Disconnect();
+        void SetupNetwork( string p2pConectionString );
         void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
+#if !SINGLE_THREADED
         Task<PeerJoinedNetworkData> JoinNetworkAsync (P2pNetChannelInfo netP2pChannel, string netLocalData);
+#endif
+        void LeaveNetwork();
         void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
-        void LeaveNetwork();
         string LocalP2pId();
         string CurrentNetworkId();
         P2pNetChannel CurrentNetworkChannel();
@@ -68,8 +72,19 @@ namespace GameNet
         // in this queue and it'll happen that way.
         // OnGameCreated() is an example of one that might take a while, or might
         // happen immediately.
-        protected Queue<Action> callbacksForNextPoll;
-        protected Queue<Action> loopedBackMessageHandlers; // messages that come from this node (loopbacks) get handled at the end of the loop
+        protected Queue<Action> callbacksForNextPoll;  // TODO: is this even used anymore?
+
+        // Messages that come from this node (loopbacks) can be problematic because the handler ends up running in the same call stack
+        // as the code that sent the message. Everything the handler calls, too, so you can get to a place where the call stack is way super deep
+        // and is taking mmultiple trips through here sending and responding to messages.
+        // Putting a locally-created message into the loopedBackMessageHandlers queue breaks that chain, resulting in the message getting
+        // handled at the end of the current (or next) GameNet update() loop. This does mean that the message won't get handled locally until
+        // that next loop. Usually this is a fine thing - I mean, all of the remote peers are probably getting even later.
+
+        // ANother potential gotcha is that a message can be "on the wing" stashed in this queue at the same time that the P2pNet instance
+        // itself is shut down (LeaveNetwork() is called here) - and the message handler might end up getting called where there's no longer
+        // a network connection. So LeaveNetwork() needs to flush this queue.
+        protected Queue<Action> loopedBackMessageHandlers;
 
         protected GameNetBase()
         {
@@ -105,31 +120,11 @@ namespace GameNet
         //
         // IGameNet
         //
-        public virtual void Connect( string p2pConnectionString )
+        public virtual void SetupNetwork( string p2pConnectionString )
         {
             p2p = P2pNetFactory(p2pConnectionString);
+            // XXX Is there GameNet-level state to init here?
         }
-
-        public virtual void Disconnect()
-        {
-            if (p2p?.GetId() != null)
-                p2p.Leave();
-            p2p = null;
-        }
-
-        // TODO: need "Destroy() or Reset() or (Init)" to null out P2pNet instance? Don;t want to destroy instance immediately on Leave()
-
-        // public abstract void CreateNetwork<T>(T t); // really can only be defined in the game-specific implmentation
-
-        // protected void _SyncTrivialNewNetwork()
-        // {
-        //     // The most basic thing you can in a CreateGame() implmentation.
-        //     // It actually does nothing at all except to make up a random name and then call back saying a game was created.
-        //     // This works because at its *absolute simplest* a "game" is just an agree-to p2p channel, and "joining" it
-        //     // just means subscribing to it.
-        //     string newId = "APIANNET" + System.Guid.NewGuid().ToString();
-        //     callbacksForNextPoll.Enqueue( () => client.OnNetworkCreated(newId));
-        // }
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
@@ -140,6 +135,8 @@ namespace GameNet
 
             //callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
         }
+
+#if !SINGLE_THREADED
         private TaskCompletionSource<PeerJoinedNetworkData> JoinNetworkCompletion; // can only be one
         public async Task<PeerJoinedNetworkData> JoinNetworkAsync(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
@@ -150,8 +147,7 @@ namespace GameNet
             JoinNetwork(netP2pChannel, netLocalData);
             return await JoinNetworkCompletion.Task.ContinueWith( t => {JoinNetworkCompletion=null; return t.Result;},  TaskScheduler.Default).ConfigureAwait(false);
         }
-
-
+#endif
 
         public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
         {
@@ -169,10 +165,13 @@ namespace GameNet
 
         public virtual void LeaveNetwork()
         {
-            callbacksForNextPoll.Enqueue( () => client.OnPeerLeftNetwork(LocalP2pId(), CurrentNetworkId())); // well get this next polling update
-            p2p.Leave(); // sends goodbye
-            // Note that this is not Disconnect(). It probably almost always is, but just as Connect() and JoinNetwork()
-            // are separate, so are LeaveNetwork and Disconnect. I dunno if that good, bad, or irrelevant.
+            p2p.Leave();
+
+            // Get rid of any pending incoming messages
+            callbacksForNextPoll = new Queue<Action>();
+            loopedBackMessageHandlers  = new Queue<Action>();
+
+            p2p = null;
         }
 
         public virtual void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData)
@@ -222,7 +221,6 @@ namespace GameNet
 
         public virtual void OnPeerLeft(string channelId, string p2pId)
         {
-
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
                 client.OnPeerLeftNetwork(p2pId, CurrentNetworkId());
@@ -233,7 +231,6 @@ namespace GameNet
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
                 client.OnPeerMissing(p2pId, CurrentNetworkId());
-
         }
 
         public virtual void OnPeerReturned(string channelId, string p2pId)
