@@ -27,7 +27,8 @@ namespace GameNet
     public interface IGameNet
     {
         void AddClient(IGameNetClient _client);
-        void SetupNetwork( string p2pConectionString );
+        void SetupConnection( string p2pConectionString );
+        void TearDownConnection();
         void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
 #if !SINGLE_THREADED
         Task<PeerJoinedNetworkData> JoinNetworkAsync (P2pNetChannelInfo netP2pChannel, string netLocalData);
@@ -120,10 +121,17 @@ namespace GameNet
         //
         // IGameNet
         //
-        public virtual void SetupNetwork( string p2pConnectionString )
+        public virtual void SetupConnection( string p2pConnectionString )
         {
             p2p = P2pNetFactory(p2pConnectionString);
             // XXX Is there GameNet-level state to init here?
+        }
+
+        public virtual void TearDownConnection()
+        {
+            if ( CurrentNetworkId() != null)
+                p2p.Leave();
+            p2p = null;
         }
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
@@ -171,7 +179,7 @@ namespace GameNet
             callbacksForNextPoll = new Queue<Action>();
             loopedBackMessageHandlers  = new Queue<Action>();
 
-            p2p = null;
+            // DO NOT get rid os p2pNet instance since it can Join again
         }
 
         public virtual void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData)
