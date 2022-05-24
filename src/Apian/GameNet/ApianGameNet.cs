@@ -170,6 +170,9 @@ namespace Apian
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
             apian.JoinGroup(localGroupData); //
+
+            GroupAnnounceMsg amsg = new GroupAnnounceMsg(groupInfo, apian.CurrentGroupStatus());
+            SendApianMessage( CurrentNetworkId() , amsg); // send announcement to  everyone
         }
 
         // Async versions of the above group joining methods which return success/failure results
@@ -217,8 +220,11 @@ namespace Apian
             logger.Info($"LeaveGroup( {groupId} )");
             if (! ApianInstances.ContainsKey(groupId))
                 logger.Warn($"LeaveGroup() - No group: {groupId}");
-            else
+            else {
                 ApianInstances[groupId].LeaveGroup();
+                RemoveChannel(groupId);
+                ApianInstances.Remove(groupId);
+            }
         }
         public void SendApianMessage(string toChannel, ApianMessage appMsg)
         {
