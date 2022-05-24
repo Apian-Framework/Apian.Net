@@ -69,7 +69,7 @@ namespace GameNet
         public UniLogger logger;
 
         // Some client callbacks can happen as a direct result of a call, but we would like for
-        // them to be dispatched during poll(), rather than during th ecall itself. Put them
+        // them to be dispatched during poll(), rather than during the call itself. Put them
         // in this queue and it'll happen that way.
         // OnGameCreated() is an example of one that might take a while, or might
         // happen immediately.
@@ -78,13 +78,13 @@ namespace GameNet
         // Messages that come from this node (loopbacks) can be problematic because the handler ends up running in the same call stack
         // as the code that sent the message. Everything the handler calls, too, so you can get to a place where the call stack is way super deep
         // and is taking mmultiple trips through here sending and responding to messages.
-        // Putting a locally-created message into the loopedBackMessageHandlers queue breaks that chain, resulting in the message getting
+        // Putting a locally-created message handler call into the loopedBackMessageHandlers queue breaks that chain, resulting in the message getting
         // handled at the end of the current (or next) GameNet update() loop. This does mean that the message won't get handled locally until
         // that next loop. Usually this is a fine thing - I mean, all of the remote peers are probably getting even later.
 
         // ANother potential gotcha is that a message can be "on the wing" stashed in this queue at the same time that the P2pNet instance
         // itself is shut down (LeaveNetwork() is called here) - and the message handler might end up getting called where there's no longer
-        // a network connection. So LeaveNetwork() needs to flush this queue.
+        // a network connection. So LeaveNetwork() needs to flush this queue. <= now happens in initNetJoinState()
         protected Queue<Action> loopedBackMessageHandlers;
 
         protected GameNetBase()
