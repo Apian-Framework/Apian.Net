@@ -149,7 +149,6 @@ namespace GameNet
             else
                logger.Error($"JoinNetwork() - no local network data.");
 
-            //callbacksForNextPoll.Enqueue( () => this.OnPeerJoined( netP2pChannel.id, LocalP2pId(), netLocalData));
         }
 
 #if !SINGLE_THREADED
@@ -173,7 +172,14 @@ namespace GameNet
                 PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(p2pId, CurrentNetworkId(), helloData);
                 if (p2pId == LocalP2pId() && JoinNetworkCompletion != null)
                     JoinNetworkCompletion.TrySetResult(peerData);
-                client.OnPeerJoinedNetwork(peerData);
+
+                // TODO: This is the only callback that might come in on a p2pnet-owned thread, so care needs to be taken
+                // that it doesn;t end up calling a UNity frontend thing, for instance.
+                // A better means should be written to decide whether or not to enqueue the client action. To protect against this.
+                // Since all P2pNet incoming messages are currently queued,  OnPeerJoined can only come on another thread when it
+                // is announcing the local peer and NOT the result of an incomong net message.
+                callbacksForNextPoll.Enqueue( () => client.OnPeerJoinedNetwork(peerData));
+                //client.OnPeerJoinedNetwork(peerData);
             }
 
             // Note: ApianGameNet overrides this (and calls it)
