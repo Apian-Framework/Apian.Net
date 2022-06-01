@@ -103,17 +103,20 @@ namespace GameNet
         protected virtual IP2pNet P2pNetFactory(string p2pConnectionString)
         {
             // P2pConnectionString is <p2p implmentation name>::<imp-dependent connection string>
-            IP2pNet ip2p;
+
             string[] parts = p2pConnectionString.Split(new string[]{"::"},StringSplitOptions.None); // Yikes! This is fugly.
 
+            IP2pNetCarrier carrier = null;
             switch(parts[0])
             {
                 case "p2ploopback":
-                    ip2p = new P2pLoopback(this, null);
+                    carrier = new P2pLoopback(null);
                     break;
                 default:
                     throw( new Exception($"Invalid connection type: {parts[0]}"));
             }
+
+          IP2pNet ip2p = new P2pNetBase(this, carrier);
 
             return ip2p;
         }
