@@ -474,7 +474,7 @@ namespace Apian
             {
                 GroupMemberStatusMsg sMsg = (msg as GroupMemberStatusMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): {(sMsg.PeerId==LocalPeerId?"Local:":"Remote")}: {sMsg.PeerId} to {sMsg.MemberStatus}");
-                if (Members.Keys.Contains(sMsg.PeerId))
+                if (Members.ContainsKey(sMsg.PeerId))
                 {
                     ApianGroupMember m = Members[sMsg.PeerId];
                     ApianGroupMember.Status old = m.CurStatus;
