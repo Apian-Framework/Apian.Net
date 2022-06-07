@@ -74,6 +74,7 @@ namespace GameNet
         // OnGameCreated() is an example of one that might take a while, or might
         // happen immediately.
         protected Queue<Action> callbacksForNextPoll;  // TODO: is this even used anymore?
+        // XXX: Delete callbacksForNextPoll !!!
 
         // Messages that come from this node (loopbacks) can be problematic because the handler ends up running in the same call stack
         // as the code that sent the message. Everything the handler calls, too, so you can get to a place where the call stack is way super deep
@@ -181,8 +182,9 @@ namespace GameNet
                 // A better means should be written to decide whether or not to enqueue the client action. To protect against this.
                 // Since all P2pNet incoming messages are currently queued,  OnPeerJoined can only come on another thread when it
                 // is announcing the local peer and NOT the result of an incomong net message.
-                callbacksForNextPoll.Enqueue( () => client.OnPeerJoinedNetwork(peerData));
-                //client.OnPeerJoinedNetwork(peerData);
+                // callbacksForNextPoll.Enqueue( () => client.OnPeerJoinedNetwork(peerData));
+
+                client.OnPeerJoinedNetwork(peerData);
             }
 
             // Note: ApianGameNet overrides this (and calls it)
