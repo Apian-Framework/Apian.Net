@@ -113,16 +113,20 @@ namespace Apian
             base.AddClient(_client);
         }
 
-        private void initApianJoinData()
+        protected void InitApianJoinData()
         {
             // State that should be reset before and cleaned up after, network join/leave
+            base.InitNetJoinState();
             ApianInstances.Clear();
             Peers.Clear();
+#if !SINGLE_THREADED
+            JoinGroupAsyncCompletionSources = new Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>>();
+#endif
         }
 
         public override void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
-            initApianJoinData();
+            InitApianJoinData();
              base.JoinNetwork(netP2pChannel, netLocalData);
         }
 
@@ -133,7 +137,7 @@ namespace Apian
                 ap.LeaveGroup(); // post leaveGroup requests. Even tho we aren't waiting around for them.
             }
 
-            initApianJoinData(); // needs to clean up ApianInstances
+            InitApianJoinData(); // needs to clean up ApianInstances
 
             base.LeaveNetwork();
         }

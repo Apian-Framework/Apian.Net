@@ -117,7 +117,9 @@ namespace GameNet
                     throw( new Exception($"Invalid connection type: {parts[0]}"));
             }
 
-          IP2pNet ip2p = new P2pNetBase(this, carrier);
+            IP2pNet ip2p = new P2pNetBase(this, carrier);
+
+            JoinNetworkCompletion = null;
 
             return ip2p;
         }
@@ -125,7 +127,7 @@ namespace GameNet
         //
         // IGameNet
         //
-        private void initNetJoinState()
+        protected void InitNetJoinState()
         {
            // Get rid of any pending incoming messages
             callbacksForNextPoll = new Queue<Action>();
@@ -134,7 +136,7 @@ namespace GameNet
 
         public virtual void SetupConnection( string p2pConnectionString )
         {
-            initNetJoinState();
+            InitNetJoinState();
             p2p = P2pNetFactory(p2pConnectionString);
         }
 
@@ -142,12 +144,13 @@ namespace GameNet
         {
             if ( CurrentNetworkId() != null)
                LeaveNetwork();
+            JoinNetworkCompletion = null;
             p2p = null;
         }
 
         public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
-            initNetJoinState();
+            InitNetJoinState();
             if (netLocalData != null)
                 p2p.Join(netP2pChannel, netLocalData);    // Results in "OnPeerJoined(localPeer)" call
             else
@@ -160,10 +163,15 @@ namespace GameNet
         public async Task<PeerJoinedNetworkData> JoinNetworkAsync(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
             if (JoinNetworkCompletion != null)
-                throw new Exception("Already wainting for JoinNetwokAsync()");
+                throw new Exception("Already waiting for JoinNetwokAsync()");
 
             JoinNetworkCompletion = new TaskCompletionSource<PeerJoinedNetworkData>();
-            JoinNetwork(netP2pChannel, netLocalData);
+            try {
+                JoinNetwork(netP2pChannel, netLocalData);
+            } catch (Exception ex) {
+                logger.Warn($"JoinNetworkAsync() - JoinNetwork() failed: {ex.Message}");
+                JoinNetworkCompletion.TrySetException(ex);
+            }
             return await JoinNetworkCompletion.Task.ContinueWith( t => {JoinNetworkCompletion=null; return t.Result;},  TaskScheduler.Default).ConfigureAwait(false);
         }
 #endif
@@ -195,7 +203,7 @@ namespace GameNet
             p2p.Leave();
 
             // Get rid of any pending incoming messages
-            initNetJoinState();
+            InitNetJoinState();
 
             // DO NOT get rid os p2pNet instance since it can Join again
         }

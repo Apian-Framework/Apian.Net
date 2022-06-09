@@ -88,7 +88,7 @@ namespace Apian
         // ReSharper disable MemberCanBePrivate.Global,UnusedMember.Global,UnusedAutoPropertyAccessor.Global,NotAccessedField.Global
         public enum Status
         {
-            New,  // just created
+            New = 0,  // just created
             Joining, // In the process of joining a group (mostly waiting for ApianClock to sync)
             SyncingState, // In the process of syncing app state
             SyncingClock, // In the process of syncing ApianClock (may have happened earlier)
