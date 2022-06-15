@@ -182,7 +182,7 @@ namespace Apian
                     break;
                 case ApianCoreMessage.kGroupMgr:
                     AppCore.OnApianCommand(cmd.SequenceNum,null);
-                    GroupMgr.ApplyGroupCoreCommand(cmd.SequenceNum, GroupMgr.DeserializeGroupMessage(cmd) as GroupCoreMessage);
+                    GroupMgr.ApplyGroupCoreCommand(cmd.Epoch, cmd.SequenceNum, GroupMgr.DeserializeGroupMessage(cmd) as GroupCoreMessage);
                     break;
                 default:
                     Logger.Warn($"ApplyApianCommand: Unknown command source: {cmd.PayloadSubSys}");

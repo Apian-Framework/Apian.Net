@@ -149,7 +149,7 @@ namespace Apian
         void JoinGroup(string localMemberJson);
         void LeaveGroup();
         void Update();
-        void ApplyGroupCoreCommand(long seqNum, GroupCoreMessage cmd);
+        void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
         void SendApianObservation( ApianCoreMessage coreMsg );
         void OnApianClockOffset(string peerId, long ApianClockOffset);
@@ -166,8 +166,8 @@ namespace Apian
 
     public abstract class ApianGroupManagerBase : IApianGroupManager
     {
-        public abstract string GroupType {get;}
-        public abstract string GroupTypeName {get;}
+        public virtual string GroupType {get;}
+        public virtual string GroupTypeName {get;}
 
         public ApianGroupInfo GroupInfo {get; protected set;}
         public string GroupId {get => GroupInfo.GroupId;}
@@ -180,7 +180,7 @@ namespace Apian
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         protected Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
-        protected Dictionary<string, Action<long, GroupCoreMessage>> GroupCoreCmdHandlers;
+        protected Dictionary<string, Action<long, long, GroupCoreMessage>> GroupCoreCmdHandlers;
 
 
         public UniLogger Logger;
@@ -226,9 +226,9 @@ namespace Apian
         public abstract void LeaveGroup();
         public abstract void Update();
 
-        public virtual void ApplyGroupCoreCommand(long seqNum, GroupCoreMessage cmd)
+        public virtual void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd)
         {
-            GroupCoreCmdHandlers[cmd.MsgType](seqNum, cmd);
+            GroupCoreCmdHandlers[cmd.MsgType](epoch, seqNum, cmd);
         }
         public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );
