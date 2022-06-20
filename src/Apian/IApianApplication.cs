@@ -11,5 +11,10 @@ namespace Apian
         void OnGroupAnnounce(GroupAnnounceResult groupAnnouncement);
         void OnGroupMemberStatus(string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
         void OnPeerJoinedGroup(PeerJoinedGroupData data);
+
+        // Not all groups even HAVE a leader, but for those that do it'd be nice to be able to keep any users informed
+        // regarding changes.
+        // THe idea with the data is that it is app-dependent and the app can extract and use it
+        void OnGroupLeaderChange(string newLeaderId, ApianGroupMember leaderAppData);
     }
 }

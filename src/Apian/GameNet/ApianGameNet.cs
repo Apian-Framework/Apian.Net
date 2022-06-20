@@ -37,6 +37,8 @@ namespace Apian
         // Called by Apian
          void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
 
+         void OnNewGroupLeader(string newLeaderId, ApianGroupMember newLeader);
+
 #if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
 #endif
@@ -317,6 +319,12 @@ namespace Apian
 
                 Client.OnPeerJoinedGroup(joinData);
             }
+        }
+
+        public void OnNewGroupLeader(string newLeaderId, ApianGroupMember newLeader)
+        {
+            // newLeaderDat might be null (when group is first getting created)
+            Client.OnGroupLeaderChange(newLeaderId, newLeader);
         }
 
         public void OnApianGroupMemberStatus( string groupId, string peerId, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)

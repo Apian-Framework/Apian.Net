@@ -133,7 +133,7 @@ namespace Apian
 
             SetLeader(info.GroupCreatorId); // creater starts out as leader
 
-            // Do this after we are a member
+            // Do this *after* we are a member
             //ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
             //NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
         }
@@ -190,6 +190,8 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
             GroupLeaderId = newLeaderId;
+
+            ApianInst.GameNet.OnNewGroupLeader(newLeaderId, GetMember(newLeaderId));
         }
 
         private void _LeaderUpdate()
@@ -491,6 +493,7 @@ namespace Apian
                         // Now that we are joined, start the clock
                         ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
                         NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
+
                         // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
                         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
                     } else {
