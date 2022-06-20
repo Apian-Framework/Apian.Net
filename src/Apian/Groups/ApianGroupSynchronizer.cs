@@ -157,12 +157,12 @@ namespace Apian
         {
             Dictionary<long, ApianCommand> CommandLog = ApianInst.AppliedCommands;
             int cmdsSent = 0;
+            Logger.Verbose($"{this.GetType().Name}._SendCmdsToOnePeer() Preparing to send {SID(sPeer.peerId)} stashed commands starting with: {sPeer.nextCommandToSend}");
             for (int i=0; i<maxToSend;i++)
             {
-                long cmdNum = sPeer.nextCommandToSend;
-                if (CommandLog.ContainsKey(cmdNum))
+                if (CommandLog.ContainsKey(sPeer.nextCommandToSend))
                 {
-                    ApianCommand cmd =  CommandLog[cmdNum];
+                    ApianCommand cmd =  CommandLog[sPeer.nextCommandToSend];
                     ApianInst.GameNet.SendApianMessage(sPeer.peerId, cmd);
                     cmdsSent++;
                     sPeer.nextCommandToSend++;
@@ -170,9 +170,12 @@ namespace Apian
                         break;
                 }
                 else
-                    break; // should have access to logger to warn
+                {
+                    Logger.Warn($"{this.GetType().Name}._SendCmdsToOnePeer() command {sPeer.nextCommandToSend} not in local stash!");
+                    break;
+                }
             }
-           Logger.Info($"{this.GetType().Name}._SendCmdsToOnePeer() Sent {SID(sPeer.peerId)} {cmdsSent} stashed commands starting with: {sPeer.nextCommandToSend}");
+            Logger.Info($"{this.GetType().Name}._SendCmdsToOnePeer() Sent {SID(sPeer.peerId)} {cmdsSent} stashed commands starting with: {sPeer.nextCommandToSend-cmdsSent}");
             return cmdsSent;
         }
 

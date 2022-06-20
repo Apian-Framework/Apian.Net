@@ -4,6 +4,7 @@ using System;
 using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
+using static UniLog.UniLogger; // for SID
 
 namespace Apian
 {
@@ -96,10 +97,15 @@ namespace Apian
             Removed, // has left, or was missing long enough to be removed
         }
 
+        public static string[] StatusName =  { "New", "Joining", "SyncingState", "SyncingClock", "Active", "Removed" };
+
         public string PeerId {get;}
         public Status CurStatus {get; set;}
+        public string CurStatusName {get => StatusName[(int)CurStatus];}
         public bool ApianClockSynced; // means we've gotten an ApianOffset msg
         public string AppDataJson; // This is ApianClient-relevant data. Apian doesn't read it
+
+        public bool IsActive => (CurStatus == Status.Active ); // TODO: in the future this will include both ActivePlayer and ActiveValidator
 
         public ApianGroupMember(string peerId, string appDataJson)
         {
@@ -207,7 +213,7 @@ namespace Apian
         protected ApianGroupMember _AddMember(string peerId, string appMemberDataJson )
         {
             // Calls ApianInstance CreateGroupMember() to allow it to create an app-specific derived class
-            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {peerId}");
+            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {SID(peerId)}");
             ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerId, appMemberDataJson);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
             Members[peerId] = newMember;

@@ -1,5 +1,6 @@
 
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using UniLog;
 using static UniLog.UniLogger; // for SID
@@ -9,7 +10,7 @@ namespace Apian
     //ReSharper disable once UnusedType.Global
     public class LeaderApianClock : ApianClockBase
     {
-        protected string GroupLeaderId { get => _apian.GroupMgr.GroupCreatorId;} // TODO: should be LEADER
+        protected string GroupLeaderId => (_apian.GroupMgr as LeaderDecidesGmBase).GroupLeaderId;
 
         private bool _leaderClockSynced; // will often not be true before getting an ApianOffset msg
         private bool _leaderApianOffsetReported;
@@ -18,7 +19,7 @@ namespace Apian
 
         public LeaderApianClock(ApianBase apian) : base(apian)
         {
-
+            // cant test GroupLeaderId here because clock is not creatd with Apian instance
         }
 
         public override void OnNewPeer(string remotePeerId)

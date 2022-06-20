@@ -6,34 +6,36 @@ using Newtonsoft.Json;
 namespace Apian
 {
 
-  public class IAmLeaderMsg : GroupCoreMessage
+  public class SetLeaderMsg : ApianGroupMessage
     {
-        public const string MsgTypeId = "APLsIAL";
+        public const string MsgTypeId = "APGslm";
 
-        public string nextLeaderId;  // can be "" if there's no one to assign
-        public long nextLeaderEpoch;  // 0 for don't expire
+        public string newLeaderId;
+        public long newLeaderEpoch;  // 0 for "now"
 
         public long ElectionTerm;
         public long LastCmdSeqNum;
-        public IAmLeaderMsg(long msgTimeStamp, string nextLeader, long nextEpoch ):  base(MsgTypeId, msgTimeStamp)
+        public SetLeaderMsg(string groupId, string newLeader, long newEpoch ):  base(groupId, MsgTypeId)
         {
-            nextLeaderId = nextLeader;
-            nextLeaderEpoch = nextEpoch;
+            newLeaderId = newLeader;
+            newLeaderEpoch = newEpoch;
         }
     }
 
-    public class LeaderSezCoreMgsDeserializer : GroupCoreMessageDeserializer
+ static public class LeaderSezGroupMessageDeserializer
     {
-
-        public LeaderSezCoreMgsDeserializer() : base()
+       private static readonly Dictionary<string, Func<string, ApianGroupMessage>> deserializers = new  Dictionary<string, Func<string, ApianGroupMessage>>()
         {
+            {SetLeaderMsg.MsgTypeId, (s) => JsonConvert.DeserializeObject<SetLeaderMsg>(s) },
+        };
 
-            coreDeserializers =  coreDeserializers.Concat(
-                new  Dictionary<string, Func<string, ApianCoreMessage>>()
-                {
-                    {IAmLeaderMsg.MsgTypeId, (s) => JsonConvert.DeserializeObject<IAmLeaderMsg>(s) },
+        public static ApianGroupMessage FromJson(string msgType, string json)
+        {
+            ApianMessage aMsg =  ApianMessageDeserializer.FromJSON(msgType, json); // this message is getting deserialized too many times
+            string subType = ApianMessageDeserializer.GetSubType(aMsg);
 
-                } ).ToDictionary(x=>x.Key,x=>x.Value);
+            // If subType not defned here just decode ApianGroupMessage
+            return deserializers.ContainsKey(subType) ? deserializers[subType](json) :null;
         }
     }
 

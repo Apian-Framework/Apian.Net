@@ -23,6 +23,8 @@ namespace Apian
             {"CheckpointMs", "5000"},  // request a checkpoint this often
             {"CheckpointOffsetMs", "50"},  // Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
+            {"StashedCmdsToApplyPerUpdate", "10"}, // CommandSynchronizer -  applying locally received commands that we weren't ready for yet
+            {"MaxSyncCmdsToSendPerUpdate", "10"} // CommandSynchronizer - sending commands to another peer to "catch it up"
         };
 
         public class EpochData
@@ -50,8 +52,10 @@ namespace Apian
 
 
         // Things only the leader uses. (Used to be in leaderdata but that became a mess)
-       private long _nextNewCommandSeqNum; // really should ever access this. Leader should use GetNewCommandSequenceNumber()
+        private long _nextNewCommandSeqNum; // really should ever access this. Leader should use GetNewCommandSequenceNumber()
         public long GetNewCommandSequenceNumber() => _nextNewCommandSeqNum++;
+
+        protected void SetNextNewCommandSequenceNumber(long newCommandSequenceNumber) {_nextNewCommandSeqNum = newCommandSequenceNumber;}
 
 
         public long CurrentEpochNum {get => curEpochData.EpochNum; }
@@ -67,22 +71,24 @@ namespace Apian
 
         // State data
         private long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
-        private long NextCheckPointMs;
+        private long NextCheckPointMs; // when to ask for the next. UpdateNextCheckPointMs() sets it safely
+
 
         // Config params
-        Dictionary<string,string> ConfigDict;
+        protected Dictionary<string,string> ConfigDict;
         private long SyncCompletionWaitMs; // wait this long for a sync completion request reply  &&&&&& Here? Or in Synchronizer?
-        private long CheckpointMs;
-        private long CheckpointOffsetMs;
+        private long CheckpointMs; // how often
+        private long CheckpointOffsetMs; // small random offset
 
-        protected string GroupLeaderId {get; set;}
+        public string GroupLeaderId {get; set;}
         public bool LocalPeerIsLeader {get => GroupLeaderId == LocalPeerId;}
 
         private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond; // FIXME: replace with testable construct
 
         public LeaderDecidesGmBase(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
-            _ParseConfig(config ?? DefaultConfig);
+            config = config ?? DefaultConfig;
+            _ParseConfig(config);
             CmdSynchronizer = new ApianGroupSynchronizer(apianInst, config);
             GroupMsgHandlers = new Dictionary<string, Action<ApianGroupMessage, string, string>>() {
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
@@ -97,7 +103,7 @@ namespace Apian
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
              };
 
-            GroupCoreCmdHandlers = new Dictionary<string, Action<long, long, GroupCoreMessage>> {
+            GroupCoreCmdHandlers = new Dictionary<string, Action< long, long, GroupCoreMessage>> {
                 {GroupCoreMessage.CheckpointRequest , OnCheckpointRequestCmd },
             };
 
@@ -125,8 +131,7 @@ namespace Apian
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
 
-            SetLeader(LocalPeerId, ConfigDict); // create starts out as leader
-
+            SetLeader(info.GroupCreatorId); // creater starts out as leader
 
             // Do this after we are a member
             //ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
@@ -137,6 +142,7 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
             GroupInfo = info;
+            SetLeader( info.GroupCreatorId ); // creator starts as leader
         }
 
         public override void JoinGroup(string localMemberJson)
@@ -144,9 +150,9 @@ namespace Apian
             if (GroupInfo == null)
                 Logger.Error($"GroupMgr.JoinGroup() - group uninitialized."); // TODO: once again - this should probably throw.
 
-            Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId}");
-            // Because of the group type send the request directly to the creator
-            ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
+            Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId} Sending join request to group");
+            // Send the request to the entire group (we might not know the leader yet)
+            ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
         }
         public override void LeaveGroup()
         {
@@ -154,7 +160,7 @@ namespace Apian
             // and then just proceed to shut down the group locally. Th rest of the group can deal with the message
             Logger.Info($"{this.GetType().Name}.LeaveGroup(): {GroupInfo?.GroupId}");
 
-            ApianInst.GameNet.SendApianMessage(GroupCreatorId, new GroupLeaveRequestMsg(GroupId, LocalPeerId));
+            ApianInst.GameNet.SendApianMessage(GroupLeaderId, new GroupLeaveRequestMsg(GroupId, LocalPeerId));
 
             // ApianInst.OnGroupMemberStatusChange(LocalMember, ApianGroupMember.Status.Removed); If we wait this is what'll eventually happen.
             // Maybe we should just do it here? Nah.
@@ -170,7 +176,7 @@ namespace Apian
                 if (LocalMember.CurStatus == ApianGroupMember.Status.SyncingState && SysMsNow > DontRequestSyncBeforeMs)
                 {
                     Logger.Info($"{this.GetType().Name}.Update(): Sending SyncCompletion request.");
-                    ApianInst.SendApianMessage(GroupCreatorId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
+                    ApianInst.SendApianMessage(GroupLeaderId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
                     DontRequestSyncBeforeMs = SysMsNow + SyncCompletionWaitMs; // ugly "wait a bit before doing it again" timer
                 }
             }
@@ -180,14 +186,9 @@ namespace Apian
         // Leader stuff
         //
 
-        private void SetLeader(string newLeaderId, Dictionary<string, string> groupConfig)
+        protected void SetLeader(string newLeaderId)
         {
-            if (newLeaderId == LocalPeerId)
-            {
-
-            } else {
-
-            }
+            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
             GroupLeaderId = newLeaderId;
         }
 
@@ -202,19 +203,24 @@ namespace Apian
             if (!ApianInst.ApianClock.IsIdle)
             {
                 long apMs = ApianInst.ApianClock.CurrentTime;
-                if (apMs > NextCheckPointMs)
+                if (NextCheckPointMs >= 0 && apMs > NextCheckPointMs)
                 {
-                    _SendCheckpointRequestCmd(apMs);
-                    NextCheckPointMs += CheckpointMs;
+                    _SendCheckpointRequestCmd(apMs, NextCheckPointMs);
+                    NextCheckPointMs = -1; // disable until it gets reset
                 }
             }
         }
 
-        private void _SendCheckpointRequestCmd(long curApainMs)
+        private void UpdateNextCheckPointMs(long prevVal)
         {
-            CheckpointRequestMsg cpMsg = new CheckpointRequestMsg(NextCheckPointMs);
+            NextCheckPointMs = prevVal + CheckpointMs;
+        }
+
+        private void _SendCheckpointRequestCmd(long curApainMs, long checkPointMs)
+        {
+            CheckpointRequestMsg cpMsg = new CheckpointRequestMsg(checkPointMs);
             ApianCommand cpCmd = new ApianCommand( CurrentEpochNum, GetNewCommandSequenceNumber(), GroupId, cpMsg);
-            Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {NextCheckPointMs} at {curApainMs}");
+            Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {checkPointMs} (current time: {curApainMs})");
             ApianInst.SendApianMessage(GroupId, cpCmd);
 
             // Only the leader formerly kept track of epochs, and started a new one here.
@@ -232,7 +238,7 @@ namespace Apian
             curEpochData = new EpochData(newEpoch,startCmdSeqNum,-1); // -1 means it hasn't ended yet
         }
 
-        public void StartNewEpoch(long lastCmdSeqNum)
+        public virtual void StartNewEpoch(long lastCmdSeqNum)
         {
             // Checkpoint command has been sent, to this epoch is done.
             // But - the epoch state and hash aren;t known until the local peer sends the
@@ -317,9 +323,7 @@ namespace Apian
             if (LocalMember == null)
                 return ApianCommandStatus.kLocalPeerNotReady;
 
-
-            // Valid if from the creator
-            if (msgSrc != GroupCreatorId)
+            if (msgSrc != GroupLeaderId)
                 return ApianCommandStatus.kBadSource;
 
             // if we are processing the cache (syncing) and get to this then we are done.
@@ -381,29 +385,29 @@ namespace Apian
 
             GroupSyncRequestMsg syncRequest = new GroupSyncRequestMsg(GroupId, firstSeqNumWeNeed, firstStashedSeqNum);
             Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} 1st Stashed: {syncRequest.FirstStashedCmdSeqNum}");
-            ApianInst.SendApianMessage(GroupCreatorId, syncRequest);
+            ApianInst.SendApianMessage(GroupLeaderId, syncRequest);
 
             // the local short-circuit... so we do the right thing when data arrives
             ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
             LocalMember.CurStatus = ApianGroupMember.Status.SyncingState;
             ApianInst.OnGroupMemberStatusChange(LocalMember, prevStatus);
-            // when creator gets the sync request it'll broadcast an identical status change msg
+            // when leader gets the sync request it'll broadcast an identical status change msg
         }
 
         //  GroupCoreMessage Command Handlers
 
-        protected void OnCheckpointRequestCmd(long epoch, long seqNum, GroupCoreMessage msg)
+        protected void OnCheckpointRequestCmd( long epoch, long seqNum, GroupCoreMessage msg)
         {
            // TODO: really seems wrong for this to happen here rather than in the ApianInst
            CheckpointRequestMsg cMsg = msg as CheckpointRequestMsg;
            ApianInst.DoLocalAppCoreCheckpoint(msg.TimeStamp, seqNum);
+           UpdateNextCheckPointMs(msg.TimeStamp);
         }
 
         // ApianGroupMessage handlers
 
         protected void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // Only the creator answers
             if (LocalPeerIsLeader)
             {
                 Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest, sending response.");
@@ -412,9 +416,9 @@ namespace Apian
             }
         }
 
-        protected void OnGroupJoinRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected virtual void OnGroupJoinRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // In this implementation the creator decides
+            // In this implementation the Leader decides
             // Everyone else just ignores this.
             if (LocalPeerIsLeader)
             {
@@ -436,8 +440,6 @@ namespace Apian
 
         protected void OnGroupLeaveRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // In this implementation the creator decides
-            // Everyone else just ignores this.
             if (LocalPeerIsLeader)
             {
                 GroupLeaveRequestMsg jreq = msg as GroupLeaveRequestMsg;
@@ -470,10 +472,9 @@ namespace Apian
         }
 
 
-        protected void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected virtual void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // If from GroupCreator then it's valid
-            if (msgSrc == GroupCreatorId)
+            if (msgSrc == GroupLeaderId)
             {
                 GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {SID(joinedMsg.PeerId)}");
@@ -502,8 +503,7 @@ namespace Apian
 
         protected void OnGroupJoinFailed(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            // If from GroupCreator then it's valid
-            if (msgSrc == GroupCreatorId)
+            if (msgSrc == GroupLeaderId)
             {
                 GroupJoinFailedMsg failedMsg = (msg as GroupJoinFailedMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupJoinFailed() from boss: {failedMsg.DestGroupId} not joined by {SID(failedMsg.PeerId)} because \"{failedMsg.FailureReason}\" ");
@@ -515,9 +515,9 @@ namespace Apian
         }
 
 
-        protected void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        protected virtual void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msgSrc == GroupCreatorId) // If from GroupCreator then it's valid
+            if (msgSrc == GroupLeaderId || msgSrc == LocalPeerId) // might be engerated locally (removed)
             {
                 GroupMemberStatusMsg sMsg = (msg as GroupMemberStatusMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): {(sMsg.PeerId==LocalPeerId?"Local:":"Remote")}: {sMsg.PeerId} to {sMsg.MemberStatus}");
@@ -544,7 +544,7 @@ namespace Apian
             if (LocalPeerIsLeader) // Only leader handles this
             {
                 GroupSyncRequestMsg sMsg = (msg as GroupSyncRequestMsg);
-                Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {msgSrc} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
+                Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() from {SID(msgSrc)} start: {sMsg.ExpectedCmdSeqNum} 1st stashed: {sMsg.FirstStashedCmdSeqNum}");
 
                 ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, msgSrc, ApianGroupMember.Status.SyncingState));
 
@@ -575,7 +575,7 @@ namespace Apian
 
         protected void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (LocalPeerIsLeader) // Only creator handles this
+            if (LocalPeerIsLeader)
             {
                 GroupSyncCompletionMsg sMsg = (msg as GroupSyncCompletionMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupSyncCompletionMsg() from {msgSrc} SeqNum: {sMsg.CompletionSeqNum} Hash: {sMsg.CompleteionStateHash}");

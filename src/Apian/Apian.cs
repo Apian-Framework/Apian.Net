@@ -104,7 +104,7 @@ namespace Apian
 
             // If, on the other hand, you are writing a GroupManager (an agreement protocol type) and want to
             // define protocol-specific ApianMessages then the place to do it is in the GroupManager itself,
-            // via: IApianGroupManager.DeserializeApianMessage
+            // via: IApianGroupManager.DeserializeCustomApianMessage
 
             // First ask the groupManager instance if it wants to decode it...
             // It will return null if it doesn't.
@@ -118,7 +118,7 @@ namespace Apian
 
         public virtual void SendApianMessage(string toChannel, ApianMessage msg)
         {
-            Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgTYpe: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
+            Logger.Verbose($"SendApianMsg() To: {toChannel} MsgType: {msg.MsgType} {((msg.MsgType==ApianMessage.GroupMessage)? "GrpMsgType: "+(msg as ApianGroupMessage).GroupMsgType:"")}");
             GameNet.SendApianMessage(toChannel, msg);
         }
 
@@ -147,7 +147,7 @@ namespace Apian
             switch (cmdStat)
             {
             case ApianCommandStatus.kLocalPeerNotReady:
-                Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet");
+                Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet.");
                 break;
             case ApianCommandStatus.kBadSource:
                 Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
@@ -224,7 +224,7 @@ namespace Apian
             // server then you should just return)
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
             {
-                Logger.Debug($"SendRequest() - outgoing message not sent: We are not ACTIVE.");
+                Logger.Debug($"SendRequest() - outgoing message not sent: We are not ACTIVE. Status: {GroupMgr.LocalMember?.CurStatusName}");
                 return;
             }
             GroupMgr.SendApianRequest(msg);
@@ -237,7 +237,7 @@ namespace Apian
             // See comments in SendRequest
             if (GroupMgr.LocalMember?.CurStatus != ApianGroupMember.Status.Active)
             {
-                Logger.Verbose($"SendObservation() - outgoing message not sent: We are not ACTIVE.");
+                Logger.Verbose($"SendObservation() - outgoing message not sent: We are not ACTIVE {GroupMgr.LocalMember?.CurStatusName}.");
                 return;
             }
 
@@ -343,6 +343,7 @@ namespace Apian
                 GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.GroupId, seqNum, chkApianTime, hash);
                 GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
             }
+
         }
 
         public virtual void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
@@ -393,8 +394,10 @@ namespace Apian
 
         public virtual void OnGroupMemberLeft(string groupId, string peerId)
         {
+            // called from gamenet
             if (ApianClock != null)
                 ApianClock.OnPeerLeft(peerId);
+
             Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(peerId)}");
             OnApianMessage( GameNet.LocalP2pId(), GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Removed), 0);
         }
