@@ -10,12 +10,12 @@ namespace Apian
     {
         public static readonly Dictionary<string, string> LsDefaultConfig = new Dictionary<string, string>()
         {
-            {"CheckpointMs", "5000"},  // LeaderDecidesBase -  request a checkpoint this often. Length of an epoch.
+            {"CheckpointMs", "10000"},  // LeaderDecidesBase -  request a checkpoint this often. Length of an epoch.
             {"CheckpointOffsetMs", "50"},  //  LeaderDecidesBase -Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, //  LeaderDecidesBase -wait this long for a sync completion request reply
             {"StashedCmdsToApplyPerUpdate", "10"}, // CommandSynchronizer -  applying locally received commands that we weren't ready for yet
             {"MaxSyncCmdsToSendPerUpdate", "10"}, // CommandSynchronizer - sending commands to another peer to "catch it up"
-            {"LeaderTermLength", "5"}, // LeaderSez - in eopchs
+            {"LeaderTermLength", "12"}, // LeaderSez - in eopchs
         };
 
 
