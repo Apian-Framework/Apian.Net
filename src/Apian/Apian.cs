@@ -150,10 +150,10 @@ namespace Apian
                 Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet.");
                 break;
             case ApianCommandStatus.kBadSource:
-                Logger.Error($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
+                Logger.Warn($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
                 break;
             case ApianCommandStatus.kAlreadyReceived:
-                Logger.Error($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
+                Logger.Warn($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 break;
 
             case ApianCommandStatus.kStashedInQueue:
