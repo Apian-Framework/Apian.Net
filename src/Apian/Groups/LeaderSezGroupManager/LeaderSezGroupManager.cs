@@ -47,7 +47,9 @@ namespace Apian
 
         protected void SetNextLeader( string nextLeaderId, long nextLeaderEpoch)
         {
-            Logger.Info($"{this.GetType().Name}.SetNextLeader() - setting NEXT group leader to {(nextLeaderId!=null?SID(nextLeaderId):"null")} at epoch {nextLeaderEpoch}");
+            Logger.Info($".SetNextLeader() - setting NEXT group leader to {(nextLeaderId!=null?SID(nextLeaderId):"null")} at epoch {nextLeaderEpoch}");
+            if (nextLeaderId == LocalPeerId)
+                Logger.Info($"SetNextLeader() ===== Local Peer is now NEXT LEADER (in {nextLeaderEpoch - CurrentEpochNum} epochs)");
             NextLeaderId = nextLeaderId;
             NextLeaderFirstEpoch = nextLeaderEpoch;
         }
@@ -107,6 +109,13 @@ namespace Apian
             ApianInst.SendApianMessage(GroupId, slMsg);
         }
 
+        protected void LocallyPromoteNextLeader()
+        {
+            SetLeader(NextLeaderId);
+            NextLeaderId = null;
+            NextLeaderFirstEpoch = 0;
+        }
+
        protected override void OnGroupJoinRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             // Leader needs to send current/next leader info
@@ -131,21 +140,33 @@ namespace Apian
         {
             GroupMemberStatusMsg sMsg = (msg as GroupMemberStatusMsg);
 
-            // Before default processing (which might remove or add a member)
-
-            if (sMsg.PeerId == GroupLeaderId && sMsg.MemberStatus == ApianGroupMember.Status.Removed)
+            // Deal with removed members before default processing which will remove them from the Members collection
+            if (sMsg.MemberStatus == ApianGroupMember.Status.Removed)
             {
-                Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): GroupLeader is Gone!!!");
-                // leader is gone! Failover.
-                if (NextLeaderId != null)
+                if (sMsg.PeerId == GroupLeaderId)
                 {
-                    SetLeader(NextLeaderId);
-
-                    if (NextLeaderId == LocalPeerId)
+                    Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): GroupLeader is Gone!!!");
+                    // leader is gone! Failover.
+                    if (NextLeaderId != null)
                     {
-                       Logger.Info($"OnGroupMemberStatus() ===== Local Peer taking over as LEADER!!");
-                       SetNextNewCommandSequenceNumber(ApianInst.MaxAppliedCmdSeqNum+1); // <<=== This is IMPORTANT and kinda obstuse. And ugly.
-                       string nextLeader = SelectNextLeader(new List<string>(){LocalPeerId, sMsg.PeerId});
+                        LocallyPromoteNextLeader();  // nulls nextleader, sets Leader
+                        if (LocalPeerIsLeader)
+                        {
+                            Logger.Info($"OnGroupMemberStatus() ===== Local Peer taking over as LEADER!!");
+                            SetNextNewCommandSequenceNumber(ApianInst.MaxAppliedCmdSeqNum+1); // <<=== This is IMPORTANT and kinda obtuse. And ugly.
+                            string nextLeader = SelectNextLeader(new List<string>(){LocalPeerId, sMsg.PeerId});
+                            if (nextLeader != null)
+                                SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                        }
+
+                    }
+                }
+                else if ( sMsg.PeerId == NextLeaderId)
+                {
+                    if (LocalPeerIsLeader)
+                    {
+                        // set a new next - and extend our term
+                        string nextLeader = SelectNextLeader(new List<string>(){LocalPeerId, sMsg.PeerId});
                         if (nextLeader != null)
                             SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
                     }

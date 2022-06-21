@@ -32,7 +32,7 @@ namespace Apian
                 // ALREADY has "firstCmdPeerHas" through whatever is current.
                 peerId = pid;
                 nextCommandToSend = firstNeeded;
-                firstCommandPeerHas = firstCmdPeerHas;
+                firstCommandPeerHas = firstCmdPeerHas + 1; // add 1 to what we think we need to send
             }
         }
 
@@ -149,7 +149,7 @@ namespace Apian
             // Update the adta for a peer already syncing. (really?)
             // TODO: This should not be able to happen
             peerData.nextCommandToSend = Math.Min(peerData.nextCommandToSend, firstCmdNeededByPeer);
-            peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstCmdPeerHas);
+            peerData.firstCommandPeerHas = Math.Max(peerData.firstCommandPeerHas, firstCmdPeerHas) + 1; // add 1 to what we think we need to send
             return peerData;
         }
 
