@@ -202,7 +202,11 @@ namespace Apian
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
+
             JoinExistingGroup( groupInfo,  apian,  localGroupData);
+
+            _ = Task.Delay(3000).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
+
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
@@ -215,10 +219,23 @@ namespace Apian
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
             CreateAndJoinGroup( groupInfo,  apian,  localGroupData);
+            _ = Task.Delay(3000).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
+
+        public void TimeoutJoinGroup(ApianGroupInfo groupInfo)
+        {
+            string groupId = groupInfo.GroupId;
+            if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+            {
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalP2pId(), groupInfo, false, "Timeout");
+                JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
+            }
+        }
+
+
 #endif
 
         public void LeaveGroup(string groupId)
