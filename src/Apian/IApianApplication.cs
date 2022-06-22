@@ -15,6 +15,6 @@ namespace Apian
         // Not all groups even HAVE a leader, but for those that do it'd be nice to be able to keep any users informed
         // regarding changes.
         // THe idea with the data is that it is app-dependent and the app can extract and use it
-        void OnGroupLeaderChange(string newLeaderId, ApianGroupMember leaderAppData);
+        void OnGroupLeaderChange(string groupId, string newLeaderId, ApianGroupMember leaderAppData);
     }
 }

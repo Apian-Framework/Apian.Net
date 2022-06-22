@@ -189,9 +189,13 @@ namespace Apian
         protected void SetLeader(string newLeaderId)
         {
             Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
+
+            if ( newLeaderId != GroupLeaderId)
+                ApianInst.GameNet.OnNewGroupLeader(GroupId, newLeaderId, GetMember(newLeaderId));
+
             GroupLeaderId = newLeaderId;
 
-            ApianInst.GameNet.OnNewGroupLeader(newLeaderId, GetMember(newLeaderId));
+
         }
 
         private void _LeaderUpdate()
