@@ -196,7 +196,7 @@ namespace Apian
             return results;
         }
 
-        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
@@ -205,27 +205,27 @@ namespace Apian
 
             JoinExistingGroup( groupInfo,  apian,  localGroupData);
 
-            _ = Task.Delay(3000).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
+            _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
 
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
 
-        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
             CreateAndJoinGroup( groupInfo,  apian,  localGroupData);
-            _ = Task.Delay(3000).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
+            _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
                 ).ConfigureAwait(false);
         }
 
-        public void TimeoutJoinGroup(ApianGroupInfo groupInfo)
+        protected void TimeoutJoinGroup(ApianGroupInfo groupInfo)
         {
             string groupId = groupInfo.GroupId;
             if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
