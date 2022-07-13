@@ -119,7 +119,9 @@ namespace GameNet
 
             IP2pNet ip2p = new P2pNetBase(this, carrier);
 
+#if !SINGLE_THREADED
             JoinNetworkCompletion = null;
+#endif
 
             return ip2p;
         }
@@ -144,7 +146,9 @@ namespace GameNet
         {
             if ( CurrentNetworkId() != null)
                LeaveNetwork();
+#if !SINGLE_THREADED
             JoinNetworkCompletion = null;
+#endif
             p2p = null;
         }
 
@@ -182,8 +186,10 @@ namespace GameNet
             if (channel == CurrentNetworkId())
             {
                 PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(p2pId, CurrentNetworkId(), helloData);
+#if !SINGLE_THREADED
                 if (p2pId == LocalP2pId() && JoinNetworkCompletion != null)
                     JoinNetworkCompletion.TrySetResult(peerData);
+#endif
 
                 // TODO: This is the only callback that might come in on a p2pnet-owned thread, so care needs to be taken
                 // that it doesn;t end up calling a UNity frontend thing, for instance.
