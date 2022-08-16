@@ -9,8 +9,8 @@ namespace Apian
     {
         public const string GroupsRequest = "APrg";
         public const string GroupJoinRequest = "APgjr";
-        public const string GroupLeaveRequest = "APglr";
-        public const string GroupMemberJoined = "APgmj"; // Sent on "active" - we need it 'cause it has AppData
+         public const string GroupMemberJoined = "APgmj"; // Sent on "active" - we need it 'cause it has AppData
+        public const string GroupMemberLeft = "APgml";  // Sent to tell members to deelte the (probably already marejed "Gone") member
         public const string GroupJoinFailed = "APgno"; // No group for YOU!
         public const string GroupMemberStatus = "APgms"; // joining, active, removed, etc.
         public const string GroupSyncRequest = "APgsyr"; // request sync data
@@ -36,12 +36,6 @@ namespace Apian
         public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerId=pid; ApianClientPeerJson = peerData;}
     }
 
-    public class GroupLeaveRequestMsg : ApianGroupMessage
-    {
-        public string PeerId;
-        public GroupLeaveRequestMsg(string gid, string pid) : base(gid, GroupLeaveRequest) {PeerId=pid;}
-    }
-
     public class GroupMemberJoinedMsg : ApianGroupMessage
     {
         // Need to send both this and MemberStatus update on transition to "active"
@@ -64,6 +58,12 @@ namespace Apian
             PeerId=pid;
             FailureReason = failureReason;
         }
+    }
+
+    public class GroupMemberLeftMsg : ApianGroupMessage
+    {
+        public string PeerId;
+        public GroupMemberLeftMsg(string gid, string pid) : base(gid, GroupMemberLeft) {PeerId=pid;}
     }
 
     public class GroupMemberStatusMsg : ApianGroupMessage
@@ -138,9 +138,9 @@ namespace Apian
         {
             {ApianGroupMessage.GroupsRequest, (s) => JsonConvert.DeserializeObject<GroupsRequestMsg>(s) },
             {ApianGroupMessage.GroupJoinRequest, (s) => JsonConvert.DeserializeObject<GroupJoinRequestMsg>(s) },
-            {ApianGroupMessage.GroupLeaveRequest, (s) => JsonConvert.DeserializeObject<GroupLeaveRequestMsg>(s) },
             {ApianGroupMessage.GroupMemberStatus, (s) => JsonConvert.DeserializeObject<GroupMemberStatusMsg>(s) },
             {ApianGroupMessage.GroupMemberJoined, (s) => JsonConvert.DeserializeObject<GroupMemberJoinedMsg>(s) },
+            {ApianGroupMessage.GroupMemberLeft, (s) => JsonConvert.DeserializeObject<GroupMemberLeftMsg>(s) },
             {ApianGroupMessage.GroupJoinFailed, (s) => JsonConvert.DeserializeObject<GroupJoinFailedMsg>(s) },
             {ApianGroupMessage.GroupSyncRequest, (s) => JsonConvert.DeserializeObject<GroupSyncRequestMsg>(s) },
             {ApianGroupMessage.GroupSyncData, (s) => JsonConvert.DeserializeObject<GroupSyncDataMsg>(s) },

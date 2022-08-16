@@ -21,15 +21,13 @@ namespace Apian
         // This is the interface that a client (almost certainly ApianGameNet) sees
         void SetupExistingGroup(ApianGroupInfo groupInfo);
         void SetupNewGroup(ApianGroupInfo groupInfo);
-        void JoinGroup(string localGroupData);
-        void LeaveGroup();
-        void OnGroupMemberLeft(string groupChannelId, string p2pId);
+        void JoinGroup(string localGroupData); // There's no LeaveGroup
+        void OnPeerLeftGroupChannel(string groupChannelId, string p2pId);
         void OnPeerMissing(string groupChannelId, string p2pId);
         void OnPeerReturned(string groupChannelId, string p2pId);
         void OnPeerClockSync(string remotePeerId, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
     }
-
 
     public interface IApianAppCoreServices
     {
@@ -39,7 +37,28 @@ namespace Apian
         void EndObservationSet();
     }
 
-    public abstract class ApianBase : IApianAppCoreServices, IApianClientServices
+    public interface IApianGroupMgrServices
+    {
+        // This is the interface a group manager calls
+        long MaxAppliedCmdSeqNum {get;}
+        ApianGroupStatus CurrentGroupStatus();
+
+        void SendApianMessage(string toChannel, ApianMessage msg);
+        void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum);
+
+        // GroupMgr asks Apian to create a pre-join provisional group member
+        ApianGroupMember CreateGroupMember(string peerId, string memberJson);
+
+        // Handle reports from Apian Group
+        void OnGroupMemberJoined(ApianGroupMember member);
+        void OnGroupMemberLeft(ApianGroupMember member);
+        void OnGroupJoinFailed(string peerId, string failureReason);
+        void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus);
+
+    }
+
+
+    public abstract class ApianBase : IApianAppCoreServices, IApianClientServices, IApianGroupMgrServices
     {
 		// public API
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
@@ -324,7 +343,6 @@ namespace Apian
         public void SetupNewGroup(ApianGroupInfo info) => GroupMgr.SetupNewGroup(info);
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
-        public void LeaveGroup() => GroupMgr.LeaveGroup();
 
         // checkpoints
 
@@ -363,6 +381,10 @@ namespace Apian
          // Is there an App reason for refusing? Return NULL to allow, failure reason otherwise
         //abstract public string ValidateJoinRequest( GroupJoinRequestMsg requestMsg);
 
+        //
+        // Definitive calls from GroupManager
+        //
+
         public virtual void OnGroupMemberJoined(ApianGroupMember member)
         {
             // Note that this does NOT signal that the new member is Active. Just that it is joining.
@@ -387,19 +409,18 @@ namespace Apian
 
         }
 
+        public virtual void OnGroupMemberLeft(ApianGroupMember member)
+        {
+            // Probably need to override this to do something game-specific
+
+            Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(member?.PeerId)}");
+            if (ApianClock != null)
+                ApianClock.OnPeerLeft(member.PeerId); // also happens in OnPeerLeftGroupChannel - whichever happens first
+        }
+
         public virtual void OnGroupJoinFailed(string peerId, string failureReason)
         {
             GameNet.OnPeerJoinedGroup( peerId, GroupId, false,  failureReason );
-        }
-
-        public virtual void OnGroupMemberLeft(string groupId, string peerId)
-        {
-            // called from gamenet
-            if (ApianClock != null)
-                ApianClock.OnPeerLeft(peerId);
-
-            Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(peerId)}");
-            OnApianMessage( GameNet.LocalP2pId(), GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Removed), 0);
         }
 
         public virtual void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus)
@@ -408,6 +429,19 @@ namespace Apian
             Logger.Info($"OnGroupMemberStatusChange(): {UniLogger.SID(member.PeerId)} from {prevStatus} to {member.CurStatus}");
             GameNet.OnApianGroupMemberStatus( GroupId, member.PeerId, member.CurStatus, prevStatus);
         }
+
+
+        public virtual void OnPeerLeftGroupChannel(string groupId, string peerId)
+        {
+            Logger.Info($"OnPeerLeftGroupChannel(): {UniLogger.SID(peerId)}");
+            // called from gamenet when P2pNet tells it the peer is gone.
+            if (ApianClock != null)
+                ApianClock.OnPeerLeft(peerId); // the clock is a network thing. So do this here as well as in OnGroupMemberLeft
+
+            GroupMgr.OnMemberLeftGroupChannel(peerId); // will result in member marked Gone (locally handled) and group send of s GroupMemberLeftMsg
+
+        }
+
 
         public virtual void ApplyStashedApianCommand(ApianCommand cmd)
         {

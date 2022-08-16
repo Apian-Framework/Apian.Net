@@ -77,6 +77,12 @@ namespace Apian
             MaxStashedCmdSeqNum = Math.Max(MaxStashedCmdSeqNum, cmd.SequenceNum);
         }
 
+        public void StopSendingData()
+        {
+            // called if a Leader Stops being a leader
+            syncingPeers = new Dictionary<string, SyncingPeerData>();
+        }
+
 
         public bool ApplyStashedCommands()
         {

@@ -94,7 +94,11 @@ namespace Apian
             SyncingState, // In the process of syncing app state
             SyncingClock, // In the process of syncing ApianClock (may have happened earlier)
             Active, // part of the gang
-            Removed, // has left, or was missing long enough to be removed
+            LeaveRequested, // has asked to leave and we've heard about it.
+            Gone,   // The idea with "Gone" is that there will be times when a peer has said "I'm gone" over the network
+                    // but there still may be Apian cleanup to do, we we might want to the other group members to
+                    // keep the data around for a bit until the GouprManager code decieds that it's really gone and to ditribute
+                    // a PeerLeftGroup message and everyone can delete it.
         }
 
         public static string[] StatusName =  { "New", "Joining", "SyncingState", "SyncingClock", "Active", "Removed" };
@@ -153,7 +157,6 @@ namespace Apian
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
         void JoinGroup(string localMemberJson);
-        void LeaveGroup();
         void Update();
         void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
@@ -163,6 +166,7 @@ namespace Apian
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
+        void OnMemberLeftGroupChannel(string peerId); // Called by local P2pNet when the member leaves ot times out.
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         ApianMessage DeserializeCustomApianMessage(string apianMsgTYpe,  string msgJSON); // pass the generically-deserialized msg
         ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg);
@@ -228,8 +232,7 @@ namespace Apian
 
         public abstract void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         public abstract void SetupExistingGroup(ApianGroupInfo info);
-        public abstract void JoinGroup(string localMemberJson);
-        public abstract void LeaveGroup();
+        public abstract void JoinGroup(string localMemberJson); // GroupManager doesn;t have a LeaveGroup() for the local peer
         public abstract void Update();
 
         public virtual void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd)
@@ -245,6 +248,21 @@ namespace Apian
             // then it should be made active.
             ApianGroupMember peer = GetMember(peerId);
             if (peer != null) peer.ApianClockSynced = true;
+        }
+
+        public virtual void OnMemberLeftGroupChannel(string peerId)
+        {
+            // This is called when P2pNet sees the peer as gone, and is always local in origin.
+
+            // If anything local needs to be done (say, if it's a leader-based group and the leader has disappeared)
+            // it needs to be handled in a type-specific subclass override
+
+            // Set the member locally as Gone, and call the local handlers to inform the app. No messages are sent out,
+            // this part is all local.
+            OnApianGroupMessage(new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Gone), LocalPeerId, GroupId);
+
+            // Tell everyone we lost the peer - GroupManager implmentation will eventually field the messa and decide what to do.
+             ApianInst.SendApianMessage(GroupId, new  GroupMemberLeftMsg (GroupId, peerId));
         }
 
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);

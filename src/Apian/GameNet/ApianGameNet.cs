@@ -36,7 +36,7 @@ namespace Apian
 
         // Called by Apian
          void OnPeerJoinedGroup(string peerId, string groupId, bool joinSuccess,  string failureReason = null);
-
+         //void OnPeerLeftGroup(string peerId, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
          void OnNewGroupLeader(string groupId, string newLeaderId, ApianGroupMember newLeader);
 
 #if !SINGLE_THREADED
@@ -134,10 +134,6 @@ namespace Apian
 
         public override void LeaveNetwork()
         {
-            foreach (ApianBase ap in ApianInstances.Values)
-            {
-                ap.LeaveGroup(); // post leaveGroup requests. Even tho we aren't waiting around for them.
-            }
 
             InitApianJoinData(); // needs to clean up ApianInstances
 
@@ -244,8 +240,7 @@ namespace Apian
             if (! ApianInstances.ContainsKey(groupId))
                 logger.Warn($"LeaveGroup() - No group: {groupId}");
             else {
-                ApianInstances[groupId].LeaveGroup();
-                RemoveChannel(groupId);
+                RemoveChannel(groupId); // You don;t need to ask or anything. Just leave the net channel and clean up
                 ApianInstances.Remove(groupId);
             }
         }
@@ -280,11 +275,11 @@ namespace Apian
                 logger.Info($"OnPeerLeft() - Is main network channel. Informing all groups.");
                 // Leave any groups
                 foreach (ApianBase ap in ApianInstances.Values)
-                    ap.OnGroupMemberLeft(channelId, p2pId);
+                    ap.OnPeerLeftGroupChannel(channelId, p2pId);
                 Peers.Remove(p2pId); // remove the peer
             } else {
                 if (ApianInstances.ContainsKey(channelId))
-                    ApianInstances[channelId].OnGroupMemberLeft(channelId, p2pId);
+                    ApianInstances[channelId].OnPeerLeftGroupChannel(channelId, p2pId);
             }
             base.OnPeerLeft(channelId, p2pId); // calls client
         }

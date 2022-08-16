@@ -73,6 +73,8 @@ namespace Apian
         private long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
         private long NextCheckPointMs; // when to ask for the next. UpdateNextCheckPointMs() sets it safely
 
+        // Join params
+        protected string LocalMemberJoinData { get; set; }
 
         // Config params
         protected Dictionary<string,string> ConfigDict;
@@ -94,8 +96,8 @@ namespace Apian
                 {ApianGroupMessage.GroupsRequest, OnGroupsRequest },
                 {ApianGroupMessage.GroupJoinRequest, OnGroupJoinRequest },
                 {ApianGroupMessage.GroupJoinFailed, OnGroupJoinFailed },
-                {ApianGroupMessage.GroupLeaveRequest, OnGroupLeaveRequest },
                 {ApianGroupMessage.GroupMemberJoined, OnGroupMemberJoined },
+                {ApianGroupMessage.GroupMemberLeft, OnGroupMemberLeftMsg },
                 {ApianGroupMessage.GroupMemberStatus, OnGroupMemberStatus },
                 {ApianGroupMessage.GroupSyncRequest, OnGroupSyncRequest },
                 {ApianGroupMessage.GroupSyncData, OnGroupSyncData },
@@ -147,23 +149,17 @@ namespace Apian
 
         public override void JoinGroup(string localMemberJson)
         {
+            if (localMemberJson == null)
+                localMemberJson = LocalMemberJoinData;
+            else
+                LocalMemberJoinData = localMemberJson;
+
             if (GroupInfo == null)
                 Logger.Error($"GroupMgr.JoinGroup() - group uninitialized."); // TODO: once again - this should probably throw.
 
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId} Sending join request to group");
             // Send the request to the entire group (we might not know the leader yet)
             ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
-        }
-        public override void LeaveGroup()
-        {
-            // Question... do we REALLY want to send a request and wait? My guess is not - apps will will send the request
-            // and then just proceed to shut down the group locally. Th rest of the group can deal with the message
-            Logger.Info($"{this.GetType().Name}.LeaveGroup(): {GroupInfo?.GroupId}");
-
-            ApianInst.GameNet.SendApianMessage(GroupLeaderId, new GroupLeaveRequestMsg(GroupId, LocalPeerId));
-
-            // ApianInst.OnGroupMemberStatusChange(LocalMember, ApianGroupMember.Status.Removed); If we wait this is what'll eventually happen.
-            // Maybe we should just do it here? Nah.
         }
 
         public override void Update()
@@ -188,14 +184,44 @@ namespace Apian
 
         protected void SetLeader(string newLeaderId)
         {
-            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
+            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}  Local status: (status: {LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining})");
+
+            if (newLeaderId == GroupLeaderId)
+            {
+                Logger.Info($"!!!!!!! HEY! THat's ALREADY the leader!!! Ignoring.");
+                return;
+            }
+
+            if (LocalPeerIsLeader && newLeaderId != LocalPeerId)
+            {
+                // It's not us anymore
+                CmdSynchronizer.StopSendingData(); // If we're feeding anyone just stop.
+            }
 
             if ( newLeaderId != GroupLeaderId)
                 ApianInst.GameNet.OnNewGroupLeader(GroupId, newLeaderId, GetMember(newLeaderId));
 
             GroupLeaderId = newLeaderId;
 
+            // Until a OnGroupMemberJoined arrives saying the local peer is a member there is no LocalMember
+            // and status is effectively "New" or "Joining"
+            ApianGroupMember.Status localStatus = LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining;
 
+            switch (localStatus)
+            {
+            case ApianGroupMember.Status.SyncingState:
+                // local member is syncing AppState - needs to ask again from new leader
+                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were syncing. Ask new leader.");
+                RequestSync(-1, -1);
+                break;
+
+            case ApianGroupMember.Status.Joining:
+            case ApianGroupMember.Status.New:
+                // Local member has requested to join, but not gotten response. Ask new leader.
+                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were waiting to join (status: {localStatus}). Ask new leader.");
+                JoinGroup(null);
+                break;
+            }
         }
 
         private void _LeaderUpdate()
@@ -356,7 +382,7 @@ namespace Apian
                         //   server currently will send a serialized data set, even if unneeded.
                         //   switching BACK from sync state to active tries to re-add the player... bad.
                         //   Probably other stuff
-                        _RequestSync(msg.SequenceNum, maxAppliedCmdNum);
+                        RequestSync(msg.SequenceNum, maxAppliedCmdNum);
                     }
 
                     return ApianCommandStatus.kStashedInQueue;
@@ -381,7 +407,7 @@ namespace Apian
             return ApianCommandStatus.kShouldApply;
         }
 
-        private void _RequestSync(long firstStashedSeqNum, long maxAppliedCmdNum)
+        protected void RequestSync(long firstStashedSeqNum, long maxAppliedCmdNum)
         {
             // Here we actually set our own status and short-circuit the MemberStatusMsg
             // process - we WILL recieve that message in a bit, but in the meantime we want to
@@ -444,18 +470,6 @@ namespace Apian
             }
         }
 
-        protected void OnGroupLeaveRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
-        {
-            if (LocalPeerIsLeader)
-            {
-                GroupLeaveRequestMsg jreq = msg as GroupLeaveRequestMsg;
-                Logger.Info($"{this.GetType().Name}.OnGroupLeaveRequest()");
-
-                // Just remove.
-                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, jreq.PeerId,ApianGroupMember.Status.Removed));
-            }
-        }
-
         protected void SendMemberJoinedMessages(string toWhom)
         {
             // Send a newly-approved member all of the Join messages for the other member
@@ -502,8 +516,24 @@ namespace Apian
                         ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
                     } else {
                         // Not leader - request data sync.
-                        _RequestSync(-1, -1); // we've neither applied nor stashed any commands
+                        RequestSync(-1, -1); // we've neither applied nor stashed any commands
                     }
+                }
+            }
+        }
+
+        protected virtual void OnGroupMemberLeftMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
+        {
+            if (msgSrc == GroupLeaderId)
+            {
+                GroupMemberLeftMsg leftMsg = (msg as GroupMemberLeftMsg);
+                Logger.Warn($"{this.GetType().Name}.OnGroupMemberLeft()  {SID(leftMsg.PeerId)}");
+
+                ApianGroupMember m = GetMember( leftMsg.PeerId );
+                if (m != null)
+                {
+                    ApianInst.OnGroupMemberLeft(m); // inform local apian
+                    Members.Remove(leftMsg.PeerId);
                 }
             }
         }
@@ -534,12 +564,6 @@ namespace Apian
                     ApianGroupMember.Status old = m.CurStatus;
                     m.CurStatus = sMsg.MemberStatus;
                     ApianInst.OnGroupMemberStatusChange(m, old);
-
-                    if (sMsg.MemberStatus == ApianGroupMember.Status.Removed)
-                    {
-                        Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): Removing Member {sMsg.PeerId}");
-                        Members.Remove(sMsg.PeerId);
-                    }
                 }
                 else
                     Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): No action.  {sMsg.PeerId} is not a member." );
