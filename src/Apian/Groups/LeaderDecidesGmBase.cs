@@ -64,28 +64,28 @@ namespace Apian
 
 
 
-        private ApianGroupSynchronizer CmdSynchronizer; // used by both source and dest peers for sync
+        protected ApianGroupSynchronizer CmdSynchronizer; // used by both source and dest peers for sync
 
         // IApianGroupManager
         public bool Intialized {get => GroupInfo != null; }
 
         // State data
-        private long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
-        private long NextCheckPointMs; // when to ask for the next. UpdateNextCheckPointMs() sets it safely
+        protected long DontRequestSyncBeforeMs; // When waiting for a SyncCompletionRequest reply, this is when it's ok to give up and ask again
+        protected long NextCheckPointMs; // when to ask for the next. UpdateNextCheckPointMs() sets it safely
 
         // Join params
         protected string LocalMemberJoinData { get; set; }
 
         // Config params
         protected Dictionary<string,string> ConfigDict;
-        private long SyncCompletionWaitMs; // wait this long for a sync completion request reply  &&&&&& Here? Or in Synchronizer?
-        private long CheckpointMs; // how often
-        private long CheckpointOffsetMs; // small random offset
+        protected long SyncCompletionWaitMs; // wait this long for a sync completion request reply  &&&&&& Here? Or in Synchronizer?
+        protected long CheckpointMs; // how often
+        protected long CheckpointOffsetMs; // small random offset
 
         public string GroupLeaderId {get; set;}
         public bool LocalPeerIsLeader {get => GroupLeaderId == LocalPeerId;}
 
-        private static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond; // FIXME: replace with testable construct
+        protected static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond; // FIXME: replace with testable construct
 
         public LeaderDecidesGmBase(ApianBase apianInst, Dictionary<string,string> config=null) : base(apianInst)
         {
@@ -182,46 +182,15 @@ namespace Apian
         // Leader stuff
         //
 
-        protected void SetLeader(string newLeaderId)
+        protected virtual void SetLeader(string newLeaderId)
         {
-            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}  Local status: (status: {LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining})");
-
-            if (newLeaderId == GroupLeaderId)
-            {
-                Logger.Info($"!!!!!!! HEY! THat's ALREADY the leader!!! Ignoring.");
-                return;
-            }
-
-            if (LocalPeerIsLeader && newLeaderId != LocalPeerId)
-            {
-                // It's not us anymore
-                CmdSynchronizer.StopSendingData(); // If we're feeding anyone just stop.
-            }
+            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
 
             if ( newLeaderId != GroupLeaderId)
                 ApianInst.GameNet.OnNewGroupLeader(GroupId, newLeaderId, GetMember(newLeaderId));
 
             GroupLeaderId = newLeaderId;
 
-            // Until a OnGroupMemberJoined arrives saying the local peer is a member there is no LocalMember
-            // and status is effectively "New" or "Joining"
-            ApianGroupMember.Status localStatus = LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining;
-
-            switch (localStatus)
-            {
-            case ApianGroupMember.Status.SyncingState:
-                // local member is syncing AppState - needs to ask again from new leader
-                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were syncing. Ask new leader.");
-                RequestSync(-1, -1);
-                break;
-
-            case ApianGroupMember.Status.Joining:
-            case ApianGroupMember.Status.New:
-                // Local member has requested to join, but not gotten response. Ask new leader.
-                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were waiting to join (status: {localStatus}). Ask new leader.");
-                JoinGroup(null);
-                break;
-            }
         }
 
         private void _LeaderUpdate()

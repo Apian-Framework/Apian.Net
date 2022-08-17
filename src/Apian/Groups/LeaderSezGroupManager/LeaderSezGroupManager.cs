@@ -77,6 +77,47 @@ namespace Apian
             return nextLeader;
         }
 
+        protected override void SetLeader(string newLeaderId)
+        {
+            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}  Local status: (status: {LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining})");
+
+            if (newLeaderId == GroupLeaderId)
+            {
+                Logger.Info($"!!!!!!! HEY! THat's ALREADY the leader!!! Ignoring.");
+                return;
+            }
+
+            if (LocalPeerIsLeader && newLeaderId != LocalPeerId)
+            {
+                // It's not us anymore
+                CmdSynchronizer.StopSendingData(); // If we're feeding anyone just stop.
+            }
+
+            base.SetLeader(newLeaderId);
+
+
+            // Until a OnGroupMemberJoined arrives saying the local peer is a member there is no LocalMember
+            // and status is effectively "New" or "Joining"
+            ApianGroupMember.Status localStatus = LocalMember?.CurStatus ?? ApianGroupMember.Status.Joining;
+
+            switch (localStatus)
+            {
+            case ApianGroupMember.Status.SyncingState:
+                // local member is syncing AppState - needs to ask again from new leader
+                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were syncing. Ask new leader.");
+                RequestSync(-1, -1);
+                break;
+
+            case ApianGroupMember.Status.Joining:
+            case ApianGroupMember.Status.New:
+                // Local member has requested to join, but not gotten response. Ask new leader.
+                Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were waiting to join (status: {localStatus}). Ask new leader.");
+                JoinGroup(null);
+                break;
+            }
+        }
+
+
        public override void StartNewEpoch(long lastCmdSeqNum)
        {
             base.StartNewEpoch(lastCmdSeqNum);
