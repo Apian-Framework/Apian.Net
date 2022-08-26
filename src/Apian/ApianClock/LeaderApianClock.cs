@@ -10,11 +10,14 @@ namespace Apian
     //ReSharper disable once UnusedType.Global
     public class LeaderApianClock : ApianClockBase
     {
+        // REQUIRES a GroupMgr instance derived from LeaderDecidesGmBase
         protected string GroupLeaderId => (_apian.GroupMgr as LeaderDecidesGmBase).GroupLeaderId;
+        protected string LocalPeerId =>  _apian.GroupMgr.LocalPeerId;
 
-        private bool _leaderClockSynced; // will often not be true before getting an ApianOffset msg
-        private bool _leaderApianOffsetReported;
-        private long _leaderSysOffset;
+        // Can only update if _leaderClockSynced and _leaderApianOffsetReported are non-null and equal
+        private string _leaderClockSynced; // either null (init) or the last leader to sync. Might change.
+        private string _leaderApianOffsetReported; // same as above. PeerId of the last leader to report.
+        private long _leaderSysClockOffset;
         private long  _leaderApianOffset;
 
         public LeaderApianClock(ApianBase apian) : base(apian)
@@ -22,12 +25,31 @@ namespace Apian
             // cant test GroupLeaderId here because clock is not creatd with Apian instance
         }
 
+        public override void Update()
+        {
+            base.Update();
+
+           if ((LocalPeerId == GroupLeaderId) &&  (GroupLeaderId != _leaderClockSynced))
+           {
+                Logger.Info($"Update() We have become group leader.");
+                //we have just become group leader
+                _leaderClockSynced = LocalPeerId;
+                _leaderSysClockOffset = 0;
+
+                _leaderApianOffsetReported = LocalPeerId;
+                _leaderApianOffset = ApianClockOffset;
+                SendApianClockOffset();
+           }
+
+        }
+
+
         public override void OnNewPeer(string remotePeerId)
         {
-            Logger.Verbose($"OnNewPeer() from {remotePeerId}");
+            Logger.Verbose($"OnNewPeer() from {SID(remotePeerId)}");
             if (!IsIdle && _apian.LocalPeerIsActive)
             {
-                if (_apian.GroupMgr.LocalPeerId == GroupLeaderId)
+                if (LocalPeerId == GroupLeaderId)
                     SendApianClockOffset(); // announce our apian offset for the remote peer
             }
         }
@@ -39,23 +61,35 @@ namespace Apian
 
         public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount)
         {
-             if (remotePeerId != GroupLeaderId)
+            // OnPeerClockSync will never be from the local node.
+
+            if (LocalPeerId == GroupLeaderId)
+               return; //we're the leader. Our ApianClock is by definition correct
+
+            if (remotePeerId != GroupLeaderId)
             {
-                Logger.Debug("OnPeerClockSync(). Message source is not the leader.");
+                Logger.Debug($"OnPeerClockSync(). Message source {SID(remotePeerId)} is not the leader.");
                 return;
             }
 
-            Logger.Verbose($"OnPeerClockSync() from leader: {remotePeerId}");
-            _leaderSysOffset = clockOffsetMs;
-            _leaderClockSynced = true;
+            Logger.Verbose($"OnPeerClockSync() from leader: {SID(remotePeerId)}, offset: {clockOffsetMs}");
 
-            if (IsIdle && _leaderApianOffsetReported) // TODO: why only do this when idle?
-                _DoTheUpdate(); //
+            if (_leaderClockSynced != null && remotePeerId != _leaderClockSynced)
+                Logger.Info($"OnPeerClockSync() New leader: {SID(remotePeerId)}");
+
+            _leaderClockSynced = remotePeerId;
+            _leaderSysClockOffset = clockOffsetMs;
+
+            if (_leaderApianOffsetReported == remotePeerId)
+                _DoClockUpdate();
+            else {
+                Logger.Verbose($"OnPeerClockSync() Waiting for ApianOffset message");
+            }
         }
 
         public override void OnPeerApianOffset(string p2pId,  long remoteApianOffset)
         {
-            // Remote peer is reporting it's local apian offset ( ApianClockOffset to it)
+            // Remote peer is reporting its local apian offset ( ApianClockOffset to it)
             // But the only peer we field messages from is the leader
             // By using P2pNet's estimate for that peer's system offset vs our system clock
             //   ( ourSysTime + peerOffset = peerSysTime)
@@ -63,54 +97,50 @@ namespace Apian
             // and by "infer" I mean "kinda guess sorta"
             // remoteApianClk = sysMs + peerSysOffSet + peerApianOffset
             //
-            if (_apian.GroupMgr.LocalPeerId == GroupLeaderId)
-               return; //we're the leader. Our ApianClock is by definition correct
-
-            if (p2pId == _apian.GroupMgr.LocalPeerId)
-            {
-                Logger.Debug("OnApianClockOffset(). Local ApianClock offset ignored");
-                return;
-            }
 
             if (p2pId != GroupLeaderId)
             {
-                Logger.Verbose("OnPeerApianOffset(). Message source is not the leader.");
+                Logger.Verbose($"OnPeerApianOffset(). Message source {SID(p2pId)} is not the leader.");
                 return;
             }
 
+            if (LocalPeerId == p2pId)
+               return; //message is from us and we must be the leader. Nothing to do
+
             Logger.Verbose($"OnPeerApianOffset() from leader: {SID(p2pId)}");
 
+            _leaderApianOffsetReported = p2pId;
             _leaderApianOffset = remoteApianOffset;
-            _leaderApianOffsetReported = true;
 
-            if (_leaderClockSynced)
+
+            if (_leaderClockSynced == p2pId)
             {
-                _DoTheUpdate();
+                _DoClockUpdate();
             }   else { // P2pNet hasnt synced with leader yet
                 Logger.Verbose($"OnPeerApianOffset() Leader SysClock not synced. Stashing ApianOffset for later.");
             }
         }
 
-        protected void _DoTheUpdate()
+        protected void _DoClockUpdate()
         {
             if (IsIdle) // this is the first we've gotten. Set set ours to match theirs.
             {
                 Logger.Verbose($"_DoTheUpdate() Idle. Just set.");
                 // CurrentTime = sysMs + peerOffset + peerAppOffset;
-                DoSet( SystemTime + _leaderSysOffset + _leaderApianOffset );
+                DoSet( SystemTime + _leaderSysClockOffset + _leaderApianOffset );
                 SendApianClockOffset(); // let everyone know
             } else {
                 if (_apian.LocalPeerIsActive)
                 {
                     // If we are active try to correct half of the error in kOffsetAnnounceBaseMs
-                    long localErr = SystemTime + _leaderSysOffset + _leaderApianOffset - CurrentTime;
+                    long localErr = SystemTime + _leaderSysClockOffset + _leaderApianOffset - CurrentTime;
                     float newRate = 1.0f + (.5f * localErr / OffsetAnnouncementPeriodMs);
                     DoSet(CurrentTime, newRate);
                     Logger.Verbose($"_DoTheUpdate: local error: {localErr}, New Rate: {newRate}");
                 } else {
                     // otherwise no need for smoothing
                     Logger.Verbose($"_DoTheUpdate() We are not active. Setting time to match Leader.");
-                    DoSet( SystemTime + _leaderSysOffset + _leaderApianOffset );
+                    DoSet( SystemTime + _leaderSysClockOffset + _leaderApianOffset );
                 }
             }
         }

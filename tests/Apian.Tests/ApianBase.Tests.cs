@@ -98,7 +98,7 @@ namespace ApianTests
         {
             const string localP2pId = "localP2pId";
             const string remoteId = "remoteId";
-            const long  cnt = 5,
+            const int  cnt = 5,
                         since = 10,
                         offset = -10,
                         lag = 46;
