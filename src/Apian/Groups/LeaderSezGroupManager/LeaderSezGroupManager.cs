@@ -37,7 +37,6 @@ namespace Apian
             _ParseConfig(config ?? LsDefaultConfig); // LeaderDecidesGmBase ctor sets: protected ConfigDict = config
 
             GroupMsgHandlers[SetLeaderMsg.MsgTypeId] = OnSetLeaderMsg;
-
         }
 
         private void _ParseConfig( Dictionary<string,string> config)
