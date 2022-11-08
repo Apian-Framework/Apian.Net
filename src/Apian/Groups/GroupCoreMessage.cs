@@ -16,23 +16,30 @@ namespace Apian
         public const string ResumeAppCore = "GcmRs";
 
         public GroupCoreMessage(string t, long ts) : base(ApianCoreMessage.kGroupMgr, t, ts) {}
-        public GroupCoreMessage() {}
+        public GroupCoreMessage() : base() {}
+
     }
 
     public class CheckpointRequestMsg : GroupCoreMessage
     {
         public CheckpointRequestMsg(long ts) : base(GroupCoreMessage.CheckpointRequest, ts) {}
+
+        public CheckpointRequestMsg() : base() {}
     }
 
     public class PauseAppCoreMsg : GroupCoreMessage
     {
         public string reason; // descriptive "why": ("quorum Lost", "Bob requested"...)
         public string instanceId; // a unique id for resume to use.
+
+
         public PauseAppCoreMsg(long ts, string _reason, string _instance) : base(GroupCoreMessage.PauseAppCore, ts)
         {
             reason = _reason;
             instanceId = _instance;
         }
+        public PauseAppCoreMsg() : base() {}
+
     }
 
     public class ResumeAppCoreMsg : GroupCoreMessage
