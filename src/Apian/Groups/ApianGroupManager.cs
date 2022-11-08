@@ -205,6 +205,9 @@ namespace Apian
             Logger = UniLogger.GetLogger("ApianGroup");
             ApianInst = apianInst;
             Members = new Dictionary<string, ApianGroupMember>();
+
+            // This might have to be overridden by any subclass ctor (this will execute before the subclass ctor)
+            groupMgrMsgDeser = new GroupCoreMessageDeserializer();  // default GroupCoreMessages
         }
 
         public ApianGroupMember GetMember(string peerId)
@@ -237,7 +240,13 @@ namespace Apian
 
         public virtual void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd)
         {
-            GroupCoreCmdHandlers[cmd.MsgType](epoch, seqNum, cmd);
+            try {
+                GroupCoreCmdHandlers[cmd.MsgType](epoch, seqNum, cmd);
+            } catch (NullReferenceException ex) {
+                Logger.Error($"ApplyGroupCoreCommand(): No command handler for: '{cmd.MsgType}'");
+                throw(ex);
+            }
+
         }
         public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );

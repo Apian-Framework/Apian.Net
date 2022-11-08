@@ -143,8 +143,12 @@ namespace Apian
 
         public virtual void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
         {
-            // TODO: throw exception (or warn?) when MsgType isn't in the dictionary
-            ApMsgHandlers[msg.MsgType](fromId, toId, msg, lagMs);
+            try {
+                ApMsgHandlers[msg.MsgType](fromId, toId, msg, lagMs);
+            } catch (NullReferenceException ex) {
+                Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
+                throw(ex);
+            }
         }
 
         // Default Apian Msg handlers

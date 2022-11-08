@@ -76,7 +76,12 @@ namespace Apian
             // Note that Apian only routes GROUP messages here.
             if (msg != null )
             {
-                GroupMsgHandlers[msg.GroupMsgType](msg, msgSrc, msgChannel);
+                try {
+                    GroupMsgHandlers[msg.GroupMsgType](msg, msgSrc, msgChannel);
+                } catch (NullReferenceException ex) {
+                    Logger.Error($"OnApianGroupMessage(): No GroupMsg handler for: '{msg.GroupMsgType}'");
+                    throw(ex);
+                }
             }
         }
 
