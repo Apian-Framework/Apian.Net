@@ -45,9 +45,9 @@ namespace Apian
     public class ResumeAppCoreMsg : GroupCoreMessage
     {
         public string instanceId; // using pause command identifier.
-        public ResumeAppCoreMsg(long ts, string isntance) : base(GroupCoreMessage.PauseAppCore, ts)
+        public ResumeAppCoreMsg(long ts, string instance) : base(GroupCoreMessage.ResumeAppCore, ts)
         {
-            instanceId = isntance;
+            instanceId = instance;
         }
     }
 

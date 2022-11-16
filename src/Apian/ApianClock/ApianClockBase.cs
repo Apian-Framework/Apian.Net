@@ -9,6 +9,8 @@ namespace Apian
     {
         // IApianClock public stuff
         public bool IsIdle { get => (_currentRate == 0 && _apianTimeBase == 0);}  // hasn't been set yet
+        public bool IsPaused { get => (_currentRate == 0 && _apianTimeBase != 0);} // clock was running, is now stopped
+
         public long SystemTime { get => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;}  // system clock
         public long CurrentTime { get => (long)((SystemTime - _sysMsBase) * _currentRate) + _apianTimeBase;} // This is the ApianTime
         public long ApianClockOffset {get => CurrentTime - SystemTime; } // The current effective offset.
@@ -45,10 +47,13 @@ namespace Apian
             Logger = UniLogger.GetLogger("ApianClock");
         }
 
-        public virtual void Update()
+        public virtual bool Update()
         {
             if (IsIdle)
-                return;
+                return false;
+
+            if (IsPaused)
+                return false;
 
             // Not the most sophisticated way. But easy to understand and implment in many languages.
             long nowMs = SystemTime;
@@ -58,6 +63,17 @@ namespace Apian
                 SendApianClockOffset();
                 _nextOffsetAnnounceTime = NewNextOffsetAnnounceTime;
             }
+            return true;
+        }
+
+        public virtual void Pause()
+        {
+            DoSet(CurrentTime, 0);
+        }
+
+        public virtual void Resume()
+        {
+            DoSet(CurrentTime, 1.0f);
         }
 
         // Set the time

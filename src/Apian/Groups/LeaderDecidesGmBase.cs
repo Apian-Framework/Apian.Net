@@ -103,13 +103,10 @@ namespace Apian
                 {ApianGroupMessage.GroupSyncData, OnGroupSyncData },
                 {ApianGroupMessage.GroupSyncCompletion, OnGroupSyncCompletionMsg },
                 {ApianGroupMessage.GroupCheckpointReport, OnGroupCheckpointReport },
-             };
-
-            GroupCoreCmdHandlers = new Dictionary<string, Action< long, long, GroupCoreMessage>> {
-                {GroupCoreMessage.CheckpointRequest , OnCheckpointRequestCmd },
             };
 
-
+            // Add to default handlers
+            GroupCoreCmdHandlers[GroupCoreMessage.CheckpointRequest] =  OnCheckpointRequestCmd;
 
             InitializeEpochData(0, 0);
         }
@@ -413,6 +410,8 @@ namespace Apian
 
         protected void OnGroupsRequest(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
+            // TODO: This should be rethought. Not clear that it should only be the leader handling this,
+            // And alos not clear it needs to be handled at the groupMgr level
             if (LocalPeerIsLeader)
             {
                 Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest, sending response.");

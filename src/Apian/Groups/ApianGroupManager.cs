@@ -51,16 +51,33 @@ namespace Apian
         }
     }
 
+    public class AppCorePauseInfo
+    {
+        public string PauseId { get; private set; }
+        public string Reason { get; private set; }
+        public long ApianTime { get; private set; }
+
+        public AppCorePauseInfo(string pauseId, string reason, long apianTime)
+        {
+            PauseId = pauseId;
+            Reason = reason;
+            ApianTime = apianTime;
+         }
+    }
+
     public class ApianGroupStatus
     {
         // Created via Apian.CurrentGroupStatus()
         public int ActiveMemberCount { get; set;  }
 
+        public bool AppCorePaused; // see groupmgr for active pauseInfos
+
         public Dictionary<string, string> OtherStatus;
 
-        public ApianGroupStatus(int mCnt, Dictionary<string, string> otherStatus = null)
+        public ApianGroupStatus(int mCnt, bool corePaused, Dictionary<string, string> otherStatus = null)
         {
             ActiveMemberCount = mCnt;
+            AppCorePaused = corePaused;
             OtherStatus = otherStatus ?? new Dictionary<string, string>();
         }
 
@@ -68,6 +85,7 @@ namespace Apian
         {
             // Subclasses can use this as : base(apianStatus)
             ActiveMemberCount = ags.ActiveMemberCount;
+            AppCorePaused = ags.AppCorePaused;
             OtherStatus = ags.OtherStatus;
         }
 
@@ -153,6 +171,8 @@ namespace Apian
         Dictionary<string, ApianGroupMember> Members {get;}
         int MemberCount { get; }
         int ActiveMemberCount { get; }
+        bool AppCorePaused {get; }
+
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
@@ -187,6 +207,7 @@ namespace Apian
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
+        public bool AppCorePaused {get => ActiveAppCorePauses.Values.Count() > 0; }
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
         protected Dictionary<string, Action<ApianGroupMessage, string, string>> GroupMsgHandlers;
@@ -197,6 +218,7 @@ namespace Apian
 
         protected ApianBase ApianInst {get; }
         public Dictionary<string, ApianGroupMember> Members {get;}
+        public Dictionary<string, AppCorePauseInfo> ActiveAppCorePauses {get; }
 
         protected GroupCoreMessageDeserializer groupMgrMsgDeser;
 
@@ -205,6 +227,12 @@ namespace Apian
             Logger = UniLogger.GetLogger("ApianGroup");
             ApianInst = apianInst;
             Members = new Dictionary<string, ApianGroupMember>();
+            ActiveAppCorePauses = new Dictionary<string,AppCorePauseInfo>();
+
+            GroupCoreCmdHandlers = new Dictionary<string, Action< long, long, GroupCoreMessage>> {
+                {GroupCoreMessage.PauseAppCore , OnPauseAppCoreCmd },
+                {GroupCoreMessage.ResumeAppCore , OnResumeAppCoreCmd },
+            };
 
             // This might have to be overridden by any subclass ctor (this will execute before the subclass ctor)
             groupMgrMsgDeser = new GroupCoreMessageDeserializer();  // default GroupCoreMessages
@@ -229,14 +257,16 @@ namespace Apian
             return newMember;
         }
 
-
-        // TODO: There may be good default implmentations for some of these methods
+    // TODO: There may be good default implmentations for some of these methods
         // that ought to just live here
 
         public abstract void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         public abstract void SetupExistingGroup(ApianGroupInfo info);
         public abstract void JoinGroup(string localMemberJson); // GroupManager doesn;t have a LeaveGroup() for the local peer
         public abstract void Update();
+       public abstract void SendApianRequest( ApianCoreMessage coreMsg );
+        public abstract void SendApianObservation( ApianCoreMessage coreMsg );
+
 
         public virtual void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd)
         {
@@ -246,10 +276,44 @@ namespace Apian
                 Logger.Error($"ApplyGroupCoreCommand(): No command handler for: '{cmd.MsgType}'");
                 throw(ex);
             }
-
         }
-        public abstract void SendApianRequest( ApianCoreMessage coreMsg );
-        public abstract void SendApianObservation( ApianCoreMessage coreMsg );
+
+        // Pause/Resume App Core
+
+        protected void OnPauseAppCoreCmd(long epoch, long seqNum, GroupCoreMessage msg)
+        {
+            PauseAppCoreMsg pMsg = msg as PauseAppCoreMsg;
+            Logger.Info($"OnPauseAppCoreCmd(): Pausing AppCore. ID: {pMsg.instanceId}, Reason: {pMsg.reason}");
+
+            if (ActiveAppCorePauses.Keys.Contains(pMsg.instanceId)) {
+                Logger.Warn($"OnPauseAppCoreCmd():AppCorePauseRequest ID: {pMsg.instanceId} is already in effect. Ignoring.");
+            } else {
+
+                bool wasPaused = AppCorePaused;
+                AppCorePauseInfo pInfo = new AppCorePauseInfo(pMsg.instanceId, pMsg.reason, pMsg.TimeStamp);
+                ActiveAppCorePauses[pMsg.instanceId] = pInfo;
+                if (!wasPaused)
+                    ApianInst.OnAppCorePaused(pInfo);
+
+            }
+        }
+
+        protected void OnResumeAppCoreCmd(long epoch, long seqNum, GroupCoreMessage msg)
+        {
+            ResumeAppCoreMsg rMsg = msg as ResumeAppCoreMsg;
+            Logger.Info($"OnResumeAppCoreCmd(): Resuming Pause ID: {rMsg.instanceId}");
+
+            if (!ActiveAppCorePauses.Keys.Contains(rMsg.instanceId)) {
+                Logger.Warn($"OnResumeAppCoreCmd(): AppCorePause ID: {rMsg.instanceId} is NOT in effect. Ignoring.");
+            } else {
+                AppCorePauseInfo pInfo = ActiveAppCorePauses[rMsg.instanceId];
+                ActiveAppCorePauses.Remove(rMsg.instanceId);
+
+                if (!AppCorePaused)
+                    ApianInst.OnAppCoreResumed(pInfo);
+
+            }
+        }
 
         public virtual void OnApianClockOffset(string peerId, long ApianClockOffset)
         {

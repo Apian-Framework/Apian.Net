@@ -25,12 +25,13 @@ namespace Apian
             // cant test GroupLeaderId here because clock is not creatd with Apian instance
         }
 
-        public override void Update()
+        public override bool Update()
         {
-            base.Update();
+           if ( !base.Update() )
+            return false;
 
-           if ((LocalPeerId == GroupLeaderId) &&  (GroupLeaderId != _leaderClockSynced))
-           {
+            if ((LocalPeerId == GroupLeaderId) &&  (GroupLeaderId != _leaderClockSynced))
+            {
                 Logger.Info($"Update() We have become group leader.");
                 //we have just become group leader
                 _leaderClockSynced = LocalPeerId;
@@ -39,8 +40,8 @@ namespace Apian
                 _leaderApianOffsetReported = LocalPeerId;
                 _leaderApianOffset = ApianClockOffset;
                 SendApianClockOffset();
-           }
-
+            }
+            return true;
         }
 
 
@@ -80,10 +81,13 @@ namespace Apian
             _leaderClockSynced = remotePeerId;
             _leaderSysClockOffset = clockOffsetMs;
 
-            if (_leaderApianOffsetReported == remotePeerId)
-                _DoClockUpdate();
-            else {
-                Logger.Verbose($"OnPeerClockSync() Waiting for ApianOffset message");
+            if (!IsPaused)  // update the sys clock stats, but don't update a paused ApianClock
+            {
+                if (_leaderApianOffsetReported == remotePeerId)
+                    _DoClockUpdate();
+                else {
+                    Logger.Verbose($"OnPeerClockSync() Waiting for ApianOffset message");
+                }
             }
         }
 
@@ -106,6 +110,9 @@ namespace Apian
 
             if (LocalPeerId == p2pId)
                return; //message is from us and we must be the leader. Nothing to do
+
+            if (IsPaused)
+                return;
 
             Logger.Verbose($"OnPeerApianOffset() from leader: {SID(p2pId)}");
 

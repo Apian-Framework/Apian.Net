@@ -10,13 +10,16 @@ namespace Apian
         long CurrentTime { get;} // This is the ApianTime
         void SetTime(long desiredTimeMs, float rate=1.0f );
         bool IsIdle { get;}  // hasn't been set yet
+        bool IsPaused { get;} //
         long SystemTime { get;}  // local system clock
         long ApianClockOffset {get; } // The current offset from local system time to apian:  localSysClock + offset = apianClock
         void OnNewPeer(string remotePeerId);
         void OnPeerLeft(string peerId);
         void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount); // local sysClock + offset = peerSysClock
         void OnPeerApianOffset(string remotePeerId,  long remoteApianOffset); // remoteSysClock + remoteApianOffset = remoteApianClock
-        void Update(); // loop
+        bool Update(); // loop. Base returns false if no updating should happen
+        void Pause();
+        void Resume();
 
     }
 

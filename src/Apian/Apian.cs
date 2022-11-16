@@ -109,7 +109,11 @@ namespace Apian
 
         }
 
-        public abstract void Update();
+        public virtual void Update()
+        {
+            GroupMgr?.Update();
+            ApianClock?.Update();
+        }
 
         public abstract (bool, string) CheckQuorum(); // returns (bIsQuorum, ReasonIfNot)
 
@@ -149,6 +153,21 @@ namespace Apian
                 Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
                 throw(ex);
             }
+        }
+
+
+        public void SendPauseReq(long timeStamp,string reason, string id)
+        {
+            Logger.Verbose($"SendPauseReq) Reason: {reason}");
+            PauseAppCoreMsg msg = new PauseAppCoreMsg(timeStamp, reason, id);
+            SendRequest(msg);
+        }
+
+        public void SendResumeReq(long timeStamp, string pauseId)
+        {
+            Logger.Verbose($"SendResumeReq) ID: {pauseId}");
+            ResumeAppCoreMsg msg = new ResumeAppCoreMsg(timeStamp, pauseId);
+            SendRequest(msg);
         }
 
         // Default Apian Msg handlers
@@ -374,11 +393,12 @@ namespace Apian
             MaxAppliedCmdSeqNum = seqNum;
         }
 
+
         // FROM GroupManager
 
         public virtual ApianGroupStatus CurrentGroupStatus()
         {
-            return new ApianGroupStatus(GroupMgr.ActiveMemberCount);
+            return new ApianGroupStatus(GroupMgr.ActiveMemberCount, GroupMgr.AppCorePaused);
         }
 
         // TODO: put this back when I'm actually ready for it.
@@ -446,6 +466,17 @@ namespace Apian
 
         }
 
+        public void OnAppCorePaused( AppCorePauseInfo pInfo)
+        {
+            Logger.Info($"OnAppCorePaused(): Pausing for ID: {pInfo.PauseId}");
+            ApianClock?.Pause();
+        }
+
+        public void OnAppCoreResumed( AppCorePauseInfo pInfo)
+        {
+            Logger.Info($"OnAppCoreResumed(): Resmeing from ID: {pInfo.PauseId}");
+            ApianClock?.Resume();
+        }
 
         public virtual void ApplyStashedApianCommand(ApianCommand cmd)
         {
