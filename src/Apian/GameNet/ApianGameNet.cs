@@ -63,7 +63,7 @@ namespace Apian
     {
         // This is the actual GameNet instance
         public IApianApplication Client {get => client as IApianApplication;}
-        public Dictionary<string,ApianNetworkPeer> Peers; // keyed by p2pid
+        protected Dictionary<string,ApianNetworkPeer> Peers; // keyed by p2pid  // TODO: Isn;t actually used for anything
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
@@ -256,20 +256,16 @@ namespace Apian
 
         public override void OnPeerJoined(string channelId, string p2pId, string helloData)
         {
-            // This means a peer joined the main Game channel.
-            Peers[p2pId] = new ApianNetworkPeer(p2pId, helloData);
-            base.OnPeerJoined(channelId, p2pId, helloData); // inform ApianApplication (Client)
+            if (channelId == CurrentNetworkId())
+            {
+                // This means a peer joined the main Game channel.
+                Peers[p2pId] = new ApianNetworkPeer(p2pId, helloData);
+            }
+            base.OnPeerJoined(channelId, p2pId, helloData); //
         }
 
         public override void OnPeerLeft(string channelId, string p2pId)
         {
-            logger.Info($"OnPeerLeft() - channel: {channelId}, Peer: {p2pId}");
-            if (!Peers.ContainsKey(p2pId))
-            {
-                logger.Info($"OnPeerLeft(): Ignoring. Not a known peer.");
-                return;
-            }
-
             if (channelId == CurrentNetworkId()) // P2pNet Peer left main game channel.
             {
                 logger.Info($"OnPeerLeft() - Is main network channel. Informing all groups.");
