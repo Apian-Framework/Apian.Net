@@ -36,7 +36,7 @@ namespace GameNet
         void LeaveNetwork();
         void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
-        string LocalP2pId();
+        string LocalPeerAddr();
         string CurrentNetworkId();
         P2pNetChannel CurrentNetworkChannel();
         int NetworkPeerCount();
@@ -46,10 +46,10 @@ namespace GameNet
     public interface IGameNetClient
     {
         void OnPeerJoinedNetwork(PeerJoinedNetworkData peerData);
-        void OnPeerLeftNetwork(string p2pId, string netId);
-        void OnPeerMissing(string p2pId, string networkId);
-        void OnPeerReturned(string p2pId, string networkId);
-        void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo info);
+        void OnPeerLeftNetwork(string peerAddr, string netId);
+        void OnPeerMissing(string peerAddr, string networkId);
+        void OnPeerReturned(string peerAddr, string networkId);
+        void OnPeerSync(string channelId, string peerAddr, PeerClockSyncInfo info);
     }
 
     // used internally
@@ -219,7 +219,7 @@ namespace GameNet
 
         }
 
-        public string LocalP2pId() => p2p?.GetId();
+        public string LocalPeerAddr() => p2p?.GetId();
         public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
         public P2pNetChannel CurrentNetworkChannel() => p2p?.GetMainChannel();
 
@@ -232,14 +232,14 @@ namespace GameNet
         // TODO: the base (non-apian) GameNet does nothing with P2pNet subchannel join/leave events
         // Proobably should change the client API someday.
 
-       public virtual void OnPeerJoined(string channel, string p2pId, string helloData)
+       public virtual void OnPeerJoined(string channel, string peerAddr, string helloData)
         {
             // "helloData" is almost certainly a serialized application-specific "GameNetworkPeer" class
             if (channel == CurrentNetworkId())
             {
-                PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(p2pId, CurrentNetworkId(), helloData);
+                PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(peerAddr, CurrentNetworkId(), helloData);
 #if !SINGLE_THREADED
-                if (p2pId == LocalP2pId() && JoinNetworkCompletion != null)
+                if (peerAddr == LocalPeerAddr() && JoinNetworkCompletion != null)
                     JoinNetworkCompletion.TrySetResult(peerData);
 #endif
 
@@ -256,38 +256,38 @@ namespace GameNet
             // Note: ApianGameNet overrides this (and calls it)
         }
 
-      public virtual void OnPeerLeft(string channelId, string p2pId)
+      public virtual void OnPeerLeft(string channelId, string peerAddr)
         {
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
-                client.OnPeerLeftNetwork(p2pId, CurrentNetworkId());
+                client.OnPeerLeftNetwork(peerAddr, CurrentNetworkId());
         }
 
-        public virtual void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo syncInfo)
+        public virtual void OnPeerSync(string channelId, string peerAddr, PeerClockSyncInfo syncInfo)
         {
             // Note: ApianGameNet overrides this and DOESN'T call it - Apian deals with any sync stuff for apian apps
-            client.OnPeerSync(channelId, p2pId, syncInfo);
+            client.OnPeerSync(channelId, peerAddr, syncInfo);
         }
 
-        public virtual void OnPeerMissing(string channelId, string p2pId)
+        public virtual void OnPeerMissing(string channelId, string peerAddr)
         {
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
-                client.OnPeerMissing(p2pId, CurrentNetworkId());
+                client.OnPeerMissing(peerAddr, CurrentNetworkId());
         }
 
-        public virtual void OnPeerReturned(string channelId, string p2pId)
+        public virtual void OnPeerReturned(string channelId, string peerAddr)
         {
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
-                client.OnPeerReturned(p2pId, CurrentNetworkId());
+                client.OnPeerReturned(peerAddr, CurrentNetworkId());
         }
 
         public void OnClientMsg(string from, string to, long msSinceSent, string payload)
         {
             GameNetClientMessage gameNetClientMessage = JsonConvert.DeserializeObject<GameNetClientMessage>(payload);
 
-            if (from == LocalP2pId())
+            if (from == LocalPeerAddr())
                 loopedBackMessageHandlers.Enqueue( () => HandleClientMessage(from, to, msSinceSent, gameNetClientMessage));
             else
                 HandleClientMessage(from, to, msSinceSent, gameNetClientMessage);

@@ -22,9 +22,9 @@ namespace Apian
         void SetupExistingGroup(ApianGroupInfo groupInfo);
         void SetupNewGroup(ApianGroupInfo groupInfo);
         void JoinGroup(string localGroupData); // There's no LeaveGroup
-        void OnPeerLeftGroupChannel(string groupChannelId, string p2pId);
-        void OnPeerMissing(string groupChannelId, string p2pId);
-        void OnPeerReturned(string groupChannelId, string p2pId);
+        void OnPeerLeftGroupChannel(string groupChannelId, string peerAddr);
+        void OnPeerMissing(string groupChannelId, string peerAddr);
+        void OnPeerReturned(string groupChannelId, string peerAddr);
         void OnPeerClockSync(string remotePeerId, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
     }
@@ -421,7 +421,7 @@ namespace Apian
             // TODO: this used to look up the peer's clock sync data and pass it so as not to wait for a sync
             // Is that necessary?
 
-            if (member.PeerId != GameNet.LocalP2pId() )
+            if (member.PeerId != GameNet.LocalPeerAddr() )
             {
                 if (ApianClock != null)
                 {
@@ -507,11 +507,11 @@ namespace Apian
         // applications this can be dealt with by pausing or temporarily disabling stuff. It's VERY app-dependant
         // but when used well can make an otherwise unusable app useful for someone with a droppy connection (or a
         // computer prone to "pausing" for a couple seconds at a time - I've seen them both)
-        public virtual void OnPeerMissing(string channelId, string p2pId)
+        public virtual void OnPeerMissing(string channelId, string peerAddr)
         {
         }
 
-        public virtual void OnPeerReturned(string channelId, string p2pId)
+        public virtual void OnPeerReturned(string channelId, string peerAddr)
         {
         }
     }

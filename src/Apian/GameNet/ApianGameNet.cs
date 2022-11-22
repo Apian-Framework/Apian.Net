@@ -50,11 +50,11 @@ namespace Apian
         // This is a GameNet/P2pNet peer. There is only one of these per node, no matter
         // how many ApianInstances/Groups there are.
 
-        public string P2pId { get; private set; }
+        public string Addr { get; private set; }
         public string P2NetpHelloData { get; private set; } // almost always JSON
-        public ApianNetworkPeer(string p2pId, string helloData)
+        public ApianNetworkPeer(string addr, string helloData)
         {
-            P2pId = p2pId;
+            Addr = addr;
             P2NetpHelloData = helloData;
         }
     }
@@ -63,7 +63,7 @@ namespace Apian
     {
         // This is the actual GameNet instance
         public IApianApplication Client {get => client as IApianApplication;}
-        protected Dictionary<string,ApianNetworkPeer> Peers; // keyed by p2pid  // TODO: Isn;t actually used for anything
+        protected Dictionary<string,ApianNetworkPeer> Peers; // keyed by addr  // TODO: Isn;t actually used for anything
         public Dictionary<string, ApianBase> ApianInstances; // keyed by groupId
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
@@ -226,7 +226,7 @@ namespace Apian
             string groupId = groupInfo.GroupId;
             if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
             {
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalP2pId(), groupInfo, false, "Timeout");
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, "Timeout");
                 JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
             }
         }
@@ -254,51 +254,51 @@ namespace Apian
         //  *** IP2pNetClient Overrides
         //
 
-        public override void OnPeerJoined(string channelId, string p2pId, string helloData)
+        public override void OnPeerJoined(string channelId, string peerAddr, string helloData)
         {
             if (channelId == CurrentNetworkId())
             {
                 // This means a peer joined the main Game channel.
-                Peers[p2pId] = new ApianNetworkPeer(p2pId, helloData);
+                Peers[peerAddr] = new ApianNetworkPeer(peerAddr, helloData);
             }
-            base.OnPeerJoined(channelId, p2pId, helloData); //
+            base.OnPeerJoined(channelId, peerAddr, helloData); //
         }
 
-        public override void OnPeerLeft(string channelId, string p2pId)
+        public override void OnPeerLeft(string channelId, string peerAddr)
         {
             if (channelId == CurrentNetworkId()) // P2pNet Peer left main game channel.
             {
                 logger.Info($"OnPeerLeft() - Is main network channel. Informing all groups.");
                 // Leave any groups
                 foreach (ApianBase ap in ApianInstances.Values)
-                    ap.OnPeerLeftGroupChannel(channelId, p2pId);
-                Peers.Remove(p2pId); // remove the peer
+                    ap.OnPeerLeftGroupChannel(channelId, peerAddr);
+                Peers.Remove(peerAddr); // remove the peer
             } else {
                 if (ApianInstances.ContainsKey(channelId))
-                    ApianInstances[channelId].OnPeerLeftGroupChannel(channelId, p2pId);
+                    ApianInstances[channelId].OnPeerLeftGroupChannel(channelId, peerAddr);
             }
-            base.OnPeerLeft(channelId, p2pId); // calls client
+            base.OnPeerLeft(channelId, peerAddr); // calls client
         }
 
-        public override void OnPeerMissing(string channelId, string p2pId)
+        public override void OnPeerMissing(string channelId, string peerAddr)
         {
             if (ApianInstances.ContainsKey(channelId))
-                ApianInstances[channelId].OnPeerMissing(channelId, p2pId);
-            base.OnPeerMissing(channelId, p2pId);
+                ApianInstances[channelId].OnPeerMissing(channelId, peerAddr);
+            base.OnPeerMissing(channelId, peerAddr);
         }
 
-        public override void OnPeerReturned(string channelId, string p2pId)
+        public override void OnPeerReturned(string channelId, string peerAddr)
         {
            if (ApianInstances.ContainsKey(channelId))
-                ApianInstances[channelId].OnPeerReturned(channelId, p2pId);
-            base.OnPeerReturned(channelId, p2pId);
+                ApianInstances[channelId].OnPeerReturned(channelId, peerAddr);
+            base.OnPeerReturned(channelId, peerAddr);
         }
 
-        public override void OnPeerSync(string channelId, string p2pId, PeerClockSyncInfo syncInfo)
+        public override void OnPeerSync(string channelId, string peerAddr, PeerClockSyncInfo syncInfo)
         {
             // P2pNet sends this for each channel that wants it
             if (ApianInstances.ContainsKey(channelId))
-               ApianInstances[channelId].OnPeerClockSync(p2pId, syncInfo.sysClockOffsetMs, syncInfo.syncCount);
+               ApianInstances[channelId].OnPeerClockSync(peerAddr, syncInfo.sysClockOffsetMs, syncInfo.syncCount);
         }
 
         //
@@ -339,7 +339,7 @@ namespace Apian
         {
 #if !SINGLE_THREADED
             //  For Async Join request, local application isn't told that it has "joined" a group until it is Active
-            if (peerId == LocalP2pId() && newStatus == ApianGroupMember.Status.Active && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+            if (peerId == LocalPeerAddr() && newStatus == ApianGroupMember.Status.Active && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
             {
                 ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
                 PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerId, groupInfo, true);
@@ -362,7 +362,7 @@ namespace Apian
         // {
         //     // Decode generic (non-group) ApianMessage. If it's an ApianGroupMessage we'll let the group instance decode it in more detail
         //     ApianMessage apMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload);
-        //     logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
+        //     logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalPeerAddr()?"Local":from)}");
 
         //     if (ApianInstances.ContainsKey(apMsg.DestGroupId))
         //     {
@@ -380,7 +380,7 @@ namespace Apian
 
         protected void DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
-            logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalP2pId()?"Local":from)}");
+            logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalPeerAddr()?"Local":from)}");
 
             // Who's it for?
             string destGroupId = ApianMessageDeserializer.DecodeDestGroup(clientMessage.payload);
@@ -413,7 +413,7 @@ namespace Apian
             GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
             ApianGroupInfo groupInfo = gaMsg.DecodeGroupInfo();
             ApianGroupStatus groupStatus = gaMsg.DecodeGroupStatus();
-            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalP2pId()?"Local":from)}");
+            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalPeerAddr()?"Local":from)}");
 
             GroupAnnounceResult result =  new GroupAnnounceResult(groupInfo, groupStatus);
 

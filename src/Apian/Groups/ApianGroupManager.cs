@@ -203,7 +203,7 @@ namespace Apian
         public string GroupId {get => GroupInfo.GroupId;}
         public string GroupName {get => GroupInfo.GroupName;}
         public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
-        public string LocalPeerId {get => ApianInst.GameNet.LocalP2pId();}
+        public string LocalPeerId {get => ApianInst.GameNet.LocalPeerAddr();}
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }

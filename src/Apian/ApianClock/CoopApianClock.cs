@@ -45,7 +45,7 @@ namespace Apian
             _sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
         }
 
-        public override void OnPeerApianOffset(string p2pId, long remoteApianOffset)
+        public override void OnPeerApianOffset(string peerAddr, long remoteApianOffset)
         {
             // peer is reporting it's local ApianClockOffset, and our local Apian instance is reporting
             // P2pNet's best estimate as to the remote peer's sysClock versus ours
@@ -53,8 +53,8 @@ namespace Apian
             // Using this we can infer what the difference is betwen our ApianClock and theirs.
             // and by "infer" I mean "kinda guess sorta": remoteApianClk = localSysMs + peerSysOffSet + peerApianOffset
             //
-            Logger.Verbose($"OnApianClockOffset() from peer {SID(p2pId)}");
-            if (p2pId == _apian.GroupMgr.LocalPeerId)
+            Logger.Verbose($"OnApianClockOffset() from peer {SID(peerAddr)}");
+            if (peerAddr == _apian.GroupMgr.LocalPeerId)
             {
                 Logger.Verbose("OnApianClockOffset(). Ignoring local  message.");
                 return;
@@ -63,7 +63,7 @@ namespace Apian
             // TODO: the idea is that Apian, before calling this, has verified that the sender is an Active group member
             // Maybe we should check anyway?
 
-            _apianOffsetsByPeer[p2pId] = remoteApianOffset;
+            _apianOffsetsByPeer[peerAddr] = remoteApianOffset;
 
             _UpdateForOtherPeers();
 
@@ -72,11 +72,11 @@ namespace Apian
             //
             // if (IsIdle) // this is the first update we've gotten. Just set ours to match theirs.
             // {
-            //     if (_sysOffsetsByPeer.ContainsKey(p2pId)) // we need to have a current P2pNet sys clock offset
+            //     if (_sysOffsetsByPeer.ContainsKey(peerAddr)) // we need to have a current P2pNet sys clock offset
             //     {
             //         // CurrentTime = sysMs + peerOffset + peerAppOffset;
-            //         DoSet( SystemTime + _sysOffsetsByPeer[p2pId] + remoteApianOffset );
-            //         Logger.Verbose($"OnApianClockOffset() - Was idle, set clock to match {SID(p2pId)}");
+            //         DoSet( SystemTime + _sysOffsetsByPeer[peerAddr] + remoteApianOffset );
+            //         Logger.Verbose($"OnApianClockOffset() - Was idle, set clock to match {SID(peerAddr)}");
             //     }
             // } else {
             //     // Do some complicated stuff to compute the "group" Apian clock value

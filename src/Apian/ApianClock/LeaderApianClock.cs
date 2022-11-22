@@ -91,7 +91,7 @@ namespace Apian
             }
         }
 
-        public override void OnPeerApianOffset(string p2pId,  long remoteApianOffset)
+        public override void OnPeerApianOffset(string peerAddr,  long remoteApianOffset)
         {
             // Remote peer is reporting its local apian offset ( ApianClockOffset to it)
             // But the only peer we field messages from is the leader
@@ -102,25 +102,25 @@ namespace Apian
             // remoteApianClk = sysMs + peerSysOffSet + peerApianOffset
             //
 
-            if (p2pId != GroupLeaderId)
+            if (peerAddr != GroupLeaderId)
             {
-                Logger.Verbose($"OnPeerApianOffset(). Message source {SID(p2pId)} is not the leader.");
+                Logger.Verbose($"OnPeerApianOffset(). Message source {SID(peerAddr)} is not the leader.");
                 return;
             }
 
-            if (LocalPeerId == p2pId)
+            if (LocalPeerId == peerAddr)
                return; //message is from us and we must be the leader. Nothing to do
 
             if (IsPaused)
                 return;
 
-            Logger.Verbose($"OnPeerApianOffset() from leader: {SID(p2pId)}");
+            Logger.Verbose($"OnPeerApianOffset() from leader: {SID(peerAddr)}");
 
-            _leaderApianOffsetReported = p2pId;
+            _leaderApianOffsetReported = peerAddr;
             _leaderApianOffset = remoteApianOffset;
 
 
-            if (_leaderClockSynced == p2pId)
+            if (_leaderClockSynced == peerAddr)
             {
                 _DoClockUpdate();
             }   else { // P2pNet hasnt synced with leader yet
