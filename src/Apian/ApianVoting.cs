@@ -47,7 +47,7 @@ namespace Apian
             public long ExpireTs {get;} // vote defaults to "no" after this
             public long CleanupTs {get;} // VoteData gets removed after this
             public VoteStatus Status {get; private set;}
-            public readonly List<string> PeerIds;
+            public readonly List<string> PeerAddrs;
 
             public void UpdateStatus(long nowMs)
             {
@@ -55,7 +55,7 @@ namespace Apian
                 {
                     if (nowMs > ExpireTs)
                         Status = VoteStatus.Lost;
-                    else if (PeerIds.Count >= NeededVotes)
+                    else if (PeerAddrs.Count >= NeededVotes)
                         Status = VoteStatus.Won;
                 }
             }
@@ -72,12 +72,12 @@ namespace Apian
                 ExpireTs = expireTimeMs;
                 CleanupTs = cleanupTimeMs;
                 Status = VoteStatus.Voting;
-                PeerIds = new List<string>();
+                PeerAddrs = new List<string>();
             }
 
-            public void AddVote(string peerId, long msgTime)
+            public void AddVote(string peerAddr, long msgTime)
             {
-                PeerIds.Add(peerId);
+                PeerAddrs.Add(peerAddr);
                 InitialMsgTime = msgTime < InitialMsgTime ? msgTime : InitialMsgTime; // use earliest
             }
 
@@ -121,12 +121,12 @@ namespace Apian
                     vd.AddVote(votingPeer, msgTime);
                     vd.UpdateStatus(SysMs);
                     _voteDict[candidate] = vd; // VoteData is a struct (value) so must be re-added
-                    Logger.Debug($"Vote.Add: +1 for: {candidate}, Votes: {vd.PeerIds.Count}");
+                    Logger.Debug($"Vote.Add: +1 for: {candidate}, Votes: {vd.PeerAddrs.Count}");
                 }
             } catch (KeyNotFoundException) {
                 int majorityCnt = _MajorityVotes(totalPeers);
                 vd = new VoteData(majorityCnt, msgTime, SysMs+TimeoutMs, SysMs+CleanupMs);
-                vd.PeerIds.Add(votingPeer);
+                vd.PeerAddrs.Add(votingPeer);
                 vd.UpdateStatus(SysMs);
                 _voteDict[candidate] = vd;
                 Logger.Debug($"Vote.Add: New: {candidate}, Majority: {majorityCnt}");
@@ -150,7 +150,7 @@ namespace Apian
             VoteResult result = new VoteResult(false, VoteStatus.NotFound, 0, 0);
             try {
                 VoteData vd = _voteDict[candidate];
-                result = new VoteResult(vd.IsComplete, vd.Status, vd.PeerIds.Count, vd.InitialMsgTime);
+                result = new VoteResult(vd.IsComplete, vd.Status, vd.PeerAddrs.Count, vd.InitialMsgTime);
                 if (!justPeeking)
                 {
                     if (vd.Status == VoteStatus.Lost || vd.Status == VoteStatus.Won)

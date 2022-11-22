@@ -13,15 +13,15 @@ namespace Apian
         public string GroupType;
         public P2pNetChannelInfo GroupChannelInfo;
         public string GroupId { get => GroupChannelInfo?.id;} // channel
-        public string GroupCreatorId;
+        public string GroupCreatorAddr;
         public string GroupName; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
         public Dictionary<string, string> GroupParams;
 
-        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorId, string groupName, Dictionary<string, string> grpParams = null)
+        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, Dictionary<string, string> grpParams = null)
         {
             GroupType = groupType;
             GroupChannelInfo = groupChannel;
-            GroupCreatorId = creatorId;
+            GroupCreatorAddr = creatorAddr;
             GroupName = groupName;
             GroupParams = grpParams ?? new Dictionary<string, string>();
         }
@@ -32,7 +32,7 @@ namespace Apian
             // and top-level properties to expose them
             GroupType = agi.GroupType;
             GroupChannelInfo = agi.GroupChannelInfo;
-            GroupCreatorId = agi.GroupCreatorId;
+            GroupCreatorAddr = agi.GroupCreatorAddr;
             GroupName = agi.GroupName;
             GroupParams = agi.GroupParams;
         }
@@ -45,7 +45,7 @@ namespace Apian
         {
             return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
                 && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
-                && GroupCreatorId.Equals(agi2.GroupCreatorId, System.StringComparison.Ordinal)
+                && GroupCreatorAddr.Equals(agi2.GroupCreatorAddr, System.StringComparison.Ordinal)
                 && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal)
                 && GroupParams.Equals(agi2.GroupParams);
         }
@@ -121,7 +121,7 @@ namespace Apian
 
         public static string[] StatusName =  { "New", "Joining", "SyncingState", "SyncingClock", "Active", "Removed" };
 
-        public string PeerId {get;}
+        public string PeerAddr {get;}
         public Status CurStatus {get; set;}
         public string CurStatusName {get => StatusName[(int)CurStatus];}
         public bool ApianClockSynced; // means we've gotten an ApianOffset msg
@@ -129,10 +129,10 @@ namespace Apian
 
         public bool IsActive => (CurStatus == Status.Active ); // TODO: in the future this will include both ActivePlayer and ActiveValidator
 
-        public ApianGroupMember(string peerId, string appDataJson)
+        public ApianGroupMember(string peerAddr, string appDataJson)
         {
             CurStatus = Status.New;
-            PeerId = peerId;
+            PeerAddr = peerAddr;
             AppDataJson = appDataJson;
 
         }
@@ -164,10 +164,10 @@ namespace Apian
         string GroupName {get; }
         string GroupType {get;}
         string GroupTypeName {get;}
-        string GroupCreatorId {get;}
-        string LocalPeerId {get;}
+        string GroupCreatorAddr {get;}
+        string LocalPeerAddr {get;}
         ApianGroupMember LocalMember {get;}
-        ApianGroupMember GetMember(string peerId); // returns null if not there
+        ApianGroupMember GetMember(string peerAddr); // returns null if not there
         Dictionary<string, ApianGroupMember> Members {get;}
         int MemberCount { get; }
         int ActiveMemberCount { get; }
@@ -181,12 +181,12 @@ namespace Apian
         void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
         void SendApianObservation( ApianCoreMessage coreMsg );
-        void OnApianClockOffset(string peerId, long ApianClockOffset);
+        void OnApianClockOffset(string peerAddr, long ApianClockOffset);
         void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
         void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
-        void OnMemberLeftGroupChannel(string peerId); // Called by local P2pNet when the member leaves ot times out.
+        void OnMemberLeftGroupChannel(string peerAddr); // Called by local P2pNet when the member leaves ot times out.
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         ApianMessage DeserializeCustomApianMessage(string apianMsgTYpe,  string msgJSON); // pass the generically-deserialized msg
         ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg);
@@ -202,8 +202,8 @@ namespace Apian
         public ApianGroupInfo GroupInfo {get; protected set;}
         public string GroupId {get => GroupInfo.GroupId;}
         public string GroupName {get => GroupInfo.GroupName;}
-        public string GroupCreatorId {get => GroupInfo.GroupCreatorId;}
-        public string LocalPeerId {get => ApianInst.GameNet.LocalPeerAddr();}
+        public string GroupCreatorAddr {get => GroupInfo.GroupCreatorAddr;}
+        public string LocalPeerAddr {get => ApianInst.GameNet.LocalPeerAddr();}
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
@@ -238,21 +238,21 @@ namespace Apian
             groupMgrMsgDeser = new GroupCoreMessageDeserializer();  // default GroupCoreMessages
         }
 
-        public ApianGroupMember GetMember(string peerId)
+        public ApianGroupMember GetMember(string peerAddr)
         {
-            if (!Members.ContainsKey(peerId))
+            if (!Members.ContainsKey(peerAddr))
                 return null;
-            return Members[peerId];
+            return Members[peerAddr];
         }
 
-        protected ApianGroupMember _AddMember(string peerId, string appMemberDataJson )
+        protected ApianGroupMember _AddMember(string peerAddr, string appMemberDataJson )
         {
             // Calls ApianInstance CreateGroupMember() to allow it to create an app-specific derived class
-            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerId==LocalPeerId?"Local":"Remote")}) {SID(peerId)}");
-            ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerId, appMemberDataJson);
+            Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerAddr==LocalPeerAddr?"Local":"Remote")}) {SID(peerAddr)}");
+            ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerAddr, appMemberDataJson);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
-            Members[peerId] = newMember;
-            if (peerId==LocalPeerId)
+            Members[peerAddr] = newMember;
+            if (peerAddr==LocalPeerAddr)
                 LocalMember = newMember;
             return newMember;
         }
@@ -315,15 +315,15 @@ namespace Apian
             }
         }
 
-        public virtual void OnApianClockOffset(string peerId, long ApianClockOffset)
+        public virtual void OnApianClockOffset(string peerAddr, long ApianClockOffset)
         {
             // This should generally be overridden. If the peer involved was in SyncingClock status
             // then it should be made active.
-            ApianGroupMember peer = GetMember(peerId);
+            ApianGroupMember peer = GetMember(peerAddr);
             if (peer != null) peer.ApianClockSynced = true;
         }
 
-        public virtual void OnMemberLeftGroupChannel(string peerId)
+        public virtual void OnMemberLeftGroupChannel(string peerAddr)
         {
             // This is called when P2pNet sees the peer as gone, and is always local in origin.
 
@@ -332,10 +332,10 @@ namespace Apian
 
             // Set the member locally as Gone, and call the local handlers to inform the app. No messages are sent out,
             // this part is all local.
-            OnApianGroupMessage(new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Gone), LocalPeerId, GroupId);
+            OnApianGroupMessage(new GroupMemberStatusMsg(GroupId, peerAddr, ApianGroupMember.Status.Gone), LocalPeerAddr, GroupId);
 
             // Tell everyone we lost the peer - GroupManager implmentation will eventually field the messa and decide what to do.
-             ApianInst.SendApianMessage(GroupId, new  GroupMemberLeftMsg (GroupId, peerId));
+             ApianInst.SendApianMessage(GroupId, new  GroupMemberLeftMsg (GroupId, peerAddr));
         }
 
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);

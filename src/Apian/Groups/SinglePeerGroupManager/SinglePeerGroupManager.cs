@@ -55,7 +55,7 @@ namespace Apian
         {
             // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
-                new GroupMemberJoinedMsg(GroupId, LocalPeerId, localMemberJson));
+                new GroupMemberJoinedMsg(GroupId, LocalPeerAddr, localMemberJson));
         }
 
         public override void Update()
@@ -105,7 +105,7 @@ namespace Apian
         {
             // No need to validate source, since it;s local
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-            _Member = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+            _Member = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson);
             ApianInst.OnGroupMemberJoined(_Member);
 
             // Go ahead an mark/announce "active"
@@ -117,11 +117,11 @@ namespace Apian
         {
             // No need to validate source, since it;s local
             GroupMemberLeftMsg leftMsg = (msg as GroupMemberLeftMsg);
-            ApianGroupMember m = GetMember( leftMsg.PeerId );
+            ApianGroupMember m = GetMember( leftMsg.PeerAddr );
             if (m != null)
             {
                 ApianInst.OnGroupMemberLeft(m); // inform  apian
-                Members.Remove(leftMsg.PeerId);
+                Members.Remove(leftMsg.PeerAddr);
             }
 
         }

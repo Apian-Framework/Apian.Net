@@ -39,7 +39,7 @@ namespace Apian
             // and keep a couple of them - tracking how well they (hashes) were agreed with.
             // Maybe when asked it's better to send out the "one before last" if the most recent disagreed
             // with all the other peers?
-            // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerId
+            // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerAddr
 
             public EpochData(long epochNum, long startCmdSeqNum, long endCmdSeqNum)
             {
@@ -82,8 +82,8 @@ namespace Apian
         protected long CheckpointMs; // how often
         protected long CheckpointOffsetMs; // small random offset
 
-        public string GroupLeaderId {get; set;}
-        public bool LocalPeerIsLeader {get => GroupLeaderId == LocalPeerId;}
+        public string GroupLeaderAddr {get; set;}
+        public bool LocalPeerIsLeader {get => GroupLeaderAddr == LocalPeerAddr;}
 
         protected static long SysMsNow => DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond; // FIXME: replace with testable construct
 
@@ -129,7 +129,7 @@ namespace Apian
             // Creating a new groupIfop with us as creator
             GroupInfo = info;
 
-            SetLeader(info.GroupCreatorId); // creater starts out as leader
+            SetLeader(info.GroupCreatorAddr); // creater starts out as leader
 
             // Do this *after* we are a member
             //ApianInst.ApianClock.SetTime(0); // we're the group leader so we need to start our clock
@@ -140,7 +140,7 @@ namespace Apian
         {
             Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
             GroupInfo = info;
-            SetLeader( info.GroupCreatorId ); // creator starts as leader
+            SetLeader( info.GroupCreatorAddr ); // creator starts as leader
         }
 
         public override void JoinGroup(string localMemberJson)
@@ -155,7 +155,7 @@ namespace Apian
 
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId} Sending join request to group");
             // Send the request to the entire group (we might not know the leader yet)
-            ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerId, localMemberJson));
+            ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerAddr, localMemberJson));
         }
 
         public override void Update()
@@ -168,7 +168,7 @@ namespace Apian
                 if (LocalMember.CurStatus == ApianGroupMember.Status.SyncingState && SysMsNow > DontRequestSyncBeforeMs)
                 {
                     Logger.Info($"{this.GetType().Name}.Update(): Sending SyncCompletion request.");
-                    ApianInst.SendApianMessage(GroupLeaderId, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
+                    ApianInst.SendApianMessage(GroupLeaderAddr, new GroupSyncCompletionMsg(GroupId, ApianInst.MaxAppliedCmdSeqNum, "hash"));
                     DontRequestSyncBeforeMs = SysMsNow + SyncCompletionWaitMs; // ugly "wait a bit before doing it again" timer
                 }
             }
@@ -178,14 +178,14 @@ namespace Apian
         // Leader stuff
         //
 
-        protected virtual void SetLeader(string newLeaderId)
+        protected virtual void SetLeader(string newLeaderAddr)
         {
-            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderId)}");
+            Logger.Info($"{this.GetType().Name}.SetLeader() - setting group leader to {SID(newLeaderAddr)}");
 
-            if ( newLeaderId != GroupLeaderId)
-                ApianInst.GameNet.OnNewGroupLeader(GroupId, newLeaderId, GetMember(newLeaderId));
+            if ( newLeaderAddr != GroupLeaderAddr)
+                ApianInst.GameNet.OnNewGroupLeader(GroupId, newLeaderAddr, GetMember(newLeaderAddr));
 
-            GroupLeaderId = newLeaderId;
+            GroupLeaderAddr = newLeaderAddr;
 
         }
 
@@ -275,15 +275,15 @@ namespace Apian
         //    }
         }
 
-        public override void OnApianClockOffset(string peerId, long ApianClockOffset)
+        public override void OnApianClockOffset(string peerAddr, long ApianClockOffset)
         {
             // If this comes in from a peer who is Syncing the clock, and we are the leader, make it Active
-            base.OnApianClockOffset(peerId, ApianClockOffset);
+            base.OnApianClockOffset(peerAddr, ApianClockOffset);
 
-            if (LocalPeerIsLeader && GetMember(peerId)?.CurStatus == ApianGroupMember.Status.SyncingClock)
+            if (LocalPeerIsLeader && GetMember(peerAddr)?.CurStatus == ApianGroupMember.Status.SyncingClock)
             {
-                Logger.Debug($"OnApianClockOffset(): Setting peer {SID(peerId)} to Active");
-                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, peerId, ApianGroupMember.Status.Active));
+                Logger.Debug($"OnApianClockOffset(): Setting peer {SID(peerAddr)} to Active");
+                ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, peerAddr, ApianGroupMember.Status.Active));
            }
 
         }
@@ -315,7 +315,7 @@ namespace Apian
         public override void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan)
         {
             // Observations from the leader are turned into commands by the leader
-            if (LocalPeerIsLeader && (msgSrc == LocalPeerId))
+            if (LocalPeerIsLeader && (msgSrc == LocalPeerAddr))
                 ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
         }
 
@@ -325,7 +325,7 @@ namespace Apian
             if (LocalMember == null)
                 return ApianCommandStatus.kLocalPeerNotReady;
 
-            if (msgSrc != GroupLeaderId)
+            if (msgSrc != GroupLeaderAddr)
                 return ApianCommandStatus.kBadSource;
 
             // if we are processing the cache (syncing) and get to this then we are done.
@@ -387,7 +387,7 @@ namespace Apian
 
             GroupSyncRequestMsg syncRequest = new GroupSyncRequestMsg(GroupId, firstSeqNumWeNeed, firstStashedSeqNum);
             Logger.Info($"{this.GetType().Name}._RequestSync() sending req: start: {syncRequest.ExpectedCmdSeqNum} 1st Stashed: {syncRequest.FirstStashedCmdSeqNum}");
-            ApianInst.SendApianMessage(GroupLeaderId, syncRequest);
+            ApianInst.SendApianMessage(GroupLeaderAddr, syncRequest);
 
             // the local short-circuit... so we do the right thing when data arrives
             ApianGroupMember.Status prevStatus = LocalMember.CurStatus;
@@ -428,17 +428,17 @@ namespace Apian
             {
                 GroupJoinRequestMsg jreq = msg as GroupJoinRequestMsg;
 
-                Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} req from {SID(jreq.PeerId)}");
+                Logger.Info($"{this.GetType().Name}.OnGroupJoinRequest(): Affirming {jreq.DestGroupId} req from {SID(jreq.PeerAddr)}");
 
                 // Send current members to new joinee - do it bfore sending the new peers join msg
-                SendMemberJoinedMessages(jreq.PeerId);
+                SendMemberJoinedMessages(jreq.PeerAddr);
 
                 // Don't add (happens in OnGroupMemberJoined())
-                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerId, jreq.ApianClientPeerJson);
+                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerAddr, jreq.ApianClientPeerJson);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
                 // Now send status updates (from "joined") for any member that has changed status
-                SendMemberStatusUpdates(jreq.PeerId);
+                SendMemberStatusUpdates(jreq.PeerAddr);
             }
         }
 
@@ -447,8 +447,8 @@ namespace Apian
             // Send a newly-approved member all of the Join messages for the other member
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
             List<GroupMemberJoinedMsg> joinMsgs = Members.Values
-                .Where( m => m.PeerId != toWhom)
-                .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerId, m.AppDataJson)).ToList();
+                .Where( m => m.PeerAddr != toWhom)
+                .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerAddr, m.AppDataJson)).ToList();
             foreach (GroupMemberJoinedMsg msg in joinMsgs)
                 ApianInst.SendApianMessage(toWhom, msg);
         }
@@ -457,8 +457,8 @@ namespace Apian
         {
             // Send a newly-approved member the status of every non-"Joining" member (since a joinmessage was already sent)
             List<GroupMemberStatusMsg> statusMsgs = Members.Values
-                .Where( (m) => m.CurStatus != ApianGroupMember.Status.Joining && m.PeerId != toWhom)
-                .Select( (m) =>  new GroupMemberStatusMsg(GroupId, m.PeerId, m.CurStatus)).ToList();
+                .Where( (m) => m.CurStatus != ApianGroupMember.Status.Joining && m.PeerAddr != toWhom)
+                .Select( (m) =>  new GroupMemberStatusMsg(GroupId, m.PeerAddr, m.CurStatus)).ToList();
             foreach (GroupMemberStatusMsg msg in statusMsgs)
                 ApianInst.SendApianMessage(toWhom, msg);
         }
@@ -466,17 +466,17 @@ namespace Apian
 
         protected virtual void OnGroupMemberJoined(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msgSrc == GroupLeaderId)
+            if (msgSrc == GroupLeaderAddr)
             {
                 GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-                Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {SID(joinedMsg.PeerId)}");
+                Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {SID(joinedMsg.PeerAddr)}");
 
-                ApianGroupMember m = _AddMember(joinedMsg.PeerId, joinedMsg.ApianClientPeerJson);
+                ApianGroupMember m = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson);
 
                 ApianInst.OnGroupMemberJoined(m); // inform local apian
 
                 // Is this OUR join message?
-                if (joinedMsg.PeerId == LocalPeerId)
+                if (joinedMsg.PeerAddr == LocalPeerAddr)
                 {
                     if  (LocalPeerIsLeader) // are we the leader?
                     {
@@ -485,7 +485,7 @@ namespace Apian
                         NextCheckPointMs = CheckpointMs + CheckpointOffsetMs; // another leader thing
 
                         // Yes, Which means we're also the first. Declare  *us* "Active" and tell everyone
-                        ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerId, ApianGroupMember.Status.Active));
+                        ApianInst.SendApianMessage(GroupId, new GroupMemberStatusMsg(GroupId, LocalPeerAddr, ApianGroupMember.Status.Active));
                     } else {
                         // Not leader - request data sync.
                         RequestSync(-1, -1); // we've neither applied nor stashed any commands
@@ -496,49 +496,49 @@ namespace Apian
 
         protected virtual void OnGroupMemberLeftMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msgSrc == GroupLeaderId)
+            if (msgSrc == GroupLeaderAddr)
             {
                 GroupMemberLeftMsg leftMsg = (msg as GroupMemberLeftMsg);
-                Logger.Warn($"{this.GetType().Name}.OnGroupMemberLeft()  {SID(leftMsg.PeerId)}");
+                Logger.Warn($"{this.GetType().Name}.OnGroupMemberLeft()  {SID(leftMsg.PeerAddr)}");
 
-                ApianGroupMember m = GetMember( leftMsg.PeerId );
+                ApianGroupMember m = GetMember( leftMsg.PeerAddr );
                 if (m != null)
                 {
                     ApianInst.OnGroupMemberLeft(m); // inform local apian
-                    Members.Remove(leftMsg.PeerId);
+                    Members.Remove(leftMsg.PeerAddr);
                 }
             }
         }
 
         protected void OnGroupJoinFailed(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msgSrc == GroupLeaderId)
+            if (msgSrc == GroupLeaderAddr)
             {
                 GroupJoinFailedMsg failedMsg = (msg as GroupJoinFailedMsg);
-                Logger.Info($"{this.GetType().Name}.OnGroupJoinFailed() from boss: {failedMsg.DestGroupId} not joined by {SID(failedMsg.PeerId)} because \"{failedMsg.FailureReason}\" ");
+                Logger.Info($"{this.GetType().Name}.OnGroupJoinFailed() from boss: {failedMsg.DestGroupId} not joined by {SID(failedMsg.PeerAddr)} because \"{failedMsg.FailureReason}\" ");
 
                 // Should only come to requestor, and needs to be reported to the Application via gamenet
-                if (failedMsg.PeerId == LocalPeerId)
-                    ApianInst.OnGroupJoinFailed(failedMsg.PeerId, failedMsg.FailureReason); // inform local apian
+                if (failedMsg.PeerAddr == LocalPeerAddr)
+                    ApianInst.OnGroupJoinFailed(failedMsg.PeerAddr, failedMsg.FailureReason); // inform local apian
             }
         }
 
 
         protected virtual void OnGroupMemberStatus(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
-            if (msgSrc == GroupLeaderId || msgSrc == LocalPeerId) // might be engerated locally (removed)
+            if (msgSrc == GroupLeaderAddr || msgSrc == LocalPeerAddr) // might be engerated locally (removed)
             {
                 GroupMemberStatusMsg sMsg = (msg as GroupMemberStatusMsg);
-                Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): {(sMsg.PeerId==LocalPeerId?"Local:":"Remote")}: {sMsg.PeerId} to {sMsg.MemberStatus}");
-                if (Members.ContainsKey(sMsg.PeerId))
+                Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): {(sMsg.PeerAddr==LocalPeerAddr?"Local:":"Remote")}: {sMsg.PeerAddr} to {sMsg.MemberStatus}");
+                if (Members.ContainsKey(sMsg.PeerAddr))
                 {
-                    ApianGroupMember m = Members[sMsg.PeerId];
+                    ApianGroupMember m = Members[sMsg.PeerAddr];
                     ApianGroupMember.Status old = m.CurStatus;
                     m.CurStatus = sMsg.MemberStatus;
                     ApianInst.OnGroupMemberStatusChange(m, old);
                 }
                 else
-                    Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): No action.  {sMsg.PeerId} is not a member." );
+                    Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): No action.  {sMsg.PeerAddr} is not a member." );
             }
         }
 
@@ -604,7 +604,7 @@ namespace Apian
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
 
-            string isLocal = msgSrc == LocalPeerId ? "Local" : "Remote";
+            string isLocal = msgSrc == LocalPeerAddr ? "Local" : "Remote";
             Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} Epoch: {prevEpochData?.EpochNum} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
             if (LocalPeerIsLeader) // Only leader handles this
             {

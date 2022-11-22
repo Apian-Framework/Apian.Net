@@ -13,12 +13,12 @@ namespace GameNet
 {
     public class PeerJoinedNetworkData
     {
-        public string PeerId {get; private set;}
+        public string PeerAddr {get; private set;}
         public string NetId {get; private set;}
         public string HelloData {get; private set;}
-        public PeerJoinedNetworkData(string peerId, string netId, string helloData)
+        public PeerJoinedNetworkData(string peerAddr, string netId, string helloData)
         {
-            PeerId = peerId;
+            PeerAddr = peerAddr;
             NetId = netId;
             HelloData = helloData;
         }
@@ -223,7 +223,7 @@ namespace GameNet
         public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
         public P2pNetChannel CurrentNetworkChannel() => p2p?.GetMainChannel();
 
-        public int NetworkPeerCount() => p2p == null ? 0 : p2p.GetPeerIds().Count;
+        public int NetworkPeerCount() => p2p == null ? 0 : p2p.GetPeerAddrs().Count;
 
         //
         // IP2pNetClient

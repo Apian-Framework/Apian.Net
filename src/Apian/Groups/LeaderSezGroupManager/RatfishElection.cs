@@ -252,7 +252,7 @@ namespace Apian
             VotedFor = leader;
             CurrentTerm = electionTerm;
 
-            if (leader == GroupMgr.LocalPeerId)
+            if (leader == GroupMgr.LocalPeerAddr)
                 StartLeaderRole(); // For straight RAFT, everyone should start as follower
             else
                 StartFollowerRole();

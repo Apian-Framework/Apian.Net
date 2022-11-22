@@ -25,7 +25,7 @@ namespace Apian
         void OnPeerLeftGroupChannel(string groupChannelId, string peerAddr);
         void OnPeerMissing(string groupChannelId, string peerAddr);
         void OnPeerReturned(string groupChannelId, string peerAddr);
-        void OnPeerClockSync(string remotePeerId, long remoteClockOffset, long syncCount);
+        void OnPeerClockSync(string remotePeerAddr, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
     }
 
@@ -47,12 +47,12 @@ namespace Apian
         void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum);
 
         // GroupMgr asks Apian to create a pre-join provisional group member
-        ApianGroupMember CreateGroupMember(string peerId, string memberJson);
+        ApianGroupMember CreateGroupMember(string peerAddr, string memberJson);
 
         // Handle reports from Apian Group
         void OnGroupMemberJoined(ApianGroupMember member);
         void OnGroupMemberLeft(ApianGroupMember member);
-        void OnGroupJoinFailed(string peerId, string failureReason);
+        void OnGroupJoinFailed(string peerAddr, string failureReason);
         void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus);
 
     }
@@ -359,9 +359,9 @@ namespace Apian
         // Group-related
 
         // Called by the GroupManager. The absolute minimum for this would be:
-        // CreateGroupMember(string peerId, string appMemberDataJson) => new ApianGroupMember(peerId, appMemberDataJson);
+        // CreateGroupMember(string peerAddr, string appMemberDataJson) => new ApianGroupMember(peerAddr, appMemberDataJson);
         // But the whole point is to subclass ApianGroupMember, so don't do that.
-        public abstract ApianGroupMember CreateGroupMember(string peerId, string appMemberDataJson);
+        public abstract ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson);
 
         public void SetupNewGroup(ApianGroupInfo info) => GroupMgr.SetupNewGroup(info);
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
@@ -421,15 +421,15 @@ namespace Apian
             // TODO: this used to look up the peer's clock sync data and pass it so as not to wait for a sync
             // Is that necessary?
 
-            if (member.PeerId != GameNet.LocalPeerAddr() )
+            if (member.PeerAddr != GameNet.LocalPeerAddr() )
             {
                 if (ApianClock != null)
                 {
-                    ApianClock.OnNewPeer(member.PeerId); // so our clock can send it the current local apianoffset
+                    ApianClock.OnNewPeer(member.PeerAddr); // so our clock can send it the current local apianoffset
                 }
             }
 
-            GameNet.OnPeerJoinedGroup( member.PeerId, GroupId, true, null);
+            GameNet.OnPeerJoinedGroup( member.PeerAddr, GroupId, true, null);
 
         }
 
@@ -437,32 +437,32 @@ namespace Apian
         {
             // Probably need to override this to do something game-specific
 
-            Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(member?.PeerId)}");
+            Logger.Info($"OnGroupMemberLeft(): {UniLogger.SID(member?.PeerAddr)}");
             if (ApianClock != null)
-                ApianClock.OnPeerLeft(member.PeerId); // also happens in OnPeerLeftGroupChannel - whichever happens first
+                ApianClock.OnPeerLeft(member.PeerAddr); // also happens in OnPeerLeftGroupChannel - whichever happens first
         }
 
-        public virtual void OnGroupJoinFailed(string peerId, string failureReason)
+        public virtual void OnGroupJoinFailed(string peerAddr, string failureReason)
         {
-            GameNet.OnPeerJoinedGroup( peerId, GroupId, false,  failureReason );
+            GameNet.OnPeerJoinedGroup( peerAddr, GroupId, false,  failureReason );
         }
 
         public virtual void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus)
         {
             // Note that the member status has already been changed when this is called
-            Logger.Info($"OnGroupMemberStatusChange(): {UniLogger.SID(member.PeerId)} from {prevStatus} to {member.CurStatus}");
-            GameNet.OnApianGroupMemberStatus( GroupId, member.PeerId, member.CurStatus, prevStatus);
+            Logger.Info($"OnGroupMemberStatusChange(): {UniLogger.SID(member.PeerAddr)} from {prevStatus} to {member.CurStatus}");
+            GameNet.OnApianGroupMemberStatus( GroupId, member.PeerAddr, member.CurStatus, prevStatus);
         }
 
 
-        public virtual void OnPeerLeftGroupChannel(string groupId, string peerId)
+        public virtual void OnPeerLeftGroupChannel(string groupId, string peerAddr)
         {
-            Logger.Info($"OnPeerLeftGroupChannel(): {UniLogger.SID(peerId)}");
+            Logger.Info($"OnPeerLeftGroupChannel(): {UniLogger.SID(peerAddr)}");
             // called from gamenet when P2pNet tells it the peer is gone.
             if (ApianClock != null)
-                ApianClock.OnPeerLeft(peerId); // the clock is a network thing. So do this here as well as in OnGroupMemberLeft
+                ApianClock.OnPeerLeft(peerAddr); // the clock is a network thing. So do this here as well as in OnGroupMemberLeft
 
-            GroupMgr.OnMemberLeftGroupChannel(peerId); // will result in member marked Gone (locally handled) and group send of s GroupMemberLeftMsg
+            GroupMgr.OnMemberLeftGroupChannel(peerAddr); // will result in member marked Gone (locally handled) and group send of s GroupMemberLeftMsg
 
         }
 
@@ -493,13 +493,13 @@ namespace Apian
 
         // Other stuff
 
-        public void OnPeerClockSync(string remotePeerId,  long remoteClockOffset, long syncCount) // local + offset = remote time
+        public void OnPeerClockSync(string remotePeerAddr,  long remoteClockOffset, long syncCount) // local + offset = remote time
         {
             // TODO++: ApianClocks don;t use this info when passed in. It gets stored until an ApianClockOffset msg
             // comes frmo a peer. Since this data can be fetched at any time from p2pnet it would be simpler
             // to do nothing here, and wait till an APianOffset msg comes in and then fetch it and send all the data to the
             // clock at once.
-            ApianClock?.OnPeerClockSync( remotePeerId, remoteClockOffset, syncCount);
+            ApianClock?.OnPeerClockSync( remotePeerAddr, remoteClockOffset, syncCount);
         }
 
         // "Missing" is a little tricky. It's not like Joining or Leaving a group - it's more of a network-level

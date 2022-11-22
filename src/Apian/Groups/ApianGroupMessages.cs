@@ -31,19 +31,19 @@ namespace Apian
 
     public class GroupJoinRequestMsg : ApianGroupMessage
     {
-        public string PeerId;
+        public string PeerAddr;
         public string ApianClientPeerJson;
-        public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerId=pid; ApianClientPeerJson = peerData;}
+        public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerAddr=pid; ApianClientPeerJson = peerData;}
     }
 
     public class GroupMemberJoinedMsg : ApianGroupMessage
     {
         // Need to send both this and MemberStatus update on transition to "active"
-        public string PeerId;
+        public string PeerAddr;
         public string ApianClientPeerJson;
           public GroupMemberJoinedMsg(string gid, string pid, string peerData) : base(gid, GroupMemberJoined)
         {
-            PeerId=pid;
+            PeerAddr=pid;
             ApianClientPeerJson = peerData;
         }
     }
@@ -51,28 +51,28 @@ namespace Apian
     public class GroupJoinFailedMsg : ApianGroupMessage
     {
         // Sent to joining peer.
-        public string PeerId;
+        public string PeerAddr;
         public string FailureReason;
         public GroupJoinFailedMsg(string gid, string pid, string failureReason) : base(gid, GroupJoinFailed)
         {
-            PeerId=pid;
+            PeerAddr=pid;
             FailureReason = failureReason;
         }
     }
 
     public class GroupMemberLeftMsg : ApianGroupMessage
     {
-        public string PeerId;
-        public GroupMemberLeftMsg(string gid, string pid) : base(gid, GroupMemberLeft) {PeerId=pid;}
+        public string PeerAddr;
+        public GroupMemberLeftMsg(string gid, string pid) : base(gid, GroupMemberLeft) {PeerAddr=pid;}
     }
 
     public class GroupMemberStatusMsg : ApianGroupMessage
     {
-        public string PeerId;
+        public string PeerAddr;
         public ApianGroupMember.Status MemberStatus;
         public GroupMemberStatusMsg(string gid, string pid, ApianGroupMember.Status status) : base(gid, GroupMemberStatus)
         {
-            PeerId=pid;
+            PeerAddr=pid;
             MemberStatus=status;
         }
     }

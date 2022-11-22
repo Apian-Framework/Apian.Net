@@ -97,15 +97,15 @@ namespace Apian
             if (_apian.GroupMgr != null)
             {
                 Logger.Verbose($"SendApianClockOffset() - Current Time: {CurrentTime}");
-                _apian.SendApianMessage(_apian.GroupMgr.GroupId, new ApianClockOffsetMsg( _apian.GroupMgr.GroupId, _apian.GroupMgr.LocalPeerId, ApianClockOffset));
+                _apian.SendApianMessage(_apian.GroupMgr.GroupId, new ApianClockOffsetMsg( _apian.GroupMgr.GroupId, _apian.GroupMgr.LocalPeerAddr, ApianClockOffset));
             }
         }
 
         // Clocks neeed to implement these
-        public abstract void OnNewPeer(string remotePeerId);
-        public abstract void OnPeerLeft(string peerId);
-        public abstract void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount);
-        public abstract void OnPeerApianOffset(string remotePeerId, long remoteApianOffset);
+        public abstract void OnNewPeer(string remotePeerAddr);
+        public abstract void OnPeerLeft(string peerAddr);
+        public abstract void OnPeerClockSync(string remotePeerAddr, long clockOffsetMs, long syncCount);
+        public abstract void OnPeerApianOffset(string remotePeerAddr, long remoteApianOffset);
 
     }
 

@@ -21,7 +21,7 @@ namespace Apian
 
         protected class SyncingPeerData
         {
-            public string peerId;
+            public string peerAddr;
             public long nextCommandToSend;
             public long firstCommandPeerHas;
 
@@ -30,7 +30,7 @@ namespace Apian
                 // The peer has been storing - but not applying - commands while waiting for the
                 // leader to send data, and keeps doing so while syncing. It can be assumed the peer
                 // ALREADY has "firstCmdPeerHas" through whatever is current.
-                peerId = pid;
+                peerAddr = pid;
                 nextCommandToSend = firstNeeded;
                 firstCommandPeerHas = firstCmdPeerHas + 1; // add 1 to what we think we need to send
             }
@@ -121,12 +121,12 @@ namespace Apian
             Logger.Verbose($"{this.GetType().Name}.ApplyCheckpointStateData(). Serialized data applied. New max applied seq: {MaxAppliedCmdSeqNum}");
         }
 
-        public void AddSyncingPeer(string peerId, long firstNeededCmd, long firstCmdPeerHas )
+        public void AddSyncingPeer(string peerAddr, long firstNeededCmd, long firstCmdPeerHas )
         {
-            Logger.Info($"{this.GetType().Name}.AddSyncingPeer() Sending peer {SID(peerId)} stashed commands from {firstNeededCmd} through {firstCmdPeerHas}");
-            SyncingPeerData peer = !syncingPeers.ContainsKey(peerId) ? new SyncingPeerData(peerId, firstNeededCmd, firstCmdPeerHas)
-                : _UpdateSyncingPeer(syncingPeers[peerId], firstNeededCmd, firstCmdPeerHas);
-            syncingPeers[peerId] = peer;
+            Logger.Info($"{this.GetType().Name}.AddSyncingPeer() Sending peer {SID(peerAddr)} stashed commands from {firstNeededCmd} through {firstCmdPeerHas}");
+            SyncingPeerData peer = !syncingPeers.ContainsKey(peerAddr) ? new SyncingPeerData(peerAddr, firstNeededCmd, firstCmdPeerHas)
+                : _UpdateSyncingPeer(syncingPeers[peerAddr], firstNeededCmd, firstCmdPeerHas);
+            syncingPeers[peerAddr] = peer;
         }
 
         public void SendSyncData()
@@ -137,7 +137,7 @@ namespace Apian
             {
                 msgsLeft -= _SendCmdsToOnePeer(sPeer, msgsLeft);
                 if (sPeer.nextCommandToSend >= sPeer.firstCommandPeerHas) // might be greater than if checkpoint data ends after firstCommandPeerHas
-                    donePeers.Add(sPeer.peerId);
+                    donePeers.Add(sPeer.peerAddr);
                 if (msgsLeft <= 0)
                     break;
             }
@@ -163,13 +163,13 @@ namespace Apian
         {
             Dictionary<long, ApianCommand> CommandLog = ApianInst.AppliedCommands;
             int cmdsSent = 0;
-            Logger.Verbose($"{this.GetType().Name}._SendCmdsToOnePeer() Preparing to send {SID(sPeer.peerId)} stashed commands starting with: {sPeer.nextCommandToSend}");
+            Logger.Verbose($"{this.GetType().Name}._SendCmdsToOnePeer() Preparing to send {SID(sPeer.peerAddr)} stashed commands starting with: {sPeer.nextCommandToSend}");
             for (int i=0; i<maxToSend;i++)
             {
                 if (CommandLog.ContainsKey(sPeer.nextCommandToSend))
                 {
                     ApianCommand cmd =  CommandLog[sPeer.nextCommandToSend];
-                    ApianInst.GameNet.SendApianMessage(sPeer.peerId, cmd);
+                    ApianInst.GameNet.SendApianMessage(sPeer.peerAddr, cmd);
                     cmdsSent++;
                     sPeer.nextCommandToSend++;
                     if (sPeer.nextCommandToSend == sPeer.firstCommandPeerHas)
@@ -181,7 +181,7 @@ namespace Apian
                     break;
                 }
             }
-            Logger.Info($"{this.GetType().Name}._SendCmdsToOnePeer() Sent {SID(sPeer.peerId)} {cmdsSent} stashed commands starting with: {sPeer.nextCommandToSend-cmdsSent}");
+            Logger.Info($"{this.GetType().Name}._SendCmdsToOnePeer() Sent {SID(sPeer.peerAddr)} {cmdsSent} stashed commands starting with: {sPeer.nextCommandToSend-cmdsSent}");
             return cmdsSent;
         }
 

@@ -17,7 +17,7 @@ namespace ApianTests
         public Mock<IApianGroupManager> GrpMgrMock;
         public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
         {
-            ApianGroupMember local = new ApianGroupMember("localPeerId", null);
+            ApianGroupMember local = new ApianGroupMember("localPeerAddr", null);
             local.CurStatus = ApianGroupMember.Status.Active;
 
             GrpMgrMock = new Mock<IApianGroupManager>();
@@ -31,9 +31,9 @@ namespace ApianTests
 
         public int MsgHandlerCount => ApMsgHandlers.Count;
 
-        public override ApianGroupMember CreateGroupMember(string peerId, string appMemberDataJson)
+        public override ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson)
         {
-            return new ApianGroupMember(peerId, appMemberDataJson);
+            return new ApianGroupMember(peerAddr, appMemberDataJson);
         }
 
         public override void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)
@@ -46,7 +46,7 @@ namespace ApianTests
             throw new NotImplementedException();
         }
 
-        public override void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        public override void OnApianMessage(string fromAddr, string toId, ApianMessage msg, long lagMs)
         {
             throw new NotImplementedException();
         }
@@ -96,22 +96,22 @@ namespace ApianTests
         [Test]
         public void ApianBase_OnGroupMemberJoined()
         {
-            const string localPeerAddr = "localPeerId";
-            const string remoteId = "remoteId";
+            const string localPeerAddr = "localPeerAddr";
+            const string remoteAddr = "remoteAddr";
             const int  cnt = 5,
                         since = 10,
                         offset = -10,
                         lag = 46;
             const double offsetSigma = 3.14, lagSigma = 4.2;
             // PeerClockSyncInfo(string pid, long cnt, long since, long offset, double offsetSigma, long lag, double lagSigma)
-            PeerClockSyncInfo peerSyncData = new PeerClockSyncInfo(remoteId, cnt, since, offset, offsetSigma, lag, lagSigma);
+            PeerClockSyncInfo peerSyncData = new PeerClockSyncInfo(remoteAddr, cnt, since, offset, offsetSigma, lag, lagSigma);
 
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(p => p.LocalPeerAddr()).Returns(localPeerAddr);
 
             mockGameNet.Setup(p => p.OnPeerJoinedGroup(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>() ));
 
-            // If peerId is "noSync" it returns null
+            // If peerAddr is "noSync" it returns null
             mockGameNet.Setup(gn => gn.GetP2pClockSyncInfo(It.IsAny<string>())).Returns(peerSyncData);
             mockGameNet.Setup(gn => gn.GetP2pClockSyncInfo("noSync")).Returns(null as PeerClockSyncInfo);
 
@@ -123,7 +123,7 @@ namespace ApianTests
             mClock.Setup(cl => cl.OnNewPeer(It.IsAny<string>()));
 
 
-            ApianGroupMember member = new ApianGroupMember(remoteId, "[some json]");
+            ApianGroupMember member = new ApianGroupMember(remoteAddr, "[some json]");
             TestApianBase ap =  new TestApianBase(mockGameNet.Object, mockAppCore.Object, mClock.Object);
 
             ap.OnGroupMemberJoined(member);

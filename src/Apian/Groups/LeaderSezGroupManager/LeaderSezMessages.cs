@@ -10,14 +10,14 @@ namespace Apian
     {
         public const string MsgTypeId = "APGslm";
 
-        public string newLeaderId;
+        public string newLeaderAddr;
         public long newLeaderEpoch;  // 0 for "now"
 
         public long ElectionTerm;
         public long LastCmdSeqNum;
         public SetLeaderMsg(string groupId, string newLeader, long newEpoch ):  base(groupId, MsgTypeId)
         {
-            newLeaderId = newLeader;
+            newLeaderAddr = newLeader;
             newLeaderEpoch = newEpoch;
         }
     }

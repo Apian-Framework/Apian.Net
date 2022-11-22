@@ -21,28 +21,28 @@ namespace Apian
         private readonly Dictionary<string, long> _apianOffsetsByPeer;
 
 
-        public override void OnNewPeer(string remotePeerId)
+        public override void OnNewPeer(string remotePeerAddr)
         {
             if (!IsIdle && _apian.LocalPeerIsActive)
                 SendApianClockOffset(); // tell the peer about us
         }
 
-        public override void OnPeerLeft(string peerId)
+        public override void OnPeerLeft(string peerAddr)
         {
-            if (_sysOffsetsByPeer.ContainsKey(peerId))
-                _sysOffsetsByPeer.Remove(peerId);
+            if (_sysOffsetsByPeer.ContainsKey(peerAddr))
+                _sysOffsetsByPeer.Remove(peerAddr);
 
-            if (_apianOffsetsByPeer.ContainsKey(peerId))
-                _apianOffsetsByPeer.Remove(peerId);
+            if (_apianOffsetsByPeer.ContainsKey(peerAddr))
+                _apianOffsetsByPeer.Remove(peerAddr);
 
         }
 
-        public override void OnPeerClockSync(string remotePeerId, long clockOffsetMs, long syncCount)
+        public override void OnPeerClockSync(string remotePeerAddr, long clockOffsetMs, long syncCount)
         {
             // This is a P2pNet sync ( lag and sys clock offset determination )
-            Logger.Verbose($"OnPeerSync() from {SID(remotePeerId)}.");
+            Logger.Verbose($"OnPeerSync() from {SID(remotePeerAddr)}.");
             // save this
-            _sysOffsetsByPeer[remotePeerId] = clockOffsetMs;
+            _sysOffsetsByPeer[remotePeerAddr] = clockOffsetMs;
         }
 
         public override void OnPeerApianOffset(string peerAddr, long remoteApianOffset)
@@ -54,7 +54,7 @@ namespace Apian
             // and by "infer" I mean "kinda guess sorta": remoteApianClk = localSysMs + peerSysOffSet + peerApianOffset
             //
             Logger.Verbose($"OnApianClockOffset() from peer {SID(peerAddr)}");
-            if (peerAddr == _apian.GroupMgr.LocalPeerId)
+            if (peerAddr == _apian.GroupMgr.LocalPeerAddr)
             {
                 Logger.Verbose("OnApianClockOffset(). Ignoring local  message.");
                 return;
@@ -93,7 +93,7 @@ namespace Apian
             foreach (string pid in _sysOffsetsByPeer.Keys)
             {
                 try {
-                    if (pid != _apian.GroupMgr.LocalPeerId)
+                    if (pid != _apian.GroupMgr.LocalPeerAddr)
                     {
                         long peerSysOff = _sysOffsetsByPeer[pid]; // ( ourTime + offset = peerTime)
                         long peerAppOff = _apianOffsetsByPeer[pid]; // will throw/continue if we don't have offset report for this one
