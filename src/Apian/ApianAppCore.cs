@@ -35,7 +35,7 @@ namespace Apian
 
         protected Dictionary<string, Action<ApianCoreMessage, long>> ClientMsgCommandHandlers;
 
-        public string LocalPeerAddr { get => ApianBase?.GameNet.LocalPeerAddr(); }
+        public string LocalPlayerAddr { get => ApianBase?.GameNet.LocalPeerAddr(); }
         public string ApianNetId => ApianBase?.NetworkId;
         public string ApianGroupName => ApianBase?.GroupName;
         public string ApianGroupId => ApianBase?.GroupId;

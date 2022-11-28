@@ -89,7 +89,7 @@ namespace Apian
 
         // raft election state stuff
         public RfRole LocalRole { get; private set;}
-        public string CurrentLeaderId { get; private set; } // TODO: In proper RAFT, there is no "LeaderId" state var. Consider removing? It is currently never read.
+        public string CurrentLeaderAddr { get; private set; } // TODO: In proper RAFT, there is no "LeaderAddr" state var. Consider removing? It is currently never read.
         public long CurrentTerm { get; private set; }
         protected string VotedFor; // this term
 
@@ -129,7 +129,7 @@ namespace Apian
 
             CurrentTerm = 0;
             LocalRole = RfRole.kIdle;
-            CurrentLeaderId = null;
+            CurrentLeaderAddr = null;
             VotedFor = null;
         }
 
@@ -217,7 +217,7 @@ namespace Apian
             OnHeartbeat( msgSrc, hbMsg.ElectionTerm, hbMsg.LastCmdSeqNum);
         }
 
-        protected void OnHeartbeat(string leaderId, long electionTerm, long lastCmdSeqNum)
+        protected void OnHeartbeat(string leaderAddr, long electionTerm, long lastCmdSeqNum)
         {
             // Important point: In RAFT AppendEntries() is acked with success and the recipient's term.
 
@@ -225,7 +225,7 @@ namespace Apian
             if (electionTerm > CurrentTerm)
             {
                 CurrentTerm = electionTerm;
-                CurrentLeaderId = leaderId; // see elsewhere: it's not clear there should even be a CurrentLeader var
+                CurrentLeaderAddr = leaderAddr; // see elsewhere: it's not clear there should even be a CurrentLeader var
                 StartFollowerRole();
                 return;
             }
@@ -248,7 +248,7 @@ namespace Apian
         {
             // received when GroupMemberJoined() acceptance is receivd for local peer
             // Starts everythig up
-            CurrentLeaderId = leader;
+            CurrentLeaderAddr = leader;
             VotedFor = leader;
             CurrentTerm = electionTerm;
 
