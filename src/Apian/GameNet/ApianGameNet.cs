@@ -380,10 +380,11 @@ namespace Apian
 
         protected void DispatchApianMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
-            logger.Verbose($"_DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalPeerAddr()?"Local":from)}");
 
             // Who's it for?
             string destGroupId = ApianMessageDeserializer.DecodeDestGroup(clientMessage.payload);
+
+            logger.Debug($"DispatchApianMessage() Type: {clientMessage.clientMsgType}, src: {(from==LocalPeerAddr()?"Local":from)}, dest: {destGroupId}");
 
             if (string.IsNullOrEmpty(destGroupId))
             {

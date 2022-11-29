@@ -414,7 +414,7 @@ namespace Apian
             // And alos not clear it needs to be handled at the groupMgr level
             if (LocalPeerIsLeader)
             {
-                Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest, sending response.");
+                Logger.Info($"{this.GetType().Name}.OnGroupsRequest() Got GroupsRequest from {SID(msgSrc)}, sending response.");
                 GroupAnnounceMsg amsg = new GroupAnnounceMsg(GroupInfo, ApianInst.CurrentGroupStatus());
                 ApianInst.SendApianMessage(msgSrc, amsg);
             }
