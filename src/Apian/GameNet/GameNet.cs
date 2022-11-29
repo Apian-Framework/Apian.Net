@@ -27,7 +27,7 @@ namespace GameNet
     public interface IGameNet
     {
         void AddClient(IGameNetClient _client);
-        void SetupConnection( string p2pConectionString );
+        void SetupConnection( string localPeerAddress, string p2pConectionString );
         void TearDownConnection();
         void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
 #if !SINGLE_THREADED
@@ -101,7 +101,7 @@ namespace GameNet
         }
 
         // Override this to account for P2pNet implementations you support
-        protected virtual IP2pNet P2pNetFactory(string p2pConnectionString)
+        protected virtual IP2pNet P2pNetFactory(string localAddress, string p2pConnectionString)
         {
             // P2pConnectionString is <p2p implmentation name>::<imp-dependent connection string>
 
@@ -117,7 +117,7 @@ namespace GameNet
                     throw( new Exception($"Invalid connection type: {parts[0]}"));
             }
 
-            IP2pNet ip2p = new P2pNetBase(this, carrier);
+            IP2pNet ip2p = new P2pNetBase(this, carrier, localAddress);
 
 #if !SINGLE_THREADED
             JoinNetworkCompletion = null;
@@ -136,10 +136,10 @@ namespace GameNet
             loopedBackMessageHandlers  = new Queue<Action>();
         }
 
-        public virtual void SetupConnection( string p2pConnectionString )
+        public virtual void SetupConnection(string localAddress, string p2pConnectionString )
         {
             InitNetJoinState();
-            p2p = P2pNetFactory(p2pConnectionString);
+            p2p = P2pNetFactory(localAddress, p2pConnectionString);
         }
 
         public virtual void TearDownConnection()
@@ -219,9 +219,9 @@ namespace GameNet
 
         }
 
-        public string LocalPeerAddr() => p2p?.GetId();
-        public string CurrentNetworkId() => p2p?.GetMainChannel()?.Id;
-        public P2pNetChannel CurrentNetworkChannel() => p2p?.GetMainChannel();
+        public string LocalPeerAddr() => p2p?.LocalAddress;
+        public string CurrentNetworkId() => p2p?.GetNetworkChannel()?.Id;
+        public P2pNetChannel CurrentNetworkChannel() => p2p?.GetNetworkChannel();
 
         public int NetworkPeerCount() => p2p == null ? 0 : p2p.GetPeerAddrs().Count;
 
