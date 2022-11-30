@@ -8,6 +8,20 @@ using static UniLog.UniLogger; // for SID
 
 namespace Apian
 {
+    public class AppCorePauseInfo
+    {
+        public string PauseId { get; private set; }
+        public string Reason { get; private set; }
+        public long ApianTime { get; private set; }
+
+        public AppCorePauseInfo(string pauseId, string reason, long apianTime)
+        {
+            PauseId = pauseId;
+            Reason = reason;
+            ApianTime = apianTime;
+         }
+    }
+
     public class ApianGroupInfo
     {
         public string GroupType;
@@ -49,20 +63,6 @@ namespace Apian
                 && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal)
                 && GroupParams.Equals(agi2.GroupParams);
         }
-    }
-
-    public class AppCorePauseInfo
-    {
-        public string PauseId { get; private set; }
-        public string Reason { get; private set; }
-        public long ApianTime { get; private set; }
-
-        public AppCorePauseInfo(string pauseId, string reason, long apianTime)
-        {
-            PauseId = pauseId;
-            Reason = reason;
-            ApianTime = apianTime;
-         }
     }
 
     public class ApianGroupStatus
