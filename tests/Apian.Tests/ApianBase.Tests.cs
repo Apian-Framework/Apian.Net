@@ -17,7 +17,7 @@ namespace ApianTests
         public Mock<IApianGroupManager> GrpMgrMock;
         public TestApianBase(IApianGameNet gn, IApianAppCore core, IApianClock clock=null) : base(gn, core)
         {
-            ApianGroupMember local = new ApianGroupMember("localPeerAddr", null);
+            ApianGroupMember local = new ApianGroupMember("localPeerAddr", null, false);
             local.CurStatus = ApianGroupMember.Status.Active;
 
             GrpMgrMock = new Mock<IApianGroupManager>();
@@ -93,9 +93,20 @@ namespace ApianTests
             Assert.That(ap.MsgHandlerCount, Is.EqualTo(5)); // will also fail if dict isn't there
         }
 
+        public class TestPeer : P2pNetPeer
+        {
+            public TestPeer(string p2pId) : base(p2pId) { }
+
+        }
+
+
         [Test]
         public void ApianBase_OnGroupMemberJoined()
         {
+            const string networkId = "theNetwork";
+            const bool notValidator = false;
+            const string localPeerId = "localPeerId";
+
             const string localPeerAddr = "localPeerAddr";
             const string remoteAddr = "remoteAddr";
             const int  cnt = 5,
@@ -103,17 +114,19 @@ namespace ApianTests
                         offset = -10,
                         lag = 46;
             const double offsetSigma = 3.14, lagSigma = 4.2;
-            // PeerClockSyncInfo(string pid, long cnt, long since, long offset, double offsetSigma, long lag, double lagSigma)
-            PeerClockSyncInfo peerSyncData = new PeerClockSyncInfo(remoteAddr, cnt, since, offset, offsetSigma, lag, lagSigma);
+
+            TestPeer testPeer = new TestPeer(localPeerId);
+            testPeer.SetAddress(localPeerAddr);
+
+            PeerNetworkStats peerNetStats = PeerNetworkStats.CurrentNetworkStats(testPeer,networkId);
 
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(p => p.LocalPeerAddr()).Returns(localPeerAddr);
 
-            mockGameNet.Setup(p => p.OnPeerJoinedGroup(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<string>() ));
+            mockGameNet.Setup(p => p.OnPeerJoinedGroup(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>() ));
 
             // If peerAddr is "noSync" it returns null
-            mockGameNet.Setup(gn => gn.GetP2pClockSyncInfo(It.IsAny<string>())).Returns(peerSyncData);
-            mockGameNet.Setup(gn => gn.GetP2pClockSyncInfo("noSync")).Returns(null as PeerClockSyncInfo);
+            mockGameNet.Setup(gn => gn.GetPeerNetStats(It.IsAny<string>())).Returns(peerNetStats);
 
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
@@ -123,21 +136,21 @@ namespace ApianTests
             mClock.Setup(cl => cl.OnNewPeer(It.IsAny<string>()));
 
 
-            ApianGroupMember member = new ApianGroupMember(remoteAddr, "[some json]");
+            ApianGroupMember member = new ApianGroupMember(remoteAddr, "[some json]", notValidator);
             TestApianBase ap =  new TestApianBase(mockGameNet.Object, mockAppCore.Object, mClock.Object);
 
             ap.OnGroupMemberJoined(member);
-            mockGameNet.Verify(gn => gn.GetP2pClockSyncInfo(It.IsAny<string>()), Times.Exactly(0));
+            mockGameNet.Verify(gn => gn.GetPeerNetStats(It.IsAny<string>()), Times.Exactly(0));
             mClock.Verify(cl => cl.OnNewPeer(It.IsAny<string>()), Times.Once);
 
-            ApianGroupMember noSyncMember = new ApianGroupMember("noSync", "[other json]");
+            ApianGroupMember noSyncMember = new ApianGroupMember("noSync", "[other json]", notValidator);
             ap.OnGroupMemberJoined(noSyncMember);
-            mockGameNet.Verify(gn => gn.GetP2pClockSyncInfo(It.IsAny<string>()), Times.Exactly(0));
+            mockGameNet.Verify(gn => gn.GetPeerNetStats(It.IsAny<string>()), Times.Exactly(0));
             mClock.Verify(cl => cl.OnNewPeer(It.IsAny<string>()), Times.Exactly(2));
 
-            ApianGroupMember localMember = new ApianGroupMember(localPeerAddr, "[other json]");
+            ApianGroupMember localMember = new ApianGroupMember(localPeerAddr, "[other json]", notValidator);
             ap.OnGroupMemberJoined(localMember);
-            mockGameNet.Verify(gn => gn.GetP2pClockSyncInfo(It.IsAny<string>()), Times.Exactly(0));
+            mockGameNet.Verify(gn => gn.GetPeerNetStats(It.IsAny<string>()), Times.Exactly(0));
         }
 
     }
