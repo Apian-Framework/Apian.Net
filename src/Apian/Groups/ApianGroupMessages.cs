@@ -33,7 +33,13 @@ namespace Apian
     {
         public string PeerAddr;
         public string ApianClientPeerJson;
-        public GroupJoinRequestMsg(string gid, string pid, string peerData) : base(gid, GroupJoinRequest) {PeerAddr=pid; ApianClientPeerJson = peerData;}
+        public bool JoinAsValidator;
+        public GroupJoinRequestMsg(string gid, string pid, string peerData, bool asValidator=false) : base(gid, GroupJoinRequest)
+        {
+            PeerAddr=pid;
+            ApianClientPeerJson = peerData;
+            JoinAsValidator = asValidator;
+        }
     }
 
     public class GroupMemberJoinedMsg : ApianGroupMessage
@@ -41,10 +47,12 @@ namespace Apian
         // Need to send both this and MemberStatus update on transition to "active"
         public string PeerAddr;
         public string ApianClientPeerJson;
-          public GroupMemberJoinedMsg(string gid, string pid, string peerData) : base(gid, GroupMemberJoined)
+        public bool JoinedAsValidator;
+          public GroupMemberJoinedMsg(string gid, string pid, string peerData, bool asValidator) : base(gid, GroupMemberJoined)
         {
             PeerAddr=pid;
             ApianClientPeerJson = peerData;
+            JoinedAsValidator = asValidator;
         }
     }
 

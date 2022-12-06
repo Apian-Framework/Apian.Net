@@ -51,11 +51,12 @@ namespace Apian
 
         public override void SetupExistingGroup(ApianGroupInfo info) => throw new Exception("GroupInfo-based creation not supported");
 
-        public override void JoinGroup(string localMemberJson)
+        public override void JoinGroup(string localMemberJson, bool joinAsValidator)
         {
+            // joinAsValidator is ignored for single peer group
             // Note that we aren't sending a request here - just a "Joined" - 'cause there's just this peer
             ApianInst.GameNet.SendApianMessage(GroupId,
-                new GroupMemberJoinedMsg(GroupId, LocalPeerAddr, localMemberJson));
+                new GroupMemberJoinedMsg(GroupId, LocalPeerAddr, localMemberJson, false));
         }
 
         public override void Update()
@@ -64,6 +65,7 @@ namespace Apian
         }
         public override void SendApianRequest( ApianCoreMessage coreMsg )
         {
+            // No need to check to see if message source is a validator
             ApianInst.GameNet.SendApianMessage(GroupId, new ApianRequest(GroupId, coreMsg));
         }
         public override void SendApianObservation( ApianCoreMessage coreMsg )
@@ -105,7 +107,7 @@ namespace Apian
         {
             // No need to validate source, since it;s local
             GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
-            _Member = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson);
+            _Member = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson, false);
             ApianInst.OnGroupMemberJoined(_Member);
 
             // Go ahead an mark/announce "active"

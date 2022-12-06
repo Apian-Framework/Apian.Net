@@ -31,9 +31,9 @@ namespace ApianTests
 
         public int MsgHandlerCount => ApMsgHandlers.Count;
 
-        public override ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson)
+        public override ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson, bool isValidator)
         {
-            return new ApianGroupMember(peerAddr, appMemberDataJson);
+            return new ApianGroupMember(peerAddr, appMemberDataJson,isValidator);
         }
 
         public override void ApplyCheckpointStateData(long epoch, long seqNum, long timeStamp, string stateHash, string stateData)

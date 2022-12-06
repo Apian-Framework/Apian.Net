@@ -21,12 +21,12 @@ namespace Apian
         // This is the interface that a client (almost certainly ApianGameNet) sees
         void SetupExistingGroup(ApianGroupInfo groupInfo);
         void SetupNewGroup(ApianGroupInfo groupInfo);
-        void JoinGroup(string localGroupData); // There's no LeaveGroup
+        void JoinGroup(string localGroupData, bool joinAsValidator); // There's no LeaveGroup
         void OnPeerLeftGroupChannel(string groupChannelId, string peerAddr);
         void OnPeerMissing(string groupChannelId, string peerAddr);
         void OnPeerReturned(string groupChannelId, string peerAddr);
         void OnPeerClockSync(string remotePeerAddr, long remoteClockOffset, long syncCount);
-        void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs);
+        void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs);
     }
 
     public interface IApianAppCoreServices
@@ -47,7 +47,7 @@ namespace Apian
         void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum);
 
         // GroupMgr asks Apian to create a pre-join provisional group member
-        ApianGroupMember CreateGroupMember(string peerAddr, string memberJson);
+        ApianGroupMember CreateGroupMember(string peerAddr, string memberJson, bool isValidator);
 
         // Handle reports from Apian Group
         void OnGroupMemberJoined(ApianGroupMember member);
@@ -62,7 +62,7 @@ namespace Apian
     {
 		// public API
         protected Dictionary<string, Action<string, string, ApianMessage, long>> ApMsgHandlers;
-        // Args are fromId, toId, ApianMsg, msDelay
+        // Args are fromAddr, toAddr, ApianMsg, msDelay
         public UniLogger Logger;
         public IApianGroupManager GroupMgr  {get; protected set;}  // set in a sublcass ctor
         public IApianClock ApianClock {get; protected set;}
@@ -145,10 +145,10 @@ namespace Apian
             GameNet.SendApianMessage(toChannel, msg);
         }
 
-        public virtual void OnApianMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        public virtual void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
         {
             try {
-                ApMsgHandlers[msg.MsgType](fromId, toId, msg, lagMs);
+                ApMsgHandlers[msg.MsgType](fromAddr, toAddr, msg, lagMs);
             } catch (NullReferenceException ex) {
                 Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
                 throw(ex);
@@ -172,19 +172,19 @@ namespace Apian
 
         // Default Apian Msg handlers
 
-        protected virtual void OnApianRequest(string fromId, string toId, ApianMessage msg, long delayMs)
+        protected virtual void OnApianRequest(string fromAddr, string toAddr, ApianMessage msg, long delayMs)
         {
-            GroupMgr.OnApianRequest(msg as ApianRequest, fromId, toId);
+            GroupMgr.OnApianRequest(msg as ApianRequest, fromAddr, toAddr);
         }
-        protected virtual void OnApianObservation(string fromId, string toId, ApianMessage msg, long delayMs)
+        protected virtual void OnApianObservation(string fromAddr, string toAddr, ApianMessage msg, long delayMs)
         {
-            GroupMgr.OnApianObservation(msg as ApianObservation, fromId, toId);
+            GroupMgr.OnApianObservation(msg as ApianObservation, fromAddr, toAddr);
         }
 
-       protected virtual void OnApianCommand(string fromId, string toId, ApianMessage msg, long delayMs)
+       protected virtual void OnApianCommand(string fromAddr, string toAddr, ApianMessage msg, long delayMs)
         {
             ApianCommand cmd = msg as ApianCommand;
-            ApianCommandStatus cmdStat = GroupMgr.EvaluateCommand(cmd, fromId, MaxAppliedCmdSeqNum);
+            ApianCommandStatus cmdStat = GroupMgr.EvaluateCommand(cmd, fromAddr, MaxAppliedCmdSeqNum);
 
             switch (cmdStat)
             {
@@ -192,10 +192,10 @@ namespace Apian
                 Logger.Warn($"ApianBase.OnApianCommand(): Local peer not a group member yet.");
                 break;
             case ApianCommandStatus.kBadSource:
-                Logger.Warn($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
+                Logger.Warn($"ApianBase.OnApianCommand(): BAD COMMAND SOURCE: {fromAddr} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType }");
                 break;
             case ApianCommandStatus.kAlreadyReceived:
-                Logger.Warn($"ApianBase.OnApianCommand(): Command Already Received: {fromId} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
+                Logger.Warn($"ApianBase.OnApianCommand(): Command Already Received: {fromAddr} Group: {cmd.DestGroupId}, Seq#: {cmd.SequenceNum} Type: {cmd.PayloadMsgType}");
                 break;
 
             case ApianCommandStatus.kStashedInQueue:
@@ -234,22 +234,22 @@ namespace Apian
             AppliedCommands[cmd.SequenceNum] = cmd;
         }
 
-        public virtual void OnApianGroupMessage(string fromId, string toId, ApianMessage msg, long lagMs)
+        public virtual void OnApianGroupMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
         {
             Logger.Debug($"OnApianGroupMessage(): {((msg as ApianGroupMessage).GroupMsgType)}");
-            GroupMgr.OnApianGroupMessage(msg as ApianGroupMessage, fromId, toId);
+            GroupMgr.OnApianGroupMessage(msg as ApianGroupMessage, fromAddr, toAddr);
         }
 
-        public virtual void OnApianClockOffsetMsg(string fromId, string toId, ApianMessage msg, long lagMs)
+        public virtual void OnApianClockOffsetMsg(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
         {
             //  Make sure the source is an active member of the group before sending to local clock
-            bool srcActive =  GroupMgr.GetMember(fromId)?.CurStatus == ApianGroupMember.Status.Active;
-            Logger.Verbose($"OnApianClockOffsetMsg(): from {SID(fromId)} Active: {srcActive}");
+            bool srcActive =  GroupMgr.GetMember(fromAddr)?.CurStatus == ApianGroupMember.Status.Active;
+            Logger.Verbose($"OnApianClockOffsetMsg(): from {SID(fromAddr)} Active: {srcActive}");
             if (srcActive)
-                ApianClock?.OnPeerApianOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+                ApianClock?.OnPeerApianOffset(fromAddr, (msg as ApianClockOffsetMsg).ClockOffset);
 
             // Always send to groupMgr (a first Offset report can result in a status change to Active)
-            GroupMgr.OnApianClockOffset(fromId, (msg as ApianClockOffsetMsg).ClockOffset);
+            GroupMgr.OnApianClockOffset(fromAddr, (msg as ApianClockOffsetMsg).ClockOffset);
 
         }
 
@@ -361,11 +361,11 @@ namespace Apian
         // Called by the GroupManager. The absolute minimum for this would be:
         // CreateGroupMember(string peerAddr, string appMemberDataJson) => new ApianGroupMember(peerAddr, appMemberDataJson);
         // But the whole point is to subclass ApianGroupMember, so don't do that.
-        public abstract ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson);
+        public abstract ApianGroupMember CreateGroupMember(string peerAddr, string appMemberDataJson, bool isValidator);
 
         public void SetupNewGroup(ApianGroupInfo info) => GroupMgr.SetupNewGroup(info);
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
-        public void JoinGroup(string localMemberJson) => GroupMgr.JoinGroup(localMemberJson);
+        public void JoinGroup(string localMemberJson, bool asValidator) => GroupMgr.JoinGroup(localMemberJson, asValidator);
 
         // checkpoints
 
@@ -398,7 +398,7 @@ namespace Apian
 
         public virtual ApianGroupStatus CurrentGroupStatus()
         {
-            return new ApianGroupStatus(GroupMgr.ActiveMemberCount, GroupMgr.AppCorePaused);
+            return new ApianGroupStatus(GroupMgr.ActivePlayerCount, GroupMgr.ActiveValidatorCount, GroupMgr.ActiveMemberCount, GroupMgr.AppCorePaused);
         }
 
         // TODO: put this back when I'm actually ready for it.
@@ -429,7 +429,7 @@ namespace Apian
                 }
             }
 
-            GameNet.OnPeerJoinedGroup( member.PeerAddr, GroupId, true, null);
+            GameNet.OnPeerJoinedGroup( member.PeerAddr, GroupId, member.IsValidator, true, null);
 
         }
 
@@ -444,14 +444,14 @@ namespace Apian
 
         public virtual void OnGroupJoinFailed(string peerAddr, string failureReason)
         {
-            GameNet.OnPeerJoinedGroup( peerAddr, GroupId, false,  failureReason );
+            GameNet.OnPeerJoinedGroup( peerAddr, GroupId, false, false,  failureReason );
         }
 
         public virtual void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus)
         {
             // Note that the member status has already been changed when this is called
             Logger.Info($"OnGroupMemberStatusChange(): {UniLogger.SID(member.PeerAddr)} from {prevStatus} to {member.CurStatus}");
-            GameNet.OnApianGroupMemberStatus( GroupId, member.PeerAddr, member.CurStatus, prevStatus);
+            GameNet.OnApianGroupMemberStatus( GroupId, member, prevStatus);
         }
 
 

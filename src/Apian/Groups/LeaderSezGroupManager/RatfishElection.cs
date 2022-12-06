@@ -321,7 +321,7 @@ namespace Apian
     public class RatfishMemberJoinedMsg : GroupMemberJoinedMsg  // override/extension
     {
         public long ElectionTerm;
-        public RatfishMemberJoinedMsg(string gid, string pid, string peerData, long electionTerm) : base(gid, pid, peerData)
+        public RatfishMemberJoinedMsg(string gid, string pid, string peerData, bool joinedAsValidator, long electionTerm) : base(gid, pid, peerData, joinedAsValidator)
         {
             ElectionTerm = electionTerm;
         }

@@ -14,13 +14,15 @@ namespace Apian
     public class PeerJoinedGroupData
     {
         public string PeerAddr {get; private set;}
+        public bool IsValidator;
         public ApianGroupInfo GroupInfo {get; private set;}
         public bool Success {get; private set;}
         public string Message {get; private set;}
-        public PeerJoinedGroupData (string peerAddr, ApianGroupInfo groupInfo, bool success, string message = null)
+        public PeerJoinedGroupData (string peerAddr, ApianGroupInfo groupInfo, bool isValidator, bool success, string message = null)
         {
             PeerAddr = peerAddr;
             GroupInfo = groupInfo;
+            IsValidator = isValidator;
             Success = success;
             Message = message;
         }
@@ -30,12 +32,12 @@ namespace Apian
     {
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
-        void OnApianGroupMemberStatus( string groupId, string peerAddr, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus);
+        void OnApianGroupMemberStatus( string groupId,  ApianGroupMember member, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
-        PeerClockSyncInfo GetP2pClockSyncInfo(string P2pPeerAddr);
+        PeerNetworkStats GetPeerNetStats(string P2pPeerAddr);
 
         // Called by Apian
-         void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  string failureReason = null);
+         void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  bool isValidator, string failureReason = null);
          //void OnPeerLeftGroup(string peerAddr, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
          void OnNewGroupLeader(string groupId, string newLeaderAddr, ApianGroupMember newLeader);
 
@@ -158,20 +160,20 @@ namespace Apian
         // Eventual result is hopefully a call to caller's:
         //    OnPeerJoinedGroup() with result info including failure results)
 
-        public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             // need to set the groupMgr's "groupInfo" and open/join the p2pNet group channel
             apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
-            apian.JoinGroup(localGroupData); // results in
+            apian.JoinGroup(localGroupData, joinAsValidator); // results in
         }
-        public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData)
+        public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             apian.SetupNewGroup(groupInfo); // create the group
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
-            apian.JoinGroup(localGroupData); //
+            apian.JoinGroup(localGroupData, joinAsValidator) ; //
 
             GroupAnnounceMsg amsg = new GroupAnnounceMsg(groupInfo, apian.CurrentGroupStatus());
             SendApianMessage( CurrentNetworkId() , amsg); // send announcement to  everyone
@@ -192,14 +194,14 @@ namespace Apian
             return results;
         }
 
-        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs)
+        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
 
-            JoinExistingGroup( groupInfo,  apian,  localGroupData);
+            JoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
 
@@ -208,13 +210,13 @@ namespace Apian
                 ).ConfigureAwait(false);
         }
 
-        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs)
+        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
-            CreateAndJoinGroup( groupInfo,  apian,  localGroupData);
+            CreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
@@ -226,7 +228,7 @@ namespace Apian
             string groupId = groupInfo.GroupId;
             if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
             {
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, "Timeout");
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false, "Timeout");
                 JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
             }
         }
@@ -305,9 +307,9 @@ namespace Apian
         // *** Additional ApianGameNet stuff
         //
 
-        public PeerClockSyncInfo GetP2pClockSyncInfo(string p2pPeerAddr)
+        public PeerNetworkStats GetPeerNetStats(string p2pPeerAddr)
         {
-            return p2p.GetPeerClockSyncData(p2pPeerAddr);
+            return p2p.GetPeerNetworkStats(p2pPeerAddr);
         }
 
         public void AddApianInstance( ApianBase instance, string groupId)
@@ -315,13 +317,13 @@ namespace Apian
             ApianInstances[groupId] = instance;
         }
 
-        public virtual void OnPeerJoinedGroup( string peerAddr, string groupId, bool joinSuccess, string message = null)
+        public virtual void OnPeerJoinedGroup( string peerAddr, string groupId, bool isValidator, bool joinSuccess, string message = null)
         {
 
             if (ApianInstances.ContainsKey(groupId))
             {
                 ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerAddr, groupInfo, joinSuccess, message);
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerAddr, groupInfo, isValidator, joinSuccess, message);
 
                 // local async join requests aren't considered complete until the peer has Active status
 
@@ -335,19 +337,22 @@ namespace Apian
             Client.OnGroupLeaderChange(groupId, newLeaderAddr, newLeader);
         }
 
-        public void OnApianGroupMemberStatus( string groupId, string peerAddr, ApianGroupMember.Status newStatus, ApianGroupMember.Status prevStatus)
+        public void OnApianGroupMemberStatus( string groupId,  ApianGroupMember member, ApianGroupMember.Status prevStatus)
         {
+
 #if !SINGLE_THREADED
             //  For Async Join request, local application isn't told that it has "joined" a group until it is Active
-            if (peerAddr == LocalPeerAddr() && newStatus == ApianGroupMember.Status.Active && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+            if (member.PeerAddr == LocalPeerAddr() && member.CurStatus == ApianGroupMember.Status.Active
+            && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
             {
                 ApianGroupInfo groupInfo = ApianInstances[groupId].GroupInfo;
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(peerAddr, groupInfo, true);
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(member.PeerAddr, groupInfo, member.IsValidator, true);
                 JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
             }
 #endif
 
-            Client.OnGroupMemberStatus( groupId, peerAddr, newStatus, prevStatus);
+            Client.OnGroupMemberStatus( groupId, member.PeerAddr, member.CurStatus, prevStatus );
+
         }
 
         protected override void HandleClientMessage(string from, string to, long msSinceSent, GameNetClientMessage msg)

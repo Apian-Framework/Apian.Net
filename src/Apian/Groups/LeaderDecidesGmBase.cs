@@ -143,7 +143,7 @@ namespace Apian
             SetLeader( info.GroupCreatorAddr ); // creator starts as leader
         }
 
-        public override void JoinGroup(string localMemberJson)
+        public override void JoinGroup(string localMemberJson, bool joinAsValidator)
         {
             if (localMemberJson == null)
                 localMemberJson = LocalMemberJoinData;
@@ -155,7 +155,7 @@ namespace Apian
 
             Logger.Info($"{this.GetType().Name}.JoinGroup(): {GroupInfo?.GroupId} Sending join request to group");
             // Send the request to the entire group (we might not know the leader yet)
-            ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerAddr, localMemberJson));
+            ApianInst.GameNet.SendApianMessage(GroupId, new GroupJoinRequestMsg(GroupId, LocalPeerAddr, localMemberJson, joinAsValidator));
         }
 
         public override void Update()
@@ -307,8 +307,13 @@ namespace Apian
             // Requests are assumed to be valid as long as source is Active
             if (LocalPeerIsLeader && GetMember(msgSrc)?.CurStatus == ApianGroupMember.Status.Active)
             {
-                Logger.Debug($"OnApianRequest(): upgrading {msg.PayloadMsgType} from {SID(msgSrc)} to Command");
-                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
+                if (GetMember(msgSrc).IsValidator)
+                {
+                    Logger.Warn($"OnApianRequest(): Ignoring ApianRequest({msg.PayloadMsgType}) from VALIDATOR {SID(msgSrc)}");
+                } else {
+                    Logger.Debug($"OnApianRequest(): upgrading {msg.PayloadMsgType} from {SID(msgSrc)} to Command");
+                    ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
+                }
             }
         }
 
@@ -434,7 +439,7 @@ namespace Apian
                 SendMemberJoinedMessages(jreq.PeerAddr);
 
                 // Don't add (happens in OnGroupMemberJoined())
-                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerAddr, jreq.ApianClientPeerJson);
+                GroupMemberJoinedMsg jmsg = new GroupMemberJoinedMsg(GroupId, jreq.PeerAddr, jreq.ApianClientPeerJson, jreq.JoinAsValidator);
                 ApianInst.SendApianMessage(GroupId, jmsg); // tell everyone about the new kid last
 
                 // Now send status updates (from "joined") for any member that has changed status
@@ -448,7 +453,7 @@ namespace Apian
             // Create messages first, then send (mostly so Members doesn;t get modified while enumerating it)
             List<GroupMemberJoinedMsg> joinMsgs = Members.Values
                 .Where( m => m.PeerAddr != toWhom)
-                .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerAddr, m.AppDataJson)).ToList();
+                .Select( (m) =>  new GroupMemberJoinedMsg(GroupId, m.PeerAddr, m.AppDataJson, m.IsValidator)).ToList();
             foreach (GroupMemberJoinedMsg msg in joinMsgs)
                 ApianInst.SendApianMessage(toWhom, msg);
         }
@@ -471,7 +476,7 @@ namespace Apian
                 GroupMemberJoinedMsg joinedMsg = (msg as GroupMemberJoinedMsg);
                 Logger.Info($"{this.GetType().Name}.OnGroupMemberJoined() from boss:  {joinedMsg.DestGroupId} adds {SID(joinedMsg.PeerAddr)}");
 
-                ApianGroupMember m = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson);
+                ApianGroupMember m = _AddMember(joinedMsg.PeerAddr, joinedMsg.ApianClientPeerJson, joinedMsg.JoinedAsValidator);
 
                 ApianInst.OnGroupMemberJoined(m); // inform local apian
 

@@ -111,7 +111,7 @@ namespace Apian
             case ApianGroupMember.Status.New:
                 // Local member has requested to join, but not gotten response. Ask new leader.
                 Logger.Info($"{this.GetType().Name}.SetLeader() - Leader change while we were waiting to join (status: {localStatus}). Ask new leader.");
-                JoinGroup(null);
+                JoinGroup(null, false); // FIXME: &&&&& figure this out
                 break;
             }
         }

@@ -22,79 +22,6 @@ namespace Apian
          }
     }
 
-    public class ApianGroupInfo
-    {
-        public string GroupType;
-        public P2pNetChannelInfo GroupChannelInfo;
-        public string GroupId { get => GroupChannelInfo?.id;} // channel
-        public string GroupCreatorAddr;
-        public string GroupName; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
-        public Dictionary<string, string> GroupParams;
-
-        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, Dictionary<string, string> grpParams = null)
-        {
-            GroupType = groupType;
-            GroupChannelInfo = groupChannel;
-            GroupCreatorAddr = creatorAddr;
-            GroupName = groupName;
-            GroupParams = grpParams ?? new Dictionary<string, string>();
-        }
-
-        public ApianGroupInfo(ApianGroupInfo agi)
-        {
-            // This ctor makes it easier for applications to subclass AGI and add app-specific GroupParams
-            // and top-level properties to expose them
-            GroupType = agi.GroupType;
-            GroupChannelInfo = agi.GroupChannelInfo;
-            GroupCreatorAddr = agi.GroupCreatorAddr;
-            GroupName = agi.GroupName;
-            GroupParams = agi.GroupParams;
-        }
-
-        public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
-
-        public string Serialized() =>  JsonConvert.SerializeObject(this);
-        public static ApianGroupInfo Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupInfo>(jsonString);
-        public bool IsEquivalentTo(ApianGroupInfo agi2)
-        {
-            return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
-                && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
-                && GroupCreatorAddr.Equals(agi2.GroupCreatorAddr, System.StringComparison.Ordinal)
-                && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal)
-                && GroupParams.Equals(agi2.GroupParams);
-        }
-    }
-
-    public class ApianGroupStatus
-    {
-        // Created via Apian.CurrentGroupStatus()
-        public int ActiveMemberCount { get; set;  }
-
-        public bool AppCorePaused; // see groupmgr for active pauseInfos
-
-        public Dictionary<string, string> OtherStatus;
-
-        public ApianGroupStatus(int mCnt, bool corePaused, Dictionary<string, string> otherStatus = null)
-        {
-            ActiveMemberCount = mCnt;
-            AppCorePaused = corePaused;
-            OtherStatus = otherStatus ?? new Dictionary<string, string>();
-        }
-
-        public ApianGroupStatus(ApianGroupStatus ags)
-        {
-            // Subclasses can use this as : base(apianStatus)
-            ActiveMemberCount = ags.ActiveMemberCount;
-            AppCorePaused = ags.AppCorePaused;
-            OtherStatus = ags.OtherStatus;
-        }
-
-        public ApianGroupStatus() {} // required by Newtonsoft JSON stuff
-
-        public string Serialized() =>  JsonConvert.SerializeObject(this);
-        public static ApianGroupStatus Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupStatus>(jsonString);
-    }
-
     public class GroupAnnounceResult
     {
         public ApianGroupInfo GroupInfo { get; private set; }
@@ -122,19 +49,20 @@ namespace Apian
         public static string[] StatusName =  { "New", "Joining", "SyncingState", "SyncingClock", "Active", "Removed" };
 
         public string PeerAddr {get;}
-        public Status CurStatus {get; set;}
-        public string CurStatusName {get => StatusName[(int)CurStatus];}
+        public Status CurStatus {get; set;}  // FIXME: make set private and add setter method
+        public bool IsValidator {get; private set;}
         public bool ApianClockSynced; // means we've gotten an ApianOffset msg
         public string AppDataJson; // This is ApianClient-relevant data. Apian doesn't read it
 
+        public string CurStatusName {get => StatusName[(int)CurStatus];}
         public bool IsActive => (CurStatus == Status.Active ); // TODO: in the future this will include both ActivePlayer and ActiveValidator
 
-        public ApianGroupMember(string peerAddr, string appDataJson)
+        public ApianGroupMember(string peerAddr, string appDataJson, bool isValidator)
         {
             CurStatus = Status.New;
             PeerAddr = peerAddr;
             AppDataJson = appDataJson;
-
+            IsValidator = isValidator;
         }
         // ReSharper enable MemberCanBePrivate.Global,UnusedMember.Global,UnusedAutoPropertyAccessor.Global,NotAccessedField.Global
     }
@@ -171,12 +99,14 @@ namespace Apian
         Dictionary<string, ApianGroupMember> Members {get;}
         int MemberCount { get; }
         int ActiveMemberCount { get; }
+        int ActiveValidatorCount { get; }
+        int ActivePlayerCount { get; }  // TODO: "player" is wrong word, but "participant" is too big... so "player"
         bool AppCorePaused {get; }
 
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
-        void JoinGroup(string localMemberJson);
+        void JoinGroup(string localMemberJson, bool asValidator);
         void Update();
         void ApplyGroupCoreCommand(long epoch, long seqNum, GroupCoreMessage cmd);
         void SendApianRequest( ApianCoreMessage coreMsg );
@@ -207,6 +137,9 @@ namespace Apian
         public ApianGroupMember LocalMember {protected set; get;}
         public int MemberCount {get => Members.Count; }
         public int ActiveMemberCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Count(); }
+        public int ActiveValidatorCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active && m.IsValidator).Count(); }
+        public int ActivePlayerCount {get => Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active && !m.IsValidator).Count(); }
+
         public bool AppCorePaused {get => ActiveAppCorePauses.Values.Count() > 0; }
 
         public string MainP2pChannel {get => ApianInst.GameNet.CurrentNetworkId();}
@@ -245,11 +178,11 @@ namespace Apian
             return Members[peerAddr];
         }
 
-        protected ApianGroupMember _AddMember(string peerAddr, string appMemberDataJson )
+        protected ApianGroupMember _AddMember(string peerAddr, string appMemberDataJson, bool asValidator )
         {
             // Calls ApianInstance CreateGroupMember() to allow it to create an app-specific derived class
             Logger.Info($"{this.GetType().Name}._AddMember(): ({(peerAddr==LocalPeerAddr?"Local":"Remote")}) {SID(peerAddr)}");
-            ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerAddr, appMemberDataJson);
+            ApianGroupMember newMember =  ApianInst.CreateGroupMember(peerAddr, appMemberDataJson, asValidator);
             newMember.CurStatus = ApianGroupMember.Status.Joining;
             Members[peerAddr] = newMember;
             if (peerAddr==LocalPeerAddr)
@@ -262,7 +195,7 @@ namespace Apian
 
         public abstract void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         public abstract void SetupExistingGroup(ApianGroupInfo info);
-        public abstract void JoinGroup(string localMemberJson); // GroupManager doesn;t have a LeaveGroup() for the local peer
+        public abstract void JoinGroup(string localMemberJson, bool asValidator); // GroupManager doesn;t have a LeaveGroup() for the local peer
         public abstract void Update();
        public abstract void SendApianRequest( ApianCoreMessage coreMsg );
         public abstract void SendApianObservation( ApianCoreMessage coreMsg );
