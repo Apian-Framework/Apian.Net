@@ -36,6 +36,8 @@ namespace Apian
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         PeerNetworkStats GetPeerNetStats(string P2pPeerAddr);
 
+        ApianGroupStatus GetGroupStatus(string groupId);
+
         // Called by Apian
          void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  bool isValidator, string failureReason = null);
          //void OnPeerLeftGroup(string peerAddr, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
@@ -306,6 +308,11 @@ namespace Apian
         //
         // *** Additional ApianGameNet stuff
         //
+
+        public ApianGroupStatus GetGroupStatus(string groupId)
+        {
+            return ApianInstances.ContainsKey(groupId)? ApianInstances[groupId].CurrentGroupStatus() : null;
+        }
 
         public PeerNetworkStats GetPeerNetStats(string p2pPeerAddr)
         {

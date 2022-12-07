@@ -8,8 +8,8 @@ using static UniLog.UniLogger; // for SID
 
 namespace Apian
 {
-        [JsonObject(MemberSerialization.OptIn)]
-        public class ApianGroupStatus
+    [JsonObject(MemberSerialization.OptIn)]
+    public class ApianGroupStatus
     {
         // Created via Apian.CurrentGroupStatus()
         [JsonProperty]
@@ -20,6 +20,8 @@ namespace Apian
         public int MemberCount {get; private set;}
         [JsonProperty]
         public bool AppCorePaused {get; private set; } // see groupmgr for active pauseInfos
+        [JsonProperty]
+        public Dictionary<string,string> OtherProperties; // subclasses will have getters and setters
 
         public ApianGroupStatus(int pCnt, int vCnt, int mCnt, bool corePaused )
         {
@@ -27,6 +29,7 @@ namespace Apian
             ValidatorCount = vCnt;
             MemberCount = mCnt;
             AppCorePaused = corePaused;
+            OtherProperties = new Dictionary<string,string>();
         }
 
         public ApianGroupStatus(ApianGroupStatus ags)
@@ -35,6 +38,7 @@ namespace Apian
             ValidatorCount = ags.ValidatorCount;
             MemberCount = ags.MemberCount;
             AppCorePaused = ags.AppCorePaused;
+            OtherProperties = ags.OtherProperties;
         }
 
         public ApianGroupStatus() {} // required by Newtonsoft JSON stuff

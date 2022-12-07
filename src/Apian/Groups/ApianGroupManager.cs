@@ -187,6 +187,9 @@ namespace Apian
             Members[peerAddr] = newMember;
             if (peerAddr==LocalPeerAddr)
                 LocalMember = newMember;
+
+
+
             return newMember;
         }
 

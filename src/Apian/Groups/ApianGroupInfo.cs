@@ -57,34 +57,39 @@ namespace Apian
         public string GroupName ; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
         [JsonProperty]
         public GroupMemberLimits MemberLimits;
+        [JsonProperty]
+        protected Dictionary<string, string> OtherProperties; // subclasses will have accesors for them
 
         public string GroupId { get => GroupChannelInfo?.id;} // channel
 
-
-        public ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, GroupMemberLimits memberLimits, Dictionary<string, string> grpParams = null)
+        public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, GroupMemberLimits memberLimits)
         {
             GroupType = groupType;
             GroupChannelInfo = groupChannel;
             GroupCreatorAddr = creatorAddr;
             GroupName = groupName;
             MemberLimits = memberLimits;
+            OtherProperties = new Dictionary<string, string>();
         }
 
-        public ApianGroupInfo(ApianGroupInfo agi)
+        protected ApianGroupInfo(ApianGroupInfo agi)
         {
             GroupType = agi.GroupType;
             GroupChannelInfo = agi.GroupChannelInfo;
             GroupCreatorAddr = agi.GroupCreatorAddr;
             GroupName = agi.GroupName;
             MemberLimits = agi.MemberLimits;
+            OtherProperties = agi.OtherProperties;
         }
 
         public ApianGroupInfo() {} // required by Newtonsoft JSON stuff
 
         public string Serialized() =>  JsonConvert.SerializeObject(this);
         public static ApianGroupInfo Deserialize(string jsonString) => JsonConvert.DeserializeObject<ApianGroupInfo>(jsonString);
-        public bool IsEquivalentTo(ApianGroupInfo agi2)
+        public virtual bool IsEquivalentTo(ApianGroupInfo agi2)
         {
+            // subclasses need to compare Otherproperties
+            // TODO: Does anythin guse this? Delete it?
             return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
                 && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
                 && GroupCreatorAddr.Equals(agi2.GroupCreatorAddr, System.StringComparison.Ordinal)
