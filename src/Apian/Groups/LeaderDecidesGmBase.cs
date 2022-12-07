@@ -541,6 +541,8 @@ namespace Apian
                     ApianGroupMember.Status old = m.CurStatus;
                     m.CurStatus = sMsg.MemberStatus;
                     ApianInst.OnGroupMemberStatusChange(m, old);
+                    Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(): MemberCount: {ActiveMemberCount}");
+
                 }
                 else
                     Logger.Warn($"{this.GetType().Name}.OnGroupMemberStatus(): No action.  {sMsg.PeerAddr} is not a member." );
@@ -609,12 +611,13 @@ namespace Apian
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
 
-            string isLocal = msgSrc == LocalPeerAddr ? "Local" : "Remote";
-            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} Epoch: {prevEpochData?.EpochNum} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+            string isLocal = msgSrc == LocalPeerAddr ? "Local " : "Remote"; // extra space so console messages line up
+            string role = GetMember(msgSrc).IsValidator ? "V" : "P";
+
+            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} ({role}) Epoch: {prevEpochData?.EpochNum} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
             if (LocalPeerIsLeader) // Only leader handles this
             {
                Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {prevEpochData?.EpochNum}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
-
             }
 
         }
