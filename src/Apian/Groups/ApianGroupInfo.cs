@@ -16,24 +16,24 @@ namespace Apian
         public (int, int) Players {get; private set;}
         [JsonProperty]
         public (int, int) Validators {get; private set;}
-        [JsonProperty]
-        public (int, int) Members {get; private set;}
+
+
+        public (int, int) Members {get => (Players.Item1+Validators.Item1, Players.Item2+Validators.Item2); }
+
 
         public GroupMemberLimits()
         {
             Players = (0,0);
             Validators = (0,0);
-            Members = (0,0);
-        }
+         }
         public GroupMemberLimits( (int, int) playerLimits, (int, int) validatorLimits, (int, int) memberLimits)
         {
             Players = playerLimits;
             Validators = validatorLimits;
-            Members = memberLimits;
-        }
+           }
 
         public bool IsEquivalentTo(GroupMemberLimits other)
-            =>  (Players == other.Players && Validators == other.Validators && Members == other.Members);
+            =>  (Players == other.Players && Validators == other.Validators );
 
 
         public int MinPlayers { get => Players.Item1;}
