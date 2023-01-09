@@ -30,31 +30,34 @@ jobs:
     - name: Checkout Target
       uses: actions/checkout@v3
       with:
-        path: main
+        ref: main
+        path: build
 
     - name: Checkout Apian dependencies (UniLog)
       uses: actions/checkout@v3
       with:
         repository: Apian-Framework/UniLog
+        ref: main
         path: UniLog
 
     - name: Checkout Apian dependencies (P2pNet)
       uses: actions/checkout@v3
       with:
         repository: Apian-Framework/P2pNet
+        ref: main
         path: P2pNet
 
     - name: Restore dependencies
       run: dotnet restore
-      working-directory: main
+      working-directory: build
 
     - name: Build
       run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release --no-restore
-      working-directory: main
+      working-directory: build
 
     - name: Test # See the test project .csproj file for property definitions
       run: dotnet test ./tests/${{env.SUBPROJECT}}.Tests --no-restore --verbosity normal
-      working-directory: main
+      working-directory: build
 
     - name: Checkout CI badges
       uses: actions/checkout@v2
