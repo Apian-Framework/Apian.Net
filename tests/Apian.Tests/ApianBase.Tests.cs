@@ -109,11 +109,11 @@ namespace ApianTests
 
             const string localPeerAddr = "localPeerAddr";
             const string remoteAddr = "remoteAddr";
-            const int  cnt = 5,
-                        since = 10,
-                        offset = -10,
-                        lag = 46;
-            const double offsetSigma = 3.14, lagSigma = 4.2;
+            //const int  cnt = 5,
+            //            since = 10,
+            //            offset = -10,
+            //            lag = 46;
+            //const double offsetSigma = 3.14, lagSigma = 4.2;
 
             TestPeer testPeer = new TestPeer(localPeerId);
             testPeer.SetAddress(localPeerAddr);

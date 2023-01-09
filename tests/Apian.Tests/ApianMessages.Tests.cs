@@ -65,11 +65,13 @@ namespace ApianTests
 
         public class MockAppCore : IApianAppCore
         {
-            public event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt;
+            public event EventHandler<NewCoreStateEventArgs> NewCoreStateEvt = null;
 
             public Dictionary<string,Func<ApianCoreMessage,ApianCoreMessage,(ApianConflictResult, string)>> conflictFuncs;
             public MockAppCore()
             {
+                Assert.That(NewCoreStateEvt, Is.Null); // this is just to prevent a warning
+
                 conflictFuncs = new Dictionary<string,Func<ApianCoreMessage,ApianCoreMessage,(ApianConflictResult, string)>>()
                 {
                     {kGetThing+kGetThing, GetAfterGet},
