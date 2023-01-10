@@ -60,7 +60,7 @@ jobs:
       working-directory: build
 
     - name: Checkout CI badges
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: Apian-Framework/Apian-CI-Badges
         ref: ${{env.SUBPROJECT}}
@@ -85,7 +85,7 @@ jobs:
         git add ${{env.SUBPROJECT}}_branchcoverage.svg
         git pull --ff-only
         git commit --allow-empty -m "${{env.SUBPROJECT}} coverage badges"
-      working-directory: main
+      working-directory: build
 
     - name: Push Badges
       uses: ad-m/github-push-action@master
