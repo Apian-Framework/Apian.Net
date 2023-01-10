@@ -47,12 +47,8 @@ jobs:
         ref: main
         path: P2pNet
 
-    - name: Restore dependencies
-      run: dotnet restore
-      working-directory: build
-
     - name: Build
-      run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release --no-restore
+      run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release
       working-directory: build
 
     - name: Test # See the test project .csproj file for property definitions
