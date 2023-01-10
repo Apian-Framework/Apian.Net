@@ -47,12 +47,16 @@ jobs:
         ref: main
         path: P2pNet
 
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: build
+
     - name: Build
       run: dotnet build ./src/${{env.SUBPROJECT}} --configuration Release
       working-directory: build
 
     - name: Test # See the test project .csproj file for property definitions
-      run: dotnet test ./tests/${{env.SUBPROJECT}}.Tests --no-restore --verbosity normal
+      run: dotnet test ./tests/${{env.SUBPROJECT}}.Tests --verbosity normal
       working-directory: build
 
     - name: Checkout CI badges
