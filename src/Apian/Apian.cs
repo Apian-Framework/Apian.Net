@@ -232,6 +232,13 @@ namespace Apian
             }
             MaxAppliedCmdSeqNum = cmd.SequenceNum;
             AppliedCommands[cmd.SequenceNum] = cmd;
+
+            // TODO: Need to hook into epoch ending and create/persist the epochs.
+            // Will want to clean up AppliedCommands, too, since it just keeps getning bigger and bigger in memory.
+            // What about the serilized state (I guess that's just epoch-related)
+            // Think about potentially hoisting GroupMgr-owned stuff up to this level.
+            //  ***  Hmm. Epoch-as-a-thing is actually not even at the GroupManagerBase level. THat's probably not good.
+
         }
 
         public virtual void OnApianGroupMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
