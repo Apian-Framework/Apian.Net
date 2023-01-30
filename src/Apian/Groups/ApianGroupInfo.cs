@@ -17,8 +17,9 @@ namespace Apian
         [JsonProperty]
         public (int, int) Validators {get; private set;}
 
-
-        public (int, int) Members {get => (Players.Item1+Validators.Item1, Players.Item2+Validators.Item2); }
+        // For members, "min" is just the sum, because zero reall means zero
+        // for "max", on the other hand, since zero means "unlimited" it's zero if either is zero, else it's the sum
+        public (int, int) Members {get => (Players.Item1+Validators.Item1,  (Players.Item2==0 || Validators.Item2==0) ? 0 : Players.Item2+Validators.Item2); }
 
 
         public GroupMemberLimits()
