@@ -380,7 +380,9 @@ namespace Apian
         {
             string serializedState = AppCore.DoCheckpointCoreState( seqNum,  chkApianTime);
 
-            string hash = ApianHash.HashString(serializedState);
+            //string hash = ApianHash.HashString(serializedState);
+            string hash = GameNet.HashString(serializedState);
+
             Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}");
 
             GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState);

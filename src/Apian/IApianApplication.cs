@@ -2,7 +2,7 @@ using GameNet;
 
 namespace Apian
 {
-    public interface IApianApplication : IGameNetClient
+    public interface IApianApplication : IApianGameNetClient
     {
         // This is the "backend" part of an Apian app
         // which sets up GameNet (and probably the GameInstance/Apian pairs)

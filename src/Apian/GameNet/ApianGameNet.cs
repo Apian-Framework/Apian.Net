@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using GameNet;
 using P2pNet;
+using ApianCrypto;
 
 #if !SINGLE_THREADED
 using System.Threading.Tasks;
@@ -28,6 +29,15 @@ namespace Apian
         }
     }
 
+    public interface IApianGameNetClient : IGameNetClient
+    {
+        // Callback results for single-threaded crypto chain calls
+        void OnChainId(int chainId);
+        void OnChainBlockNumber(int blockNumber);
+        void OnChainAcctBalance(string addr, int balance);
+    }
+
+
     public interface IApianGameNet : IGameNet
     {
         void AddApianInstance( ApianBase instance, string groupId);
@@ -35,16 +45,34 @@ namespace Apian
         void OnApianGroupMemberStatus( string groupId,  ApianGroupMember member, ApianGroupMember.Status prevStatus);
         void SendApianMessage(string toChannel, ApianMessage appMsg);
         PeerNetworkStats GetPeerNetStats(string P2pPeerAddr);
-
         ApianGroupStatus GetGroupStatus(string groupId);
+
+        // Crypto/blockchain
+        string SetupNewCryptoAccount(string password = null);
+        string RestoreCryptoAccount(string keystoreJson, string password);
+        string CryptoAccountAddress();
+        string HashString(string msg);
 
         // Called by Apian
          void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  bool isValidator, string failureReason = null);
          //void OnPeerLeftGroup(string peerAddr, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
          void OnNewGroupLeader(string groupId, string newLeaderAddr, ApianGroupMember newLeader);
 
+        // Crypto stuff API
+        void CreateCryptoInstance(); // can be problematic in Unity (needs to happen on main thread)
+        void ConnectToBlockchain(string chainInfoJson);
+        void DisconnectFromBlockchain();
+        void GetChainId();
+        void GetChainBlockNumber();
+        void GetChainAccountBalance(string acctAddr);
+
 #if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
+        //Task ConnectToBlockchainAsync(string chainInfoJson);
+        Task<int> GetChainIdAsync();
+        Task<int> GetChainBlockNumberAsync();
+        Task<int> GetChainAccountBalanceAsync(string acctAddr);
+
 #endif
 
     }
@@ -63,7 +91,7 @@ namespace Apian
         }
     }
 
-    public abstract class ApianGameNetBase : GameNetBase, IApianGameNet
+    public abstract class ApianGameNetBase : GameNetBase, IApianGameNet, IApianCryptoClient
     {
         // This is the actual GameNet instance
         public IApianApplication Client {get => client as IApianApplication;}
@@ -75,6 +103,8 @@ namespace Apian
 #if !SINGLE_THREADED
         private Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>> JoinGroupAsyncCompletionSources;
 #endif
+
+        public IApianCrypto apianCrypto;
 
         protected ApianGameNetBase() : base()
         {
@@ -419,7 +449,6 @@ namespace Apian
 
         }
 
-
         protected void DispatchGroupAnnounceMessage(string from, string to, long msSinceSent, GameNetClientMessage clientMessage)
         {
             // Special message only goes to client
@@ -436,11 +465,100 @@ namespace Apian
             if (GroupRequestResults != null)
                 GroupRequestResults[groupInfo.GroupId] = result;// RequestGroupsAsync was called
 #endif
-
         }
 
+        //
+        // Crypto/blockchain stuff
+        //
+
+        public void CreateCryptoInstance()
+        {
+            apianCrypto = EthForApian.Create();
+        }
+
+        public string CryptoAccountAddress() => apianCrypto?.AccountAddress;
+
+        public string SetupNewCryptoAccount(string password = null)
+        {
+            // returns encrypted json keystore if password is not null
+
+            // create a new acct
+            string addr =  apianCrypto.CreateAccount();
+            logger.Info($"SetupNewCryptoAccount() - Created new {(string.IsNullOrEmpty(password)?" temp ":"")} Eth acct: {addr}");
+
+            return string.IsNullOrEmpty(password) ? null : apianCrypto.GetJsonForAccount(password);
+        }
+
+        public string RestoreCryptoAccount(string keystoreJson, string password)
+        {
+            string addr = apianCrypto.CreateAccountFromJson(password, keystoreJson);
+            logger.Info( $"_SetupCrypto() - Restored Eth acct: {addr} from settings");
+            return addr;
+        }
+
+        public string HashString(string str) => apianCrypto.HashString(str);
+
+#if !SINGLE_THREADED
+        // public async Task ConnectToBlockchainAsync(string chainInfoJson)
+        // {
+        //     BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
+        //     apianCrypto.Connect(bcInfo.RpcUrl);
+
+        //     int chainId = await apianCrypto.GetChainIdAsync();
+        //     logger.Info( $"ConnectToBlockchainAsync() - Connected to chain ID: {chainId}");
+
+        //     if (chainId!= bcInfo.ChainId)
+        //         throw new Exception($"ConnectToBlockchainAsync() - Chain ID mismatch. Expected: {bcInfo.ChainId}, got: {chainId}");
+
+        // }
+
+        public async Task<int> GetChainIdAsync()
+        {
+            return await apianCrypto.GetChainIdAsync();
+        }
+
+        public async Task<int> GetChainBlockNumberAsync()
+        {
+            return await apianCrypto.GetBlockNumberAsync();
+        }
+
+        public async Task<int> GetChainAccountBalanceAsync(string acctAddr)
+        {
+            return await apianCrypto.GetBalanceAsync(acctAddr);
+        }
+#endif
 
 
+        public void ConnectToBlockchain(string chainInfoJson)
+        {
+            BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
+            apianCrypto.Connect(bcInfo.RpcUrl, this);
+        }
+
+        public void DisconnectFromBlockchain()
+        {
+            apianCrypto.Disconnect();
+        }
+
+        public void GetChainId() => apianCrypto.GetChainId();
+        public void GetChainBlockNumber() => apianCrypto.GetBlockNumber();
+        public void GetChainAccountBalance(string acctAddr) => apianCrypto.GetBalance(acctAddr);
+
+        // IApianCryptoClient API
+        public void OnChainId(int chainId)
+        {
+            logger.Info($"OnChainId() - Chain ID: {chainId}");
+            (client as IApianGameNetClient).OnChainId(chainId);
+        }
+        public void OnBlockNumber(int blockNumber)
+        {
+            logger.Info($"OnBlockNumber() - Block Number: {blockNumber}");
+            (client as IApianGameNetClient).OnChainBlockNumber(blockNumber);
+        }
+        public void OnBalance(string addr, int balance)
+        {
+            logger.Info($"OnBalance() - Account: {addr}, Balance: {balance}");
+            (client as IApianGameNetClient).OnChainAcctBalance(addr, balance);
+        }
     }
-
 }

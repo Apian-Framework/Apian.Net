@@ -15,6 +15,8 @@
     <PackageReference Include="UniLog" Version="1.0.0" Condition="'$(UniLogSource)' == 'package'" />
     <ProjectReference Include="$(UniLogSource)src\UniLog\UniLog.csproj" Condition="'$(UniLogSource)' != 'package'" />
 
+    <ProjectReference Include="$(ApianCryptoSource)\src\EthForApian\EthForApian.csproj" />
+
   </ItemGroup>
 
 </Project>

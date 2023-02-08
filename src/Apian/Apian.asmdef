@@ -1,8 +1,11 @@
 {
     "name": "Apian",
+    "rootNamespace": "",
     "references": [
         "P2pNet",
-        "UniLog"
+        "UniLog",
+        "ApianCrypto",
+        "EthForApian"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
