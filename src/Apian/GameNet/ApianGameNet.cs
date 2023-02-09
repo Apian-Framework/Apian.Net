@@ -229,7 +229,7 @@ namespace Apian
         public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
-                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
+                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
 
@@ -245,7 +245,7 @@ namespace Apian
         public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
         {
              if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
-                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupId}");
+                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
             CreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
@@ -455,7 +455,7 @@ namespace Apian
             GroupAnnounceMsg gaMsg = ApianMessageDeserializer.FromJSON(clientMessage.clientMsgType,clientMessage.payload) as GroupAnnounceMsg;
             ApianGroupInfo groupInfo = gaMsg.DecodeGroupInfo();
             ApianGroupStatus groupStatus = gaMsg.DecodeGroupStatus();
-            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupId}, src: {(from==LocalPeerAddr()?"Local":from)}");
+            logger.Verbose($"_DispatchGroupAnnounceMessage() Group: {groupInfo.GroupFriendlyId}, src: {(from==LocalPeerAddr()?"Local":from)}");
 
             GroupAnnounceResult result =  new GroupAnnounceResult(groupInfo, groupStatus);
 

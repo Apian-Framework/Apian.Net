@@ -61,7 +61,9 @@ namespace Apian
         [JsonProperty]
         protected Dictionary<string, string> OtherProperties; // subclasses will have accesors for them
 
-        public string GroupId { get => GroupChannelInfo?.id;} // channel
+        public string GroupId { get => GroupChannelInfo?.id;} // channel id IS the group session id
+
+        public string GroupFriendlyId { get => $"{GroupName}-{GroupId}"; } // todo: maybe truncate ID?
 
         public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, GroupMemberLimits memberLimits)
         {

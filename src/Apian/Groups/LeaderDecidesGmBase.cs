@@ -138,7 +138,7 @@ namespace Apian
 
         public override void SetupExistingGroup(ApianGroupInfo info)
         {
-            Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupId}");
+            Logger.Info($"{this.GetType().Name}.SetGroupInfo(): {info.GroupFriendlyId}");
             GroupInfo = info;
             SetLeader( info.GroupCreatorAddr ); // creator starts as leader
         }
