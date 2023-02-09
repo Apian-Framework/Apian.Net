@@ -47,6 +47,13 @@ jobs:
         ref: main
         path: P2pNet
 
+    - name: Checkout Apian dependencies (ApianCrypto)
+      uses: actions/checkout@v3
+      with:
+        repository: Apian-Framework/ApianCrypto
+        ref: main
+        path: ApianCrypto
+
     - name: Restore dependencies
       run: dotnet restore
       working-directory: build
