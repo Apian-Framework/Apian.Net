@@ -52,7 +52,8 @@ namespace Apian
         string RestoreCryptoAccount(string keystoreJson, string password);
         string CryptoAccountAddress();
         string HashString(string msg);
-
+        string EncodeUTF8AndSign(string addr, string msg);
+        string EncodeUTF8AndEcRecover(string msg, string sig);
         // Called by Apian
          void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  bool isValidator, string failureReason = null);
          //void OnPeerLeftGroup(string peerAddr, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
@@ -497,6 +498,10 @@ namespace Apian
         }
 
         public string HashString(string str) => apianCrypto.HashString(str);
+
+        public string EncodeUTF8AndSign(string addr, string msg) => apianCrypto.EncodeUTF8AndSign(addr, msg);
+
+        public string EncodeUTF8AndEcRecover(string msg, string sig) => apianCrypto.EncodeUTF8AndEcRecover(msg, sig);
 
 #if !SINGLE_THREADED
         // public async Task ConnectToBlockchainAsync(string chainInfoJson)
