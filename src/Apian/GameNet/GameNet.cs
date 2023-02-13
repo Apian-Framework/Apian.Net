@@ -47,6 +47,9 @@ namespace GameNet
     {
         void OnPeerJoinedNetwork(PeerJoinedNetworkData peerData);
         void OnPeerLeftNetwork(string peerAddr, string netId);
+        void OnPeerJoinedChannel( string peerAddr, string channel, string helloData);
+        void OnPeerLeftChannel( string peerAddr, string channel);
+        void OnJoinRejected(string channelId, string failureReason);
         void OnPeerMissing(string peerAddr, string networkId);
         void OnPeerReturned(string peerAddr, string networkId);
         void OnPeerSync(string channelId, string peerAddr, PeerClockSyncInfo info);
@@ -251,9 +254,23 @@ namespace GameNet
                 // callbacksForNextPoll.Enqueue( () => client.OnPeerJoinedNetwork(peerData));
 
                 client.OnPeerJoinedNetwork(peerData);
+
+            } else { // is subchannel
+                client.OnPeerJoinedChannel(peerAddr, channel, helloData);
+
             }
 
             // Note: ApianGameNet overrides this (and calls it)
+        }
+
+        public virtual void OnJoinRejected(string channelId, string failureReason)
+        {
+#if !SINGLE_THREADED
+                if (channelId == CurrentNetworkId() && JoinNetworkCompletion != null)
+                    JoinNetworkCompletion.SetCanceled();
+#endif
+
+            client.OnJoinRejected(channelId, failureReason);
         }
 
       public virtual void OnPeerLeft(string channelId, string peerAddr)
@@ -261,6 +278,9 @@ namespace GameNet
             // Note: ApianGameNet overrides this (and calls it)
             if (channelId == CurrentNetworkId())
                 client.OnPeerLeftNetwork(peerAddr, CurrentNetworkId());
+            else
+                client.OnPeerLeftChannel(peerAddr, channelId);
+
         }
 
         public virtual void OnPeerSync(string channelId, string peerAddr, PeerClockSyncInfo syncInfo)
