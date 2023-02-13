@@ -616,7 +616,13 @@ namespace Apian
             string isLocal = msgSrc == LocalPeerAddr ? "Local " : "Remote"; // extra space so console messages line up
             string role = GetMember(msgSrc).IsValidator ? "V" : "P";
 
+            string recovAddr = ApianInst.GameNet.EncodeUTF8AndEcRecover(rMsg.StateHash, rMsg.HashSignature);
+
             Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} ({role}) Epoch: {prevEpochData?.EpochNum} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+
+            if (recovAddr.ToUpper() != rMsg.PeerAddr.ToUpper() )
+               Logger.Warn($"{this.GetType().Name}.OnGroupCheckpointReport(): invalid checkpoint signature. Not from {rMsg.PeerAddr}");
+
             if (LocalPeerIsLeader) // Only leader handles this
             {
                Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {prevEpochData?.EpochNum}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
