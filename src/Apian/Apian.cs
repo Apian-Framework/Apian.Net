@@ -383,14 +383,16 @@ namespace Apian
             //string hash = ApianHash.HashString(serializedState);
             string hash = GameNet.HashString(serializedState);
 
-            Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}");
+            string hashSig = GameNet.EncodeUTF8AndSign(GroupMgr.LocalPeerAddr, hash);
+
+            Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}, sig: {hashSig}");
 
             GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState);
 
             if ( GroupMgr.LocalMember.CurStatus == ApianGroupMember.Status.Active)
             {
                 Logger.Verbose($"DoLocalAppCoreCheckpoint(): Sending GroupCheckpointReportMsg");
-                GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.GroupId, seqNum, chkApianTime, hash);
+                GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.LocalPeerAddr, GroupMgr.GroupId, seqNum, chkApianTime, hash, hashSig);
                 GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
             }
 
