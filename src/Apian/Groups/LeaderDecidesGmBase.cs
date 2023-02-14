@@ -32,7 +32,8 @@ namespace Apian
             public long EpochNum;
             public long StartCmdSeqNumber; // first command in the epoch
             public long EndCmdSeqNumber; // This is the seq # of the LAST command - which is a checkpoint request
-            public long TimeStamp;  // TODO: Start of end of epoch - rename to make clear (I'm pretty sure end)
+            public long StartTimeStamp;  //  Start of epoch
+            public long EndTimeStamp;  //  Start of epoch
             public string EndStateHash;
             public string SerializedStateData;
             // TODO: add this dict and make the stashedStateData member of LeaderOnly a dict
@@ -41,12 +42,20 @@ namespace Apian
             // with all the other peers?
             // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerAddr
 
-            public EpochData(long epochNum, long startCmdSeqNum, long endCmdSeqNum)
+            public EpochData(long epochNum, long startCmdSeqNum, long startTimeStamp)
             {
                 EpochNum = epochNum;
                 StartCmdSeqNumber = startCmdSeqNum;
-                EndCmdSeqNumber = endCmdSeqNum;
-                // ReportedHashes = new Dictionary<string, string>();
+                StartTimeStamp = startTimeStamp;
+            }
+
+            public void CloseEpoch(long lastSeqNum, long checkpointTimeStamp, string stateHash, string serializedState)
+            {
+                // TODO: this needs to do something persistent with the data, too
+                EndCmdSeqNumber = lastSeqNum;
+                EndTimeStamp = checkpointTimeStamp;
+                EndStateHash = stateHash;
+                SerializedStateData = serializedState;
             }
         }
 
@@ -235,22 +244,16 @@ namespace Apian
             curEpochData = new EpochData(newEpoch,startCmdSeqNum,-1); // -1 means it hasn't ended yet
         }
 
-        public virtual void StartNewEpoch(long lastCmdSeqNum)
+        public void StartNewEpoch(long lastCmdSeqNum, long checkpointTimeStamp, string stateHash, string serializedState)
         {
-            // Checkpoint command has been sent, to this epoch is done.
-            // But - the epoch state and hash aren;t known until the local peer sends the
-            // checkpoint reponse.
+            // Checkpoint has been done for the current epoch.
             prevEpochData = curEpochData;
-            curEpochData = new EpochData(prevEpochData.EpochNum+1, lastCmdSeqNum+1, -1);  // this is where CurEpochNum gets incremented
-        }
 
-        public void StoreCompletedEpoch(long lastSeqNum, long timeStamp, string stateHash, string serializedState)
-        {
-            // TODO: this needs to do something persistent with the data, too
-            prevEpochData.EndCmdSeqNumber = lastSeqNum;
-            prevEpochData.TimeStamp = timeStamp;
-            prevEpochData.EndStateHash = stateHash;
-            prevEpochData.SerializedStateData = serializedState;
+            // this is where CurEpochNum gets incremented
+            curEpochData = new EpochData(prevEpochData.EpochNum+1, lastCmdSeqNum+1, checkpointTimeStamp);
+
+            prevEpochData.CloseEpoch(lastCmdSeqNum, checkpointTimeStamp, stateHash, serializedState);
+
 
             // TODO: when this returns, the caller needs to dispatch any ApianGroupMsgs waiting for it (sync requests)
         }
@@ -566,7 +569,7 @@ namespace Apian
                 EpochData state = prevEpochData;
                 if (state != null)
                 {
-                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.TimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.EndStateHash, state.SerializedStateData));
+                    ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.StartTimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.EndStateHash, state.SerializedStateData));
                     firstCmdToSend = state.EndCmdSeqNumber + 1;
                     Logger.Info($"{this.GetType().Name}.OnGroupSyncRequest() Sending checkpoint ending with seq# {state.EndCmdSeqNumber}");
                 }
@@ -604,8 +607,9 @@ namespace Apian
         {
             Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
 
-            StartNewEpoch( seqNum);
-            StoreCompletedEpoch(seqNum, timeStamp, stateHash, serializedState);
+            StartNewEpoch( seqNum, timeStamp, stateHash, serializedState);
+
+            OnNewEpoch(); // Virtual, in case manager wants to start something at the beginning of an epoch
 
         }
 

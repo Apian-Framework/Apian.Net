@@ -117,23 +117,21 @@ namespace Apian
         }
 
 
-       public override void StartNewEpoch(long lastCmdSeqNum)
+       protected override void OnNewEpoch()
        {
-            base.StartNewEpoch(lastCmdSeqNum);
-
             if (CurrentEpochNum == NextLeaderFirstEpoch)
             {
                 if (NextLeaderAddr != null)
                 {
                     SetLeader(NextLeaderAddr);
+                } else {
+                    Logger.Error($"{this.GetType().Name}.OnNewEpoch() - NextLeaderAddr is null. There's no leader.");
                 }
-
-                //SetNextLeader(null, 0); // zero it out until new leader sets it
 
                 if (LocalPeerAddr == NextLeaderAddr)
                 {
-                    Logger.Info($"StartNewEpoch() ===== Local Peer is now LEADER!!");
-                    SetNextNewCommandSequenceNumber(lastCmdSeqNum+1); // <<=== This is IMPORTANT and kinda obstuse.
+                    Logger.Info($"OnNewEpoch() ===== Local Peer is now LEADER!!");
+                    SetNextNewCommandSequenceNumber(curEpochData.StartCmdSeqNumber); // <<=== This is IMPORTANT and kinda obstuse.
 
                     string nextLeader = SelectNextLeader(new List<string>(){LocalPeerAddr});
                     if (nextLeader != null)
@@ -221,14 +219,17 @@ namespace Apian
                         Logger.Info($"OnMemberLeftGroupChannel() ===== Local Peer taking over as LEADER!!");
                         SetNextNewCommandSequenceNumber(ApianInst.MaxAppliedCmdSeqNum+1); // <<=== This is IMPORTANT and kinda obtuse. And ugly.
                         string nextLeader = SelectNextLeader(new List<string>(){LocalPeerAddr, peerAddr});
-                        if (nextLeader != null)
-                            SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                        if (nextLeader == null) {
+                            // Nobody else? Set ourselves as next, too
+                            Logger.Warn($"{this.GetType().Name}.OnMemberLeftGroupChannel(): Failed to select a NextLeader, setting local peer to it too.");
+                            nextLeader = LocalPeerAddr;
+                        }
+                        SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
                     }
-
                 }
                 else
                 {
-                     Logger.Warn($"{this.GetType().Name}.OnMemberLeftGroupChannel(): No Nextleader!!! Yikes!!!");
+                    Logger.Error($"{this.GetType().Name}.OnMemberLeftGroupChannel(): Leader left with no Nextleader!!! Yikes!!!");
                 }
             }
             else if ( peerAddr == NextLeaderAddr)
@@ -237,8 +238,11 @@ namespace Apian
                 {
                     // set a new next - and extend our term
                     string nextLeader = SelectNextLeader(new List<string>(){LocalPeerAddr, peerAddr});
-                    if (nextLeader != null)
-                        SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                    if (nextLeader == null) {
+                         Logger.Warn($"{this.GetType().Name}.OnMemberLeftGroupChannel(): Failed to select a NextLeader, setting local peer to it too.");
+                         nextLeader = LocalPeerAddr;
+                    }
+                    SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
                 }
             }
 

@@ -50,7 +50,8 @@ namespace Apian
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{
                 SessionId,
-                CommandSequenceNumber,
+                PrevEpochHash,
+                CommandSequenceNumber
             });
         }
 
@@ -58,7 +59,8 @@ namespace Apian
         {
             object[] data = JsonConvert.DeserializeObject<object[]>(jsonData);
             SessionId = (string)data[0];
-            CommandSequenceNumber = (long)data[1];
+            PrevEpochHash = (string)data[1];
+            CommandSequenceNumber = (long)data[2];
         }
 
         // Derived class (because it's IApianCoreData) needs:

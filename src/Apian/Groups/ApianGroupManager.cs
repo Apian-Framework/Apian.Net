@@ -214,6 +214,10 @@ namespace Apian
             }
         }
 
+        // Related to Epoch/Checkpoint/StateHash
+
+        protected virtual void OnNewEpoch() {}
+
         // Pause/Resume App Core
 
         protected void OnPauseAppCoreCmd(long epoch, long seqNum, GroupCoreMessage msg)
