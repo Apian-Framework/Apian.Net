@@ -21,12 +21,18 @@ namespace Apian
 
     public abstract class ApianCoreState : IApianCoreState
     {
+        // Data to serialize
+        public string SessionId { get; protected set; } // TODO: probably want a way to restore a serialized state and then change the session ID (for replay)
+        public string PrevEpochHash { get; protected set; }
         public long CommandSequenceNumber { get; protected set; } = -1;
+
+        // end data to serialize
 
         public UniLogger Logger { get; protected set;}
 
-        protected ApianCoreState()
+        protected ApianCoreState(string sessionId)
         {
+            SessionId = sessionId;
             Logger = UniLogger.GetLogger("CoreState");
         }
 
@@ -43,6 +49,7 @@ namespace Apian
         {
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{
+                SessionId,
                 CommandSequenceNumber,
             });
         }
@@ -50,8 +57,8 @@ namespace Apian
         protected void ApplyDeserializedBaseData(string jsonData)
         {
             object[] data = JsonConvert.DeserializeObject<object[]>(jsonData);
-
-            CommandSequenceNumber = (long)data[0];
+            SessionId = (string)data[0];
+            CommandSequenceNumber = (long)data[1];
         }
 
         // Derived class (because it's IApianCoreData) needs:

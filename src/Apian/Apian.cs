@@ -380,7 +380,6 @@ namespace Apian
         {
             string serializedState = AppCore.DoCheckpointCoreState( seqNum,  chkApianTime);
 
-            //string hash = ApianHash.HashString(serializedState);
             string hash = GameNet.HashString(serializedState);
 
             string hashSig = GameNet.EncodeUTF8AndSign(GroupMgr.LocalPeerAddr, hash);
