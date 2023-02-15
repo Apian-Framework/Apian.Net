@@ -18,6 +18,8 @@ namespace Apian
         string DoCheckpointCoreState(long seqNum, long checkPointTime);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
+        void SetCoreStatePrevHash( string prevHash);
+
         ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg);
 
         // Validation
@@ -53,6 +55,9 @@ namespace Apian
         public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
 
         public abstract string DoCheckpointCoreState(long seqNum, long checkPointTime);
+
+        public abstract void SetCoreStatePrevHash(string prevHash);  // TODO: There should be a "CoreState" member/property here
+
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
         // Validation

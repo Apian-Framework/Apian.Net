@@ -23,7 +23,7 @@ namespace Apian
     {
         // Data to serialize
         public string SessionId { get; protected set; } // TODO: probably want a way to restore a serialized state and then change the session ID (for replay)
-        public string PrevEpochHash { get; protected set; }
+        public string EpochStartHash { get; protected set; } = "0000";
         public long CommandSequenceNumber { get; protected set; } = -1;
 
         // end data to serialize
@@ -34,6 +34,13 @@ namespace Apian
         {
             SessionId = sessionId;
             Logger = UniLogger.GetLogger("CoreState");
+        }
+
+        public void SetEpochStartHash(string prevHash)
+        {
+            Logger.Info($"SetPrevHash(): {prevHash}");
+            EpochStartHash = prevHash;
+            //PrevEpochHash = "123";
         }
 
         public void UpdateCommandSequenceNumber(long newCmdSeqNumber)
@@ -50,7 +57,7 @@ namespace Apian
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{
                 SessionId,
-                PrevEpochHash,
+                EpochStartHash,
                 CommandSequenceNumber
             });
         }
@@ -59,7 +66,7 @@ namespace Apian
         {
             object[] data = JsonConvert.DeserializeObject<object[]>(jsonData);
             SessionId = (string)data[0];
-            PrevEpochHash = (string)data[1];
+            EpochStartHash = (string)data[1];
             CommandSequenceNumber = (long)data[2];
         }
 
