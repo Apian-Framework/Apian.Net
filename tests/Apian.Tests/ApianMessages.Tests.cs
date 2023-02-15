@@ -192,6 +192,10 @@ namespace ApianTests
                 throw new NotImplementedException();
             }
 
+            public void SetEpochStartHash(string hash)
+            {
+                throw new NotImplementedException();
+            }
 
         }
 
