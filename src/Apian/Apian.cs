@@ -389,7 +389,7 @@ namespace Apian
             GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState); // updates the epoch
 
             // This doesn;t work
-            //AppCore.SetCoreStatePrevHash(hash); // sets the CoreState's prevStateHash property to "chain" the epochs
+            //AppCore.SetEpochStartHash(hash); // sets the CoreState's prevStateHash property to "chain" the epochs
 
             if ( GroupMgr.LocalMember.CurStatus == ApianGroupMember.Status.Active)
             {
