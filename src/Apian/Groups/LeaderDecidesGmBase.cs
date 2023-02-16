@@ -27,51 +27,12 @@ namespace Apian
             {"MaxSyncCmdsToSendPerUpdate", "10"} // CommandSynchronizer - sending commands to another peer to "catch it up"
         };
 
-        public class EpochData
-        {
-            public long EpochNum;
-            public long StartCmdSeqNumber; // first command in the epoch
-            public long EndCmdSeqNumber; // This is the seq # of the LAST command - which is a checkpoint request
-            public long StartTimeStamp;  //  Start of epoch
-            public long EndTimeStamp;  //  Start of epoch
-            public string EndStateHash;
-            public string SerializedStateData;
-            // TODO: add this dict and make the stashedStateData member of LeaderOnly a dict
-            // and keep a couple of them - tracking how well they (hashes) were agreed with.
-            // Maybe when asked it's better to send out the "one before last" if the most recent disagreed
-            // with all the other peers?
-            // public Dictionary<string, string> ReportedHashes; // keyed by reporting peerAddr
-
-            public EpochData(long epochNum, long startCmdSeqNum, long startTimeStamp)
-            {
-                EpochNum = epochNum;
-                StartCmdSeqNumber = startCmdSeqNum;
-                StartTimeStamp = startTimeStamp;
-            }
-
-            public void CloseEpoch(long lastSeqNum, long checkpointTimeStamp, string stateHash, string serializedState)
-            {
-                // TODO: this needs to do something persistent with the data, too
-                EndCmdSeqNumber = lastSeqNum;
-                EndTimeStamp = checkpointTimeStamp;
-                EndStateHash = stateHash;
-                SerializedStateData = serializedState;
-            }
-        }
-
 
         // Things only the leader uses. (Used to be in leaderdata but that became a mess)
         private long _nextNewCommandSeqNum; // really should ever access this. Leader should use GetNewCommandSequenceNumber()
         public long GetNewCommandSequenceNumber() => _nextNewCommandSeqNum++;
 
         protected void SetNextNewCommandSequenceNumber(long newCommandSequenceNumber) {_nextNewCommandSeqNum = newCommandSequenceNumber;}
-
-
-        public long CurrentEpochNum {get => curEpochData.EpochNum; }
-        public EpochData curEpochData;
-        public EpochData prevEpochData; // TODO: this needs to be a collection and should be persistent
-
-
 
         protected ApianGroupSynchronizer CmdSynchronizer; // used by both source and dest peers for sync
 
@@ -116,8 +77,6 @@ namespace Apian
 
             // Add to default handlers
             GroupCoreCmdHandlers[GroupCoreMessage.CheckpointRequest] =  OnCheckpointRequestCmd;
-
-            InitializeEpochData(0, 0);
         }
 
         private void _ParseConfig( Dictionary<string,string> config)
@@ -225,7 +184,7 @@ namespace Apian
         private void _SendCheckpointRequestCmd(long curApainMs, long checkPointMs)
         {
             CheckpointRequestMsg cpMsg = new CheckpointRequestMsg(checkPointMs);
-            ApianCommand cpCmd = new ApianCommand( CurrentEpochNum, GetNewCommandSequenceNumber(), GroupId, cpMsg);
+            ApianCommand cpCmd = new ApianCommand( ApianInst.CurrentEpochNum, GetNewCommandSequenceNumber(), GroupId, cpMsg);
             Logger.Info($"{this.GetType().Name}._SendCheckpointCommand() SeqNum: {cpCmd.SequenceNum}, Timestamp: {checkPointMs} (current time: {curApainMs})");
             ApianInst.SendApianMessage(GroupId, cpCmd);
 
@@ -238,25 +197,20 @@ namespace Apian
             // the leader should end the epoch when it has serialized the state is and is about to send the checkpoint reply
         }
 
-        public void InitializeEpochData(long newEpoch, long startCmdSeqNum)
-        {
-            prevEpochData = null;
-            curEpochData = new EpochData(newEpoch,startCmdSeqNum,-1); // -1 means it hasn't ended yet
-        }
 
-        public void StartNewEpoch(long lastCmdSeqNum, long checkpointTimeStamp, string stateHash, string serializedState)
-        {
-            // Checkpoint has been done for the current epoch.
-            prevEpochData = curEpochData;
+        // public void StartNewEpoch(long lastCmdSeqNum, long checkpointTimeStamp, string stateHash, string serializedState)
+        // {
+        //     // Checkpoint has been done for the current epoch.
+        //     prevEpochData = curEpochData;
 
-            // this is where CurEpochNum gets incremented
-            curEpochData = new EpochData(prevEpochData.EpochNum+1, lastCmdSeqNum+1, checkpointTimeStamp);
+        //     // this is where CurEpochNum gets incremented
+        //     //curEpochData = new EpochData(prevEpochData.EpochNum+1, lastCmdSeqNum+1, checkpointTimeStamp);
 
-            prevEpochData.CloseEpoch(lastCmdSeqNum, checkpointTimeStamp, stateHash, serializedState);
+        //     prevEpochData.CloseEpoch(lastCmdSeqNum, checkpointTimeStamp, stateHash, serializedState);
 
 
-            // TODO: when this returns, the caller needs to dispatch any ApianGroupMsgs waiting for it (sync requests)
-        }
+        //     // TODO: when this returns, the caller needs to dispatch any ApianGroupMsgs waiting for it (sync requests)
+        // }
 
 
         //
@@ -315,7 +269,7 @@ namespace Apian
                     Logger.Warn($"OnApianRequest(): Ignoring ApianRequest({msg.PayloadMsgType}) from VALIDATOR {SID(msgSrc)}");
                 } else {
                     Logger.Debug($"OnApianRequest(): upgrading {msg.PayloadMsgType} from {SID(msgSrc)} to Command");
-                    ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
+                    ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(ApianInst.CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
                 }
             }
         }
@@ -324,7 +278,7 @@ namespace Apian
         {
             // Observations from the leader are turned into commands by the leader
             if (LocalPeerIsLeader && (msgSrc == LocalPeerAddr))
-                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
+                ApianInst.GameNet.SendApianMessage(msgChan, new ApianCommand(ApianInst.CurrentEpochNum, GetNewCommandSequenceNumber(), msg));
         }
 
         public override ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum)
@@ -566,7 +520,7 @@ namespace Apian
                 // Send out most recent state
                 long firstCmdToSend = sMsg.ExpectedCmdSeqNum;
 
-                EpochData state = prevEpochData;
+                ApianEpoch state = ApianInst.PreviousEpoch;
                 if (state != null)
                 {
                     ApianInst.SendApianMessage(msgSrc, new GroupSyncDataMsg(GroupId, state.StartTimeStamp, state.EpochNum, state.EndCmdSeqNumber, state.EndStateHash, state.SerializedStateData));
@@ -584,8 +538,7 @@ namespace Apian
         {
             GroupSyncDataMsg dMsg = (msg as GroupSyncDataMsg);
             CmdSynchronizer.ApplyCheckpointStateData( dMsg.StateEpoch, dMsg.StateSeqNum, dMsg.StateTimeStamp, dMsg.StateHash, dMsg.StateData);
-            InitializeEpochData( dMsg.StateEpoch+1, dMsg.StateSeqNum+1);
-
+            ApianInst.InitializeEpochData( dMsg.StateEpoch+1, dMsg.StateSeqNum+1, dMsg.StateTimeStamp, dMsg.StateHash );
         }
 
         protected void OnGroupSyncCompletionMsg(ApianGroupMessage msg, string msgSrc, string msgChannel)
@@ -603,16 +556,6 @@ namespace Apian
             }
         }
 
-        public override void OnLocalStateCheckpoint( long seqNum, long timeStamp, string stateHash, string serializedState)
-        {
-            Logger.Verbose($"***** {this.GetType().Name}.OnLocalStateCheckpoint() Checkpoint Seq#: {seqNum}, Hash: {stateHash}");
-
-            StartNewEpoch( seqNum, timeStamp, stateHash, serializedState);
-
-            OnNewEpoch(); // Virtual, in case manager wants to start something at the beginning of an epoch
-
-        }
-
         protected void OnGroupCheckpointReport(ApianGroupMessage msg, string msgSrc, string msgChannel)
         {
             GroupCheckpointReportMsg rMsg = msg as GroupCheckpointReportMsg;
@@ -622,14 +565,14 @@ namespace Apian
 
             string recovAddr = ApianInst.GameNet.EncodeUTF8AndEcRecover(rMsg.StateHash, rMsg.HashSignature);
 
-            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} ({role}) Epoch: {prevEpochData?.EpochNum} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+            Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() {isLocal} rpt from {SID(msgSrc)} ({role}) Epoch: {rMsg?.Epoch} Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
 
             if (recovAddr.ToUpper() != rMsg.PeerAddr.ToUpper() )
                Logger.Warn($"{this.GetType().Name}.OnGroupCheckpointReport(): invalid checkpoint signature. Not from {rMsg.PeerAddr}");
 
             if (LocalPeerIsLeader) // Only leader handles this
             {
-               Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {prevEpochData?.EpochNum}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
+               Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {rMsg?.Epoch}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
             }
 
         }

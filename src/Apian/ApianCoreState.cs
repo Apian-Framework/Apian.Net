@@ -23,7 +23,8 @@ namespace Apian
     {
         // Data to serialize
         public string SessionId { get; protected set; } // TODO: probably want a way to restore a serialized state and then change the session ID (for replay)
-        public string EpochStartHash { get; protected set; } = "0000";
+        public long EpochNum { get; protected set; }
+        public string EpochStartHash { get; protected set; } = "";
         public long CommandSequenceNumber { get; protected set; } = -1;
 
         // end data to serialize
@@ -36,11 +37,12 @@ namespace Apian
             Logger = UniLogger.GetLogger("CoreState");
         }
 
-        public void SetEpochStartHash(string prevHash)
+        public void StartEpoch(long epochNum, string startHash)
         {
-            Logger.Info($"SetPrevHash(): {prevHash}");
-            EpochStartHash = prevHash;
-            //PrevEpochHash = "123";
+            Logger.Info($"StartEpoch(): Epoch: {epochNum}, StartHash: {startHash}");
+            EpochNum = epochNum;
+            EpochStartHash = startHash;
+;
         }
 
         public void UpdateCommandSequenceNumber(long newCmdSeqNumber)
@@ -57,6 +59,7 @@ namespace Apian
             // return the "base part"
             return  JsonConvert.SerializeObject(new object[]{
                 SessionId,
+                EpochNum,
                 EpochStartHash,
                 CommandSequenceNumber
             });
@@ -66,8 +69,9 @@ namespace Apian
         {
             object[] data = JsonConvert.DeserializeObject<object[]>(jsonData);
             SessionId = (string)data[0];
-            EpochStartHash = (string)data[1];
-            CommandSequenceNumber = (long)data[2];
+            EpochNum = (long)data[1];
+            EpochStartHash = (string)data[2];
+            CommandSequenceNumber = (long)data[3];
         }
 
         // Derived class (because it's IApianCoreData) needs:

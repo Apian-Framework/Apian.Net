@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using P2pNet; // TODO: this is just for For PeerClockSyncInfo. Not sure I like the P2pNet dependency here
 using UniLog;
@@ -86,6 +87,14 @@ namespace Apian
         public  long MaxAppliedCmdSeqNum {get; private set;} // largest seqNum we have applied, inits to -1
         public  long MaxReceivedCmdSeqNum {get; private set;} // largest seqNum we have *received*, inits to -1
 
+        // Epochs
+        public List<ApianEpoch> Epochs { get; private set; } // stack might be more efficient, since we usually want the most recent one?
+        public ApianEpoch CurrentEpoch { get; private set; }
+        public ApianEpoch PreviousEpoch {get => Epochs.Count > 0 ? Epochs.Last() : null; }
+
+        public long CurrentEpochNum => CurrentEpoch != null ? CurrentEpoch.EpochNum : -1;
+
+
         protected ApianBase(IApianGameNet gn, IApianAppCore cl) {
             GameNet = gn;
             AppCore = cl;
@@ -107,7 +116,22 @@ namespace Apian
             MaxAppliedCmdSeqNum = -1; // this+1 is what we expect to apply next
             MaxReceivedCmdSeqNum = -1; //  this is the largest we'vee seen - even if we haven't applied it yet
 
+            // Calculate the CoreState's initial state hash:
+            string serializedState = AppCore.DoCheckpointCoreState( 0,  0);
+            string hash = GameNet.HashString(serializedState);
+            //hash = "GenesisHash"; // // For looking at hash mismatch issues
+            AppCore.StartEpoch(0, hash);
+
+            InitializeEpochData(0,0,0, hash);
         }
+
+        public void InitializeEpochData(long newEpoch, long startCmdSeqNum, long startTime, string startHash)
+        {
+            Epochs = new List<ApianEpoch>(); // delete history
+            CurrentEpoch = new ApianEpoch(newEpoch, startCmdSeqNum, startTime, startHash);
+
+        }
+
 
         public virtual void Update()
         {
@@ -378,15 +402,51 @@ namespace Apian
 
         public virtual void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum) // called by groupMgr
         {
+            // The big tricky bit here lies in the fact that an Epoch has a "StartStateHash" property which
+            // is, in fact, the hash of the state at the END of the previous epoch. By having this "last epoch's hash"
+            // as part of the current state, we end up with the epoch hashes being chained in much the same way that ethereum
+            // blocks form a chain that breaks if you try to mess with it after the fact.
+
+            // The tricky part is getting that StartStateHash properly populated. Since this is where the hash is calculated it
+            // seems the appropriate place to set it. The hard part is that once we are in this function there are 3 distict
+            // situations that we may be in regarding the epoch before the current one.
+
+            // 1) normal, happy path: this func was called for the previous epoch and it is now stored in the Epochs list, and
+            //    PerviousEpoch points to it. Easy. The CurrentEpoch's StartHash property was set last time this func was called,
+            //    so we don;t need to do anything in particular
+            //
+            // 2) Fencepost #1: This is the first time the func has been called, and the current Epoch is Epoch #0.
+            //    Somebody needs to have hashed the genesis state (after CoreState stor) and called CoreState.StartEpoch(0, hash)
+            //    THe core will have been in its gensis state when passed to the Apian factory.ctor, so it's done there
+            //
+            // 3) First call, but CoreState was loaded from serialized data. Don't need to call anything since epochNum and startHash
+            //    were set properly when serialzed adta was applied
+
+            long oldEpochNum = CurrentEpoch.EpochNum;
+            long newEpochNum = oldEpochNum + 1;
+
             string serializedState = AppCore.DoCheckpointCoreState( seqNum,  chkApianTime);
 
+            //ApianCoreState cs = AppCore.GetCoreState(); //  testing
+            //Logger.Warn($"++ Hashing Core State - Apian.CurrentEpoch(num,starthash): ({CurrentEpoch.EpochNum}, {CurrentEpoch.StartStateHash})");
+            //Logger.Warn($"++ Hashing Core State - Actual core state(num, starthash): ({cs.EpochNum}, {cs.EpochStartHash})" );
+
             string hash = GameNet.HashString(serializedState);
+
+            //hash = $"EndOfBlock{oldEpochNum}Hash"; // For looking at hash mismatch issues
 
             string hashSig = GameNet.EncodeUTF8AndSign(GroupMgr.LocalPeerAddr, hash);
 
             Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}, sig: {hashSig}");
 
-            GroupMgr.OnLocalStateCheckpoint(seqNum, chkApianTime, hash, serializedState); // updates the epoch
+            CurrentEpoch.CloseEpoch( seqNum, chkApianTime, hash, serializedState);
+            Epochs.Add(CurrentEpoch);
+
+            CurrentEpoch = new ApianEpoch(newEpochNum, seqNum+1,  chkApianTime, hash);
+
+            AppCore.StartEpoch(CurrentEpoch.EpochNum, hash); // set epochnum and starthash in CoreState
+
+            GroupMgr.OnNewEpoch();
 
             // This doesn;t work
             //AppCore.SetEpochStartHash(hash); // sets the CoreState's prevStateHash property to "chain" the epochs
@@ -394,7 +454,7 @@ namespace Apian
             if ( GroupMgr.LocalMember.CurStatus == ApianGroupMember.Status.Active)
             {
                 Logger.Verbose($"DoLocalAppCoreCheckpoint(): Sending GroupCheckpointReportMsg");
-                GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.LocalPeerAddr, GroupMgr.GroupId, seqNum, chkApianTime, hash, hashSig);
+                GroupCheckpointReportMsg rpt = new GroupCheckpointReportMsg(GroupMgr.LocalPeerAddr, GroupMgr.GroupId, oldEpochNum, seqNum, chkApianTime, hash, hashSig);
                 GameNet.SendApianMessage(GroupMgr.GroupId, rpt);
             }
 

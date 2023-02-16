@@ -115,8 +115,8 @@ namespace Apian
         void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
-        void OnLocalStateCheckpoint(long seqNum, long timeStamp, string stateHash, string serializedState);
         void OnMemberLeftGroupChannel(string peerAddr); // Called by local P2pNet when the member leaves ot times out.
+        void OnNewEpoch();
         ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         ApianMessage DeserializeCustomApianMessage(string apianMsgTYpe,  string msgJSON); // pass the generically-deserialized msg
         ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg);
@@ -216,7 +216,7 @@ namespace Apian
 
         // Related to Epoch/Checkpoint/StateHash
 
-        protected virtual void OnNewEpoch() {}
+        public virtual void OnNewEpoch() {}
 
         // Pause/Resume App Core
 
@@ -281,7 +281,6 @@ namespace Apian
         public abstract void OnApianGroupMessage(ApianGroupMessage msg, string msgSrc, string msgChan);
         public abstract void OnApianRequest(ApianRequest msg, string msgSrc, string msgChan);
         public abstract void OnApianObservation(ApianObservation msg, string msgSrc, string msgChan);
-        public abstract void OnLocalStateCheckpoint(long cmdSeqNum, long timeStamp, string stateHash, string serializedState);
         public abstract ApianCommandStatus EvaluateCommand(ApianCommand msg, string msgSrc, long maxAppliedCmdNum);
         public virtual ApianMessage DeserializeCustomApianMessage(string msgTYpe, string msgJSON) => null; // by default don't deserialize any messages
         public virtual ApianCoreMessage DeserializeGroupMessage(ApianWrappedMessage aMsg)

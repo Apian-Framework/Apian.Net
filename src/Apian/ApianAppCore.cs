@@ -18,7 +18,9 @@ namespace Apian
         string DoCheckpointCoreState(long seqNum, long checkPointTime);
         void ApplyCheckpointStateData( long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
-        void SetEpochStartHash( string startHash);
+        ApianCoreState GetCoreState(); // this is mostly for testing
+
+        void StartEpoch( long epochNum, string startHash);
 
         ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg);
 
@@ -51,12 +53,15 @@ namespace Apian
             NewCoreStateEvt?.Invoke(this, new NewCoreStateEventArgs(newState));
         }
 
+
         public abstract ApianCoreMessage DeserializeCoreMessage(ApianWrappedMessage aMsg);
         public abstract void OnApianCommand(long seqNum, ApianCoreMessage coreMsg);
 
-        public abstract string DoCheckpointCoreState(long seqNum, long checkPointTime);
+        public abstract string DoCheckpointCoreState(long seqNum, long checkPointTime );
 
-        public abstract void SetEpochStartHash(string prevHash);  // TODO: There should be a "CoreState" member/property here
+        public abstract ApianCoreState GetCoreState();
+
+        public abstract void StartEpoch( long epochNum, string startHash); // TODO: There should be a "CoreState" member/property here
 
         public abstract void ApplyCheckpointStateData(long seqNum,  long timeStamp,  string stateHash,  string serializedData);
 
