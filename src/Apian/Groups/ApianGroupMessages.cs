@@ -129,13 +129,15 @@ namespace Apian
     public class GroupCheckpointReportMsg : ApianGroupMessage
     {
         public string PeerAddr;
+        public long Epoch; // checkpoint is hash at END of epoch
         public long SeqNum;
         public long TimeStamp; // ApianClock ms
         public string StateHash; // this might want to be more complicated.
         public string HashSignature; // state hash signed by in-game acct
-        public GroupCheckpointReportMsg(string addr, string gid, long seqNum, long checkpointTime, string stateHash, string sig) : base(gid, GroupCheckpointReport )
+        public GroupCheckpointReportMsg(string addr, string gid, long epoch, long seqNum, long checkpointTime, string stateHash, string sig) : base(gid, GroupCheckpointReport )
         {
             PeerAddr = addr;
+            Epoch = epoch;
             SeqNum = seqNum;
             TimeStamp = checkpointTime;
             StateHash = stateHash;

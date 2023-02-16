@@ -81,9 +81,12 @@ namespace ApianTests
         public void ApianBase_ConstructorWorks()
         {
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
+            mockGameNet.Setup(p => p.HashString(It.IsAny<string>())).Returns(It.IsAny<string>() );
 
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
+            mockAppCore.Setup(p => p.DoCheckpointCoreState(It.IsAny<long>(), It.IsAny<long>())).Returns(It.IsAny<string>() );
+            mockAppCore.Setup(p => p.StartEpoch(It.IsAny<long>(),It.IsAny<string>()));
 
             TestApianBase ap =  new TestApianBase(mockGameNet.Object, mockAppCore.Object);
             Assert.That(ap.GameNet, Is.EqualTo(mockGameNet.Object));
@@ -122,7 +125,7 @@ namespace ApianTests
 
             mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(p => p.LocalPeerAddr()).Returns(localPeerAddr);
-
+            mockGameNet.Setup(p => p.HashString(It.IsAny<string>())).Returns(It.IsAny<string>() );
             mockGameNet.Setup(p => p.OnPeerJoinedGroup(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>() ));
 
             // If peerAddr is "noSync" it returns null
@@ -130,6 +133,8 @@ namespace ApianTests
 
             mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
+            mockAppCore.Setup(p => p.DoCheckpointCoreState(It.IsAny<long>(), It.IsAny<long>())).Returns(It.IsAny<string>() );
+            mockAppCore.Setup(p => p.StartEpoch(It.IsAny<long>(),It.IsAny<string>()));
 
             Mock<IApianClock> mClock = new Mock<IApianClock>(MockBehavior.Strict);
             mClock.Setup(cl => cl.IsIdle).Returns(false);
@@ -164,11 +169,14 @@ namespace ApianTests
         {
             Mock<IApianGameNet> mockGameNet = new Mock<IApianGameNet>(MockBehavior.Strict);
             mockGameNet.Setup(gn => gn.SendApianMessage(It.IsAny<string>(),It.IsAny<ApianMessage>()));
+            mockGameNet.Setup(p => p.HashString(It.IsAny<string>())).Returns(It.IsAny<string>() );
 
             Mock<IApianAppCore> mockAppCore = new Mock<IApianAppCore>(MockBehavior.Strict);
             mockAppCore.Setup(p => p.SetApianReference(It.IsAny<ApianBase>()));
             mockAppCore.Setup(p => p.ValidateCoreMessages(It.IsAny<ApianCoreMessage>(), It.IsAny<ApianCoreMessage>()))
                 .Returns( (ApianCoreMessage m1, ApianCoreMessage m2) => MockAppCoreValidator.ValidateCoreMessages(m1,m2));
+            mockAppCore.Setup(p => p.DoCheckpointCoreState(It.IsAny<long>(), It.IsAny<long>())).Returns(It.IsAny<string>() );
+            mockAppCore.Setup(p => p.StartEpoch(It.IsAny<long>(),It.IsAny<string>()));
 
             TestApianBase apian = new TestApianBase(mockGameNet.Object, mockAppCore.Object);
 

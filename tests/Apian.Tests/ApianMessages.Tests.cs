@@ -179,7 +179,8 @@ namespace ApianTests
 
             public string DoCheckpointCoreState(long seqNum, long timeStamp)
             {
-                throw new NotImplementedException();
+                return null;
+                //throw new NotImplementedException();
             }
 
             public void SetApianReference(ApianBase apian)
@@ -192,10 +193,8 @@ namespace ApianTests
                 throw new NotImplementedException();
             }
 
-            public void SetEpochStartHash(string hash)
-            {
-                throw new NotImplementedException();
-            }
+            public ApianCoreState GetCoreState() =>  throw new NotImplementedException();
+            public void StartEpoch(long epochNum, string epochStartHash) =>  throw new NotImplementedException();
 
         }
 

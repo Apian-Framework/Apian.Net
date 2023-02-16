@@ -48,7 +48,7 @@ namespace Apian
         {
             Logger.Info($".SetNextLeader() - setting NEXT group leader to {(nextLeaderAddr!=null?SID(nextLeaderAddr):"null")} at epoch {nextLeaderEpoch}");
             if (nextLeaderAddr == LocalPeerAddr)
-                Logger.Info($"SetNextLeader() ===== Local Peer is now NEXT LEADER (in {nextLeaderEpoch - CurrentEpochNum} epochs)");
+                Logger.Info($"SetNextLeader() ===== Local Peer is now NEXT LEADER (in {nextLeaderEpoch - ApianInst.CurrentEpochNum} epochs)");
             NextLeaderAddr = nextLeaderAddr;
             NextLeaderFirstEpoch = nextLeaderEpoch;
         }
@@ -117,9 +117,9 @@ namespace Apian
         }
 
 
-       protected override void OnNewEpoch()
+       public override void OnNewEpoch()
        {
-            if (CurrentEpochNum == NextLeaderFirstEpoch)
+            if (ApianInst.CurrentEpochNum == NextLeaderFirstEpoch)
             {
                 if (NextLeaderAddr != null)
                 {
@@ -131,11 +131,11 @@ namespace Apian
                 if (LocalPeerAddr == NextLeaderAddr)
                 {
                     Logger.Info($"OnNewEpoch() ===== Local Peer is now LEADER!!");
-                    SetNextNewCommandSequenceNumber(curEpochData.StartCmdSeqNumber); // <<=== This is IMPORTANT and kinda obstuse.
+                    SetNextNewCommandSequenceNumber(ApianInst.CurrentEpoch.StartCmdSeqNumber); // <<=== This is IMPORTANT and kinda obstuse.
 
                     string nextLeader = SelectNextLeader(new List<string>(){LocalPeerAddr});
                     if (nextLeader != null)
-                        SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                        SendSetLeader(GroupId, nextLeader, ApianInst.CurrentEpochNum + LeaderTermLength );
                 }
             }
        }
@@ -194,7 +194,7 @@ namespace Apian
                 // If it's an active peer and NextLeader is null
                 if (mbr != null && mbr.PeerAddr != LocalPeerAddr && mbr.IsActive && NextLeaderAddr == null )
                 {
-                    long nextLeaderEpoch = CurrentEpochNum + LeaderTermLength;
+                    long nextLeaderEpoch = ApianInst.CurrentEpochNum + LeaderTermLength;
                     // it's not us - make them next leader
                     Logger.Info($"{this.GetType().Name}.OnGroupMemberStatus(). No current NextLeader, setting to {SID(mbr.PeerAddr)} at epoch {nextLeaderEpoch}");
                     SendSetLeader(GroupId, mbr.PeerAddr, nextLeaderEpoch);
@@ -224,7 +224,7 @@ namespace Apian
                             Logger.Warn($"{this.GetType().Name}.OnMemberLeftGroupChannel(): Failed to select a NextLeader, setting local peer to it too.");
                             nextLeader = LocalPeerAddr;
                         }
-                        SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                        SendSetLeader(GroupId, nextLeader, ApianInst.CurrentEpochNum + LeaderTermLength );
                     }
                 }
                 else
@@ -242,7 +242,7 @@ namespace Apian
                          Logger.Warn($"{this.GetType().Name}.OnMemberLeftGroupChannel(): Failed to select a NextLeader, setting local peer to it too.");
                          nextLeader = LocalPeerAddr;
                     }
-                    SendSetLeader(GroupId, nextLeader, CurrentEpochNum + LeaderTermLength );
+                    SendSetLeader(GroupId, nextLeader, ApianInst.CurrentEpochNum + LeaderTermLength );
                 }
             }
 
@@ -254,9 +254,9 @@ namespace Apian
         {
             SetLeaderMsg slMsg = msg as SetLeaderMsg;
 
-            Logger.Info($"{this.GetType().Name}.OnSetLeaderCmd() CurEpoch: {CurrentEpochNum}  New Leader: {SID(slMsg.newLeaderAddr)} at Epoch: {slMsg.newLeaderEpoch}");
+            Logger.Info($"{this.GetType().Name}.OnSetLeaderCmd() CurEpoch: {ApianInst.CurrentEpochNum}  New Leader: {SID(slMsg.newLeaderAddr)} at Epoch: {slMsg.newLeaderEpoch}");
 
-            if ( slMsg.newLeaderEpoch <= CurrentEpochNum)
+            if ( slMsg.newLeaderEpoch <= ApianInst.CurrentEpochNum)
             {
                 SetLeader(slMsg.newLeaderAddr);
             } else {
