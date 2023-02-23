@@ -477,22 +477,22 @@ namespace Apian
             apianCrypto = EthForApian.Create();
         }
 
-        public string CryptoAccountAddress() => apianCrypto?.AccountAddress;
+        public string CryptoAccountAddress() => apianCrypto?.CurrentAccountAddress;
 
         public string SetupNewCryptoAccount(string password = null)
         {
             // returns encrypted json keystore if password is not null
 
             // create a new acct
-            string addr =  apianCrypto.CreateAccount();
+            string addr =  apianCrypto.SetNewAccount();
             logger.Info($"SetupNewCryptoAccount() - Created new {(string.IsNullOrEmpty(password)?" temp ":"")} Eth acct: {addr}");
 
-            return string.IsNullOrEmpty(password) ? null : apianCrypto.GetJsonForAccount(password);
+            return string.IsNullOrEmpty(password) ? null : apianCrypto.JsonForCurrentAccount(password);
         }
 
         public string RestoreCryptoAccount(string keystoreJson, string password)
         {
-            string addr = apianCrypto.CreateAccountFromJson(password, keystoreJson);
+            string addr = apianCrypto.SetAccountFromJson(password, keystoreJson);
             logger.Info( $"_SetupCrypto() - Restored Eth acct: {addr} from settings");
             return addr;
         }
