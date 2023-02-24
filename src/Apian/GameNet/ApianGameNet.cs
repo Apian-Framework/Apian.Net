@@ -61,7 +61,7 @@ namespace Apian
          void OnNewGroupLeader(string groupId, string newLeaderAddr, ApianGroupMember newLeader);
 
         // Crypto stuff API
-        void CreateCryptoInstance(); // can be problematic in Unity (needs to happen on main thread)
+        //void CreateCryptoInstance(); // can be problematic in Unity (needs to happen on main thread)
         void ConnectToBlockchain(string chainInfoJson);
         void DisconnectFromBlockchain();
         void GetChainId();
@@ -112,6 +112,8 @@ namespace Apian
         {
             ApianInstances = new Dictionary<string, ApianBase>();
             Peers = new Dictionary<string,ApianNetworkPeer>();
+
+            apianCrypto = EthForApian.Create();
 
             _MsgDispatchers = new  Dictionary<string, Action<string, string, long, GameNetClientMessage>>()
             {
@@ -473,10 +475,10 @@ namespace Apian
         // Crypto/blockchain stuff
         //
 
-        public void CreateCryptoInstance()
-        {
-            apianCrypto = EthForApian.Create();
-        }
+        // public void CreateCryptoInstance()
+        // {
+        //     apianCrypto = EthForApian.Create();
+        // }
 
         public string CryptoAccountAddress() => apianCrypto?.CurrentAccountAddress;
 
