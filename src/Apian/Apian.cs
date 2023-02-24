@@ -442,6 +442,11 @@ namespace Apian
             CurrentEpoch.CloseEpoch( seqNum, chkApianTime, hash, serializedState);
             Epochs.Add(CurrentEpoch);
 
+            const int MaxStoredEpochs = 10;
+            // keep in-mem list from growing forever
+            while ( Epochs.Count > MaxStoredEpochs)
+                Epochs.RemoveAt(0);
+
             CurrentEpoch = new ApianEpoch(newEpochNum, seqNum+1,  chkApianTime, hash);
 
             AppCore.StartEpoch(CurrentEpoch.EpochNum, hash); // set epochnum and starthash in CoreState
