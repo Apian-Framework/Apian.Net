@@ -48,6 +48,7 @@ namespace Apian
         ApianGroupStatus GetGroupStatus(string groupId);
 
         // Crypto/blockchain
+        (string,string) NewCryptoAccountJSON(string password);
         string SetupNewCryptoAccount(string password = null);
         string RestoreCryptoAccount(string keystoreJson, string password);
         string CryptoAccountAddress();
@@ -478,6 +479,14 @@ namespace Apian
         }
 
         public string CryptoAccountAddress() => apianCrypto?.CurrentAccountAddress;
+
+        public (string,string) NewCryptoAccountJSON(string password)
+        {
+            string addr, json;
+            ( addr,  json) = apianCrypto.JsonForNewAccount(password);
+            logger.Info($"NewCryptoAccountJSON() - Created new Eth acct: {addr}");
+            return (addr, json);
+        }
 
         public string SetupNewCryptoAccount(string password = null)
         {
