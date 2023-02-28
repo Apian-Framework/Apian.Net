@@ -447,6 +447,13 @@ namespace Apian
             while ( Epochs.Count > MaxStoredEpochs)
                 Epochs.RemoveAt(0);
 
+            // Clean out any stored commands older than oldest epoch
+            if (Epochs.Count > 0)
+            {
+                long oldestSeqNum = Epochs[0].StartCmdSeqNumber; // don;t keep anything < this
+                AppliedCommands = AppliedCommands.Where(kvp => kvp.Key < oldestSeqNum).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            }
+
             CurrentEpoch = new ApianEpoch(newEpochNum, seqNum+1,  chkApianTime, hash);
 
             AppCore.StartEpoch(CurrentEpoch.EpochNum, hash); // set epochnum and starthash in CoreState
