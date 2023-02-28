@@ -173,7 +173,7 @@ namespace Apian
         {
             try {
                 ApMsgHandlers[msg.MsgType](fromAddr, toAddr, msg, lagMs);
-            } catch (NullReferenceException ex) {
+            } catch (NullReferenceException ) {
                 Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
             }
         }
