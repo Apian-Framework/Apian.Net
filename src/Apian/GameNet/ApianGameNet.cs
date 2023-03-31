@@ -56,7 +56,7 @@ namespace Apian
         string EncodeUTF8AndSign(string addr, string msg);
         string EncodeUTF8AndEcRecover(string msg, string sig);
         // Called by Apian
-         void OnPeerJoinedGroup(string peerAddr, string groupId, bool joinSuccess,  bool isValidator, string failureReason = null);
+         void OnPeerJoinedGroup(string peerAddr, string groupId, bool isValidator,  bool joinSuccess, string failureReason = null);
          //void OnPeerLeftGroup(string peerAddr, string groupId);  // TODO: DO we need this? Currently the MemberStatus switch to "Gone" is sent...
          void OnNewGroupLeader(string groupId, string newLeaderAddr, ApianGroupMember newLeader);
 
