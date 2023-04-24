@@ -441,6 +441,8 @@ namespace Apian
             CurrentEpoch.CloseEpoch( seqNum, chkApianTime, hash, serializedState);
             Epochs.Add(CurrentEpoch);
 
+            // TODO: Somewhere in here is where epoch reports go to the chain
+
             const int MaxStoredEpochs = 10;
             // keep in-mem list from growing forever
             while ( Epochs.Count > MaxStoredEpochs)
