@@ -20,7 +20,7 @@ namespace Apian
 
         public static  Dictionary<string, string> DefaultConfig = new Dictionary<string, string>()
         {
-            {"CheckpointMs", "5000"},  // request a checkpoint this often
+            {"CheckpointMs", "7500"},  // request a checkpoint this often
             {"CheckpointOffsetMs", "50"},  // Use this to get the checkpoint times NOT to be on roudning boundaries
             {"SyncCompletionWaitMs", "2000"}, // wait this long for a sync completion request reply
             {"StashedCmdsToApplyPerUpdate", "10"}, // CommandSynchronizer -  applying locally received commands that we weren't ready for yet
