@@ -171,11 +171,11 @@ namespace Apian
 
         public virtual void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
         {
-            try {
-                ApMsgHandlers[msg.MsgType](fromAddr, toAddr, msg, lagMs);
-            } catch (NullReferenceException ) {
-                Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
-            }
+            Action<string, string, ApianMessage, long> msgHandler = ApMsgHandlers.GetValueOrDefault(msg.MsgType, null);
+            if (msgHandler!= null)
+                msgHandler(fromAddr, toAddr, msg, lagMs);
+            else
+                 Logger.Error($"OnApianMessage(): No message handler for: '{msg.MsgType}'");
         }
 
 
