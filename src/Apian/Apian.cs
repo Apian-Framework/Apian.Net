@@ -171,7 +171,8 @@ namespace Apian
 
         public virtual void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs)
         {
-            Action<string, string, ApianMessage, long> msgHandler = ApMsgHandlers.GetValueOrDefault(msg.MsgType, null);
+            Action<string, string, ApianMessage, long> msgHandler;
+            ApMsgHandlers.TryGetValue(msg.MsgType, out msgHandler);
             if (msgHandler!= null)
                 msgHandler(fromAddr, toAddr, msg, lagMs);
             else
