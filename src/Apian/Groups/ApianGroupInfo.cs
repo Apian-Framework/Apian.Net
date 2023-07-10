@@ -48,6 +48,10 @@ namespace Apian
     [JsonObject(MemberSerialization.OptIn)]
     public class ApianGroupInfo
     {
+        public const string AnchorPostsNone = "None";
+        public const string AnchorPostsCreator = "CreatorPosts";
+        public const string AnchorPostsLeader = "LeaderPosts";
+
         [JsonProperty]
         public string GroupType;
         [JsonProperty]
@@ -57,6 +61,8 @@ namespace Apian
         [JsonProperty]
         public string GroupName ; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
         [JsonProperty]
+        public string AnchorPostAlg; // How do checkpoint state anchors get posted to the chain?
+        [JsonProperty]
         public GroupMemberLimits MemberLimits;
         [JsonProperty]
         protected Dictionary<string, string> OtherProperties; // subclasses will have accesors for them
@@ -65,13 +71,14 @@ namespace Apian
 
         public string GroupFriendlyId { get => $"{GroupName}-{GroupId}"; } // todo: maybe truncate ID?
 
-        public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, GroupMemberLimits memberLimits)
+        public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, string anchorPostAlg, GroupMemberLimits memberLimits)
         {
             GroupType = groupType;
             GroupChannelInfo = groupChannel;
             GroupCreatorAddr = creatorAddr;
             GroupName = groupName;
             MemberLimits = memberLimits;
+            AnchorPostAlg = anchorPostAlg ?? AnchorPostsNone;
             OtherProperties = new Dictionary<string, string>();
         }
 
