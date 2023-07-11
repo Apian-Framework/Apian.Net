@@ -485,7 +485,7 @@ namespace Apian
         public (string,string) NewCryptoAccountJSON(string password)
         {
             string addr, json;
-            ( addr,  json) = apianCrypto.JsonForNewAccount(password);
+            ( addr,  json) = apianCrypto.KeystoreForNewAccount(password);
             logger.Info($"NewCryptoAccountJSON() - Created new Eth acct: {addr}");
             return (addr, json);
         }
@@ -498,12 +498,12 @@ namespace Apian
             string addr =  apianCrypto.SetNewAccount();
             logger.Info($"SetupNewCryptoAccount() - Created new {(string.IsNullOrEmpty(password)?" temp ":"")} Eth acct: {addr}");
 
-            return string.IsNullOrEmpty(password) ? null : apianCrypto.JsonForCurrentAccount(password);
+            return string.IsNullOrEmpty(password) ? null : apianCrypto.KeystoreForCurrentAccount(password);
         }
 
         public string RestoreCryptoAccount(string keystoreJson, string password)
         {
-            string addr = apianCrypto.SetAccountFromJson(password, keystoreJson);
+            string addr = apianCrypto.SetAccountFromKeystore(password, keystoreJson);
             logger.Info( $"_SetupCrypto() - Restored Eth acct: {addr} from settings");
             return addr;
         }
