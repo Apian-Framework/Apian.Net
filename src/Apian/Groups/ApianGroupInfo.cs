@@ -67,6 +67,8 @@ namespace Apian
         [JsonProperty]
         protected Dictionary<string, string> OtherProperties; // subclasses will have accesors for them
 
+        public static readonly IList<string> AnchorPostAlgorithms = new List<string>(){AnchorPostsNone, AnchorPostsCreator, AnchorPostsLeader};
+
         public string GroupId { get => GroupChannelInfo?.id;} // channel id IS the group session id
 
         public string GroupFriendlyId { get => $"{GroupName}-{GroupId}"; } // todo: maybe truncate ID?
