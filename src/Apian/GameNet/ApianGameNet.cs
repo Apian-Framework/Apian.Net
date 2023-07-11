@@ -48,9 +48,9 @@ namespace Apian
         ApianGroupStatus GetGroupStatus(string groupId);
 
         // Crypto/blockchain
-        (string,string) NewCryptoAccountJSON(string password);
+        (string,string) NewCryptoAccountKeystore(string password);
         string SetupNewCryptoAccount(string password = null);
-        string RestoreCryptoAccount(string keystoreJson, string password);
+        string RestoreCryptoAccount(PersistentAccount pAcct, string password);
         string CryptoAccountAddress();
         string HashString(string msg);
         string EncodeUTF8AndSign(string addr, string msg);
@@ -482,28 +482,35 @@ namespace Apian
 
         public string CryptoAccountAddress() => apianCrypto?.CurrentAccountAddress;
 
-        public (string,string) NewCryptoAccountJSON(string password)
+        public (string,string) NewCryptoAccountKeystore(string password)
         {
             string addr, json;
             ( addr,  json) = apianCrypto.KeystoreForNewAccount(password);
-            logger.Info($"NewCryptoAccountJSON() - Created new Eth acct: {addr}");
+            logger.Info($"NewCryptoAccountKeystore() - Created new Eth keystore: {addr}");
             return (addr, json);
         }
 
         public string SetupNewCryptoAccount(string password = null)
         {
-            // returns encrypted json keystore if password is not null
+            // returns encrypted json keystore if password is not null.
+            // If password is null it still sets up a new account, but doesn;t return the persistence data.
+            // It creates a temporary account, in other words.
 
-            // create a new acct
-            string addr =  apianCrypto.SetNewAccount();
+                string addr =  apianCrypto.SetNewAccount();
             logger.Info($"SetupNewCryptoAccount() - Created new {(string.IsNullOrEmpty(password)?" temp ":"")} Eth acct: {addr}");
 
             return string.IsNullOrEmpty(password) ? null : apianCrypto.KeystoreForCurrentAccount(password);
         }
 
-        public string RestoreCryptoAccount(string keystoreJson, string password)
+        public string RestoreCryptoAccount(PersistentAccount pAcct, string password)
         {
-            string addr = apianCrypto.SetAccountFromKeystore(password, keystoreJson);
+            string addr = null;
+            if (pAcct.Type == PersistentAccount.AvailTypes.V3Keystore)
+            {
+                addr = apianCrypto.SetAccountFromKeystore(password, pAcct.Data);
+            } else if (pAcct.Type == PersistentAccount.AvailTypes.ClearPrivKey) {
+                addr = apianCrypto.SetAccountFromKey(pAcct.Data);
+            }
             logger.Info( $"_SetupCrypto() - Restored Eth acct: {addr} from settings");
             return addr;
         }
