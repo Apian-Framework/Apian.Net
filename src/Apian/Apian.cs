@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using P2pNet; // TODO: this is just for For PeerClockSyncInfo. Not sure I like the P2pNet dependency here
 using UniLog;
 using static UniLog.UniLogger; // for SID()
+using ApianCrypto;
+
+#if !SINGLE_THREADED
+using System.Threading.Tasks;
+#endif
 
 namespace Apian
 {
@@ -28,6 +33,13 @@ namespace Apian
         void OnPeerReturned(string groupChannelId, string peerAddr);
         void OnPeerClockSync(string remotePeerAddr, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs);
+
+        void  RegisterNewSession();
+
+#if!SINGLE_THREADED
+        Task RegisterNewSessionAsync(); // with chain, typically
+#endif
+
     }
 
     public interface IApianAppCoreServices
@@ -398,10 +410,70 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson, bool asValidator) => GroupMgr.JoinGroup(localMemberJson, asValidator);
 
+        public virtual void RegisterNewSession()
+        {
+            // TODO: This and the async version below are basically copypasta in order to be able to implment
+            // something and then, wih a better idea of the implications, go back and design a proper flow.
+
+            Logger.Info($"ApianBase.RegisterSession(): Generating Genesis hash and signature");
+            string serializedState = AppCore.DoCheckpointCoreState( 0, 0);
+            string hash = GameNet.HashString(serializedState);
+
+            // TODO: AnchorSessionInnfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
+            AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
+
+            // calling this eventually results in a callback with the transaction hash
+            GameNet.RegisterSession( GroupInfo.SessionId, asi);
+        }
+
+#if !SINGLE_THREADED
+        public async virtual Task RegisterNewSessionAsync()
+        {
+            // NOTE: This is a generic Apian version. Int is expect to be overridden in a game-specific (and maybe
+            // gameAndAgreement-specific) subclass.
+
+            // This is only called if we are creating the session, so we need to be the one who registers it.
+            // Who reports epochs depends on the agreement mechanism and the anchor reporting strategy.
+
+            // To register the session we need:
+
+            //  void AddSessionAnchorService( string sessionId, string contractAddr);
+            //   Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo, ulong epochNum, ulong apianTime, ulong cmdSeqNumber, string stateHash);
+
+            // Compute the current (genesis) CoreStateHash:
+
+            // seqnum is not used and time is used to filter out any timed objects that may be expired at "now"
+            // TODO: maybe consider changing BamCoreState.SerialArgs()?
+
+            // Use 0 for time here? Or read ApianClock? Is it even running?
+            // TODO: I think 0 is correct, but it may be game-sepcific?
+
+            Logger.Info($"ApianBase.RegisterSessionAsync(): Generating Genesis hash and signature");
+            string serializedState = AppCore.DoCheckpointCoreState( 0, 0);
+            string hash = GameNet.HashString(serializedState);
+
+            // TODO: AnchorSessionInfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
+            AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
+
+            string txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+            Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
+            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash);
+        }
+
+#endif
+
         // checkpoints
 
         public virtual void DoLocalAppCoreCheckpoint(long chkApianTime, long seqNum) // called by groupMgr
         {
+            // TODO: Tease out the actual computation of the current AppCore state hash from all of the current
+            // current state management stuff that goes along with sevicing a checkpoint request, and the messaging
+            // and all of that crap. Need a simple stateless function that fetches the state and computes and returns the hash.
+            // ...or maybe not. It only really requires a couple of calls:
+            // AppCore.DoCheckpointCoreState(), GameNet.HashString(), and probably GameNet.EncodeUTF8AndSign()
+            // DoLocalAppCoreCheckpoint() makes use of intermediate results that another func might not.
+
+
             // The big tricky bit here lies in the fact that an Epoch has a "StartStateHash" property which
             // is, in fact, the hash of the state at the END of the previous epoch. By having this "last epoch's hash"
             // as part of the current state, we end up with the epoch hashes being chained in much the same way that ethereum
@@ -417,7 +489,7 @@ namespace Apian
             //
             // 2) Fencepost #1: This is the first time the func has been called, and the current Epoch is Epoch #0.
             //    Somebody needs to have hashed the genesis state (after CoreState stor) and called CoreState.StartEpoch(0, hash)
-            //    THe core will have been in its gensis state when passed to the Apian factory.ctor, so it's done there
+            //    The core will have been in its genesis state when passed to the Apian factory.ctor, so it's done there
             //
             // 3) First call, but CoreState was loaded from serialized data. Don't need to call anything since epochNum and startHash
             //    were set properly when serialzed adta was applied

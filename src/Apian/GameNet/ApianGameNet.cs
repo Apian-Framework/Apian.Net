@@ -35,6 +35,7 @@ namespace Apian
         void OnChainId(int chainId);
         void OnChainBlockNumber(int blockNumber);
         void OnChainAcctBalance(string addr, int balance);
+        void OnSessionRegistered(string sessId, string txHash);
     }
 
 
@@ -48,6 +49,7 @@ namespace Apian
         ApianGroupStatus GetGroupStatus(string groupId);
 
         // Crypto/blockchain
+        // TODO: consider creaking up this interface
         (string,string) NewCryptoAccountKeystore(string password);
         string SetupNewCryptoAccount(string password = null);
         string RestoreCryptoAccount(PersistentAccount pAcct, string password);
@@ -68,12 +70,16 @@ namespace Apian
         void GetChainBlockNumber();
         void GetChainAccountBalance(string acctAddr);
 
+        void RegisterSession(string sessionId, AnchorSessionInfo sessInfo);
+
 #if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
         //Task ConnectToBlockchainAsync(string chainInfoJson);
         Task<int> GetChainIdAsync();
         Task<int> GetChainBlockNumberAsync();
         Task<int> GetChainAccountBalanceAsync(string acctAddr);
+
+        Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo);
 
 #endif
 
@@ -191,24 +197,57 @@ namespace Apian
             SendApianMessage( CurrentNetworkId(),  new GroupsRequestMsg());
         }
 
+        //
         // Joining a group (or creating and joining one)
         //
         // Eventual result is hopefully a call to caller's:
-        //    OnPeerJoinedGroup() with result info including failure results)
+        //    OnPeerJoinedGroup(group, localPeer)  with result info including failure results
+        // or
+        //    OnApianGroupMemberStatus(group, localPeer, StatusActive)
+        //
+        // The JoinExistingGroupAsync() and CreateAndJoinGroupAsync() both wait for the latter,
+        // but non-async application code can choose how to handle it.
+        //
+        // TODO: Current beam code is somewhat inconsistent in that the single-threaded version waits for BeamApplication.OnPeerJoinedGroup()
+        // Maybe ought to change this?
 
         public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
-            // need to set the groupMgr's "groupInfo" and open/join the p2pNet group channel
+            // see comment above on how this func is resolved.
+
+            // Sets the groupMgr's "groupInfo" and open/join the p2pNet group channel
             apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
+
+            if (groupInfo.AnchorAddr != null)
+                apianCrypto.AddSessionAnchorService( groupInfo.SessionId,  groupInfo.AnchorAddr);
+
             apian.JoinGroup(localGroupData, joinAsValidator); // results in
         }
         public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
+            // see comment above on how this func is resolved.
+            DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+
+            try {
+                if (groupInfo.AnchorAddr != null)
+                    apian.RegisterNewSession();
+            } catch (Exception e) {
+                logger.Error(e.Message + " " + e.StackTrace);
+            }
+        }
+
+        public void DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+        {
+
             apian.SetupNewGroup(groupInfo); // create the group
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
+
+            if (groupInfo.AnchorAddr != null)
+                apianCrypto.AddSessionAnchorService( groupInfo.SessionId,  groupInfo.AnchorAddr);
+
             apian.JoinGroup(localGroupData, joinAsValidator) ; //
 
             GroupAnnounceMsg amsg = new GroupAnnounceMsg(groupInfo, apian.CurrentGroupStatus());
@@ -252,7 +291,15 @@ namespace Apian
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
-            CreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+            DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+
+            try {
+                if (groupInfo.AnchorAddr != null)
+                    await apian.RegisterNewSessionAsync();
+            } catch (Exception e) {
+                logger.Error(e.Message + " " + e.StackTrace);
+            }
+
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
             return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
                 t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
@@ -567,6 +614,15 @@ namespace Apian
         public void GetChainBlockNumber() => apianCrypto.GetBlockNumber();
         public void GetChainAccountBalance(string acctAddr) => apianCrypto.GetBalance(acctAddr);
 
+        public void  RegisterSession(string sessionId, AnchorSessionInfo sessInfo) =>  apianCrypto.RegisterSession(sessionId, sessInfo);
+
+#if !SINGLE_THREADED
+
+        public async Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo)
+            => await apianCrypto.RegisterSessionAsync(sessionId, sessInfo);
+#endif
+
+
         // IApianCryptoClient API
         public void OnChainId(int chainId)
         {
@@ -582,6 +638,12 @@ namespace Apian
         {
             logger.Info($"OnBalance() - Account: {addr}, Balance: {balance}");
             (client as IApianGameNetClient).OnChainAcctBalance(addr, balance);
+        }
+
+        public void OnSessionRegistered(string sessionId, string txHash)
+        {
+            logger.Info($"OnSessionRegistered() - session: {sessionId}, txHash: {txHash}");
+            (client as IApianGameNetClient).OnSessionRegistered(sessionId, txHash);
         }
     }
 }

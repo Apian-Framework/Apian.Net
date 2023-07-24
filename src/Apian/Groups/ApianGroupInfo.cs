@@ -48,10 +48,14 @@ namespace Apian
     [JsonObject(MemberSerialization.OptIn)]
     public class ApianGroupInfo
     {
+        public const string GROUPINFO_VERSION = "1.0.1";
+
         public const string AnchorPostsNone = "None";
         public const string AnchorPostsCreator = "CreatorPosts";
         public const string AnchorPostsLeader = "LeaderPosts";
 
+        [JsonProperty]
+        public string Version = GROUPINFO_VERSION;
         [JsonProperty]
         public string GroupType;
         [JsonProperty]
@@ -61,6 +65,8 @@ namespace Apian
         [JsonProperty]
         public string GroupName ; // TODO: Note that this is not just GroupChannelInfo?.id - decide what it should be and replace this with the explanation
         [JsonProperty]
+        public string AnchorAddr; // Anchor Contract address
+        [JsonProperty]
         public string AnchorPostAlg; // How do checkpoint state anchors get posted to the chain?
         [JsonProperty]
         public GroupMemberLimits MemberLimits;
@@ -69,26 +75,34 @@ namespace Apian
 
         public static readonly IList<string> AnchorPostAlgorithms = new List<string>(){AnchorPostsNone, AnchorPostsCreator, AnchorPostsLeader};
 
-        public string GroupId { get => GroupChannelInfo?.id;} // channel id IS the group session id
+        public string GroupId { get => GroupChannelInfo?.id;} // channel id IS the group session id.
+        public string SessionId { get => GroupChannelInfo?.id;} // Since groupId is the sessionId then this alias should be there.
+                                                                // TODO: maybe most/all of the references to GroupId should be changed to say SessionId?
 
         public string GroupFriendlyId { get => $"{GroupName}-{GroupId}"; } // todo: maybe truncate ID?
 
-        public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, string anchorPostAlg, GroupMemberLimits memberLimits)
+        public  ApianGroupInfo(string groupType, P2pNetChannelInfo groupChannel, string creatorAddr, string groupName, string anchorAddr, string anchorPostAlg, GroupMemberLimits memberLimits)
         {
             GroupType = groupType;
             GroupChannelInfo = groupChannel;
             GroupCreatorAddr = creatorAddr;
             GroupName = groupName;
             MemberLimits = memberLimits;
+            AnchorAddr = anchorAddr;
             AnchorPostAlg = anchorPostAlg ?? AnchorPostsNone;
             OtherProperties = new Dictionary<string, string>();
         }
 
         protected ApianGroupInfo(ApianGroupInfo agi)
         {
+            // TODO: custom exception for error handling
+            if (agi.Version != ApianGroupInfo.GROUPINFO_VERSION)
+                throw new Exception($"GroupInfo version mismatch. Group: {agi.GroupId} Version: {agi.Version} should be {ApianGroupInfo.GROUPINFO_VERSION}");
             GroupType = agi.GroupType;
             GroupChannelInfo = agi.GroupChannelInfo;
             GroupCreatorAddr = agi.GroupCreatorAddr;
+            AnchorAddr = agi.AnchorAddr;
+            AnchorPostAlg = agi.AnchorPostAlg;
             GroupName = agi.GroupName;
             MemberLimits = agi.MemberLimits;
             OtherProperties = agi.OtherProperties;
@@ -101,11 +115,13 @@ namespace Apian
         public virtual bool IsEquivalentTo(ApianGroupInfo agi2)
         {
             // subclasses need to compare Otherproperties
-            // TODO: Does anythin guse this? Delete it?
+            // TODO: Does anything use this? Delete it?
             return GroupType.Equals(agi2.GroupType, System.StringComparison.Ordinal)
                 && GroupChannelInfo.IsEquivalentTo(agi2.GroupChannelInfo)
                 && GroupCreatorAddr.Equals(agi2.GroupCreatorAddr, System.StringComparison.Ordinal)
                 && GroupName.Equals(agi2.GroupName, System.StringComparison.Ordinal)
+                && AnchorAddr.Equals(agi2.AnchorAddr, System.StringComparison.Ordinal)
+                && AnchorPostAlg.Equals(agi2.AnchorPostAlg, System.StringComparison.Ordinal)
                 && MemberLimits.IsEquivalentTo(agi2.MemberLimits);
         }
     }
