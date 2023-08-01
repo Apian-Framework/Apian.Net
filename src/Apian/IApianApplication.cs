@@ -16,5 +16,7 @@ namespace Apian
         // regarding changes.
         // THe idea with the data is that it is app-dependent and the app can extract and use it
         void OnGroupLeaderChange(string groupId, string newLeaderAddr, ApianGroupMember leaderAppData);
+
+        void DisplayError(string message, int status = -1, int param = -1);
     }
 }

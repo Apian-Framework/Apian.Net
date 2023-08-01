@@ -52,7 +52,11 @@ namespace Apian
 
     public interface IApianGroupMgrServices
     {
-        // This is the interface a group manager calls
+        // This is the interface a group manager calls.
+        // Which is sorta weird because it's almost always the result of the Apian instance dispatching a
+        // message to the group manager, which processes it and THEN decides to report back to the Apian
+        // instance. I guess that's really not a bad thing - the group manager is just acting as a replaceable
+        // component of the APian instance.
         long MaxAppliedCmdSeqNum {get;}
         ApianGroupStatus CurrentGroupStatus();
 
@@ -67,6 +71,8 @@ namespace Apian
         void OnGroupMemberLeft(ApianGroupMember member);
         void OnGroupJoinFailed(string peerAddr, string failureReason);
         void OnGroupMemberStatusChange(ApianGroupMember member, ApianGroupMember.Status prevStatus);
+        // Collect these in order to be able to send an epoch report to an Anchor/chain
+        void OnGroupCheckpointReport(GroupCheckpointReportMsg msg);
 
     }
 
@@ -140,15 +146,14 @@ namespace Apian
         public void InitializeEpochData(long newEpoch, long startCmdSeqNum, long startTime, string startHash)
         {
             Epochs = new List<ApianEpoch>(); // delete history
-            CurrentEpoch = new ApianEpoch(newEpoch, startCmdSeqNum, startTime, startHash);
-
+            CurrentEpoch = new ApianEpoch(newEpoch, startCmdSeqNum, startTime, startHash, new List<string>());
         }
-
 
         public virtual void Update()
         {
             GroupMgr?.Update();
             ApianClock?.Update();
+            UpdateEpochReports();
         }
 
         public abstract (bool, string) CheckQuorum(); // returns (bIsQuorum, ReasonIfNot)
@@ -511,12 +516,15 @@ namespace Apian
 
             Logger.Verbose($"DoLocalAppCoreCheckpoint(): SeqNum: {seqNum}, Hash: {hash}, sig: {hashSig}");
 
-            CurrentEpoch.CloseEpoch( seqNum, chkApianTime, hash, serializedState);
+            // Who are the current members?
+            List<string> activeMembers =  GroupMgr.Members.Values.Where(m => m.CurStatus == ApianGroupMember.Status.Active).Select(m => m.PeerAddr).ToList();
+
+            CurrentEpoch.CloseEpoch( seqNum, chkApianTime, hash, activeMembers, serializedState);
             Epochs.Add(CurrentEpoch);
 
             // TODO: Somewhere in here is where epoch reports go to the chain
 
-            const int MaxStoredEpochs = 10;
+            const int MaxStoredEpochs = 20;
             // keep in-mem list from growing forever
             while ( Epochs.Count > MaxStoredEpochs)
                 Epochs.RemoveAt(0);
@@ -528,7 +536,7 @@ namespace Apian
                 AppliedCommands = AppliedCommands.Where(kvp => kvp.Key < oldestSeqNum).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             }
 
-            CurrentEpoch = new ApianEpoch(newEpochNum, seqNum+1,  chkApianTime, hash);
+            CurrentEpoch = new ApianEpoch(newEpochNum, seqNum+1,  chkApianTime, hash, activeMembers);
 
             AppCore.StartEpoch(CurrentEpoch.EpochNum, hash); // set epochnum and starthash in CoreState
 
@@ -551,6 +559,161 @@ namespace Apian
             AppCore.ApplyCheckpointStateData( seqNum,  timeStamp,  stateHash,  stateData);
             MaxAppliedCmdSeqNum = seqNum;
         }
+
+
+        // Epoch reports. These are the proof that the game session is in a given state.
+        // Create 'em and collect 'em and (maybe) report 'em to the chain
+        // Maybe store 'em local, too?
+
+        // Outer dict is keyed by epoch number, inner dicts are by PeerAddr
+        Dictionary<long, Dictionary<string,GroupCheckpointReportMsg>> checkpointMsgsByEpochNum;
+
+        // When to give up (systime ms) on getting any more checkpoint messages for an epoch
+        Dictionary<long, long> epochReportExpiry;
+        const int  EPOCH_REPORT_WAIT_MS = 1000;
+
+        Dictionary<long,ApianEpochReport> epochReports;
+
+#if !SINGLE_THREADED
+        protected async void UpdateEpochReports(long updatedEpochNum = -1)
+#else
+        protected void UpdateEpochReports(long updatedEpochNum = -1)
+#endif
+        {
+            // Called with epoch number after receiving a new checkpoint msg for it
+            // Also called occasionally without a parameter to manage the epoch reporting process
+
+            if (epochReportExpiry == null)
+                epochReportExpiry = new Dictionary<long, long>(); // TODO: initialize where other members are initialized
+
+            if (epochReports == null)
+                epochReports = new Dictionary<long, ApianEpochReport>(); // TODO: initialize where others are initialized
+
+            List<long> epochsToReport = GetExpiredEpochNums();
+
+            if (updatedEpochNum >= 0)
+            {
+                Logger.Info($"*** UpdatedEpoch: {updatedEpochNum}");
+                if (PreviousEpoch != null && PreviousEpoch.EpochNum == updatedEpochNum) // almost always true
+                {
+                    Logger.Info($"*** UpdatedEpoch is prev!");
+                    List<string> epochAddrs = PreviousEpoch.EndActiveMembers;
+                    if ( checkpointMsgsByEpochNum[updatedEpochNum].Count >= epochAddrs.Count)
+                    {
+                        Logger.Info($"*** Got 'em All!");
+                        if (!epochsToReport.Contains(updatedEpochNum))
+                            epochsToReport.Add(updatedEpochNum);
+                    }
+                }
+            }
+
+            foreach ( long epoch in epochsToReport)
+            {
+                Logger.Info($"ApianBase.UpdateEpochReports(): Creating report for epoch {epoch}");
+                ApianEpochReport rpt = MakeEpochReport(epoch);
+                epochReportExpiry.Remove(epoch);
+                checkpointMsgsByEpochNum.Remove(epoch);
+
+                if (rpt != null) {
+
+                    epochReports[epoch] = rpt; // stash 'em
+
+                    if ( GroupMgr.LocalPeerShouldPostEpochReports())
+                    {
+                        Logger.Info($"ApianBase.UpdateEpochReports(): Posting report for epoch {epoch} to chain");
+
+    #if !SINGLE_THREADED
+                       try {
+                            string txHash =  await GameNet.ReportEpochAsync(rpt.SessionId,  rpt);
+                            Logger.Info($"ApianBase.UpdateEpochReports(): txHash for epoch {epoch}: {txHash}");
+                            // TODO: This is just sorta leaving things hanging.
+                            // The sync version at least ends notifying ApianApplication via a callback
+                        } catch (Exception ex) {
+                            GameNet.Client.DisplayError(ex.Message);
+                        }
+     #else
+                        GameNet.ReportEpoch(rpt.SessionId,  rpt);
+    #endif
+
+                    }
+                }
+            }
+
+            // Should also check to see if theere is an epoch with the same number of checkpoint reports as
+            // end-of-epoch active members - which would make it complete without waiting for timeout
+        }
+
+        protected List<long> GetExpiredEpochNums()
+        {
+            long nowMs = ApianClock.SystemTime;
+            return epochReportExpiry.Where( (kvp) => kvp.Value <= nowMs).Select(kvp => kvp.Key).ToList();
+        }
+
+
+        protected ApianEpochReport MakeEpochReport(long epochNum)
+        {
+            // Epochs is a list so this is not super-efficient. not very efficient. Its a short list, tho.
+            ApianEpoch epochData = Epochs.Where( e => e.EpochNum == epochNum).FirstOrDefault();
+
+            if (epochData == null) {
+                // Probably weren't around when the epoch started.
+                // TODO: Is it a problem if we don't create/save a report?
+                Logger.Warn($"ApianBase.MakeEpochReport(): Stored Epoch {epochNum} not found.");
+                return null;
+            }
+
+            // Everyone who was active either at start or at end or both
+            List<string> proxyAddrs = epochData.EndActiveMembers.Union(epochData.StartActiveMembers).Distinct().ToList();
+
+            List<byte> proxyFlags = new List<byte>();
+            foreach (string addr in proxyAddrs) {
+                byte flag = 0;
+                if (!epochData.StartActiveMembers.Contains(addr))
+                    flag |= ApianEpochReport.PROXY_JOINED;
+                if (!epochData.EndActiveMembers.Contains(addr))
+                    flag |= ApianEpochReport.PROXY_LEFT;
+
+                // FIXME: NO VALIDATOR INFO!!!!!!
+                proxyFlags.Add(flag);
+            }
+
+            Dictionary<string,GroupCheckpointReportMsg> chkPtRpts = checkpointMsgsByEpochNum[epochNum];
+
+            List<string> proxySigs = proxyAddrs.Select(addr => chkPtRpts.ContainsKey(addr) ? chkPtRpts[addr].HashSignature : null).ToList();
+
+            ApianEpochReport rpt = new ApianEpochReport(
+                GroupInfo.SessionId, // sessionId,
+                epochNum,
+                epochData.EndTimeStamp, // endApianTime,
+                epochData.EndCmdSeqNumber, // endCmdSeqNum,
+                epochData.EndStateHash, // endStateHash,
+                proxyAddrs,
+                proxyFlags,
+                proxySigs);
+            return rpt;
+        }
+
+
+
+        // called by a group manager instance when it fields one
+        public virtual void OnGroupCheckpointReport(GroupCheckpointReportMsg msg)
+        {
+            if (checkpointMsgsByEpochNum == null) // TODO: move all of this to a better place
+                checkpointMsgsByEpochNum = new Dictionary<long, Dictionary<string,GroupCheckpointReportMsg>>();
+
+            // First report for this epoch?
+            if (!checkpointMsgsByEpochNum.ContainsKey(msg.Epoch))
+            {
+                checkpointMsgsByEpochNum[msg.Epoch] = new Dictionary<string, GroupCheckpointReportMsg>();
+                epochReportExpiry[msg.Epoch] = ApianClock.SystemTime + EPOCH_REPORT_WAIT_MS;
+            }
+            // stash the message
+            checkpointMsgsByEpochNum[msg.Epoch][msg.PeerAddr] = msg;
+
+            UpdateEpochReports(msg.Epoch); // Also gets called periodically without the epoch number
+        }
+
+
 
 
         // FROM GroupManager
@@ -648,7 +811,6 @@ namespace Apian
             ApplyApianCommand(cmd);
 
         }
-
 
         // Other stuff
 

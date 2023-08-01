@@ -36,11 +36,14 @@ namespace Apian
         void OnChainBlockNumber(int blockNumber);
         void OnChainAcctBalance(string addr, int balance);
         void OnSessionRegistered(string sessId, string txHash);
+        void OnEpochReported(string sessId, long epochNum, string txHash); // FIXME: Should have Epoch number
     }
 
 
     public interface IApianGameNet : IGameNet
     {
+        IApianApplication Client {get; }
+
         void AddApianInstance( ApianBase instance, string groupId);
         void RequestGroups();
         void OnApianGroupMemberStatus( string groupId,  ApianGroupMember member, ApianGroupMember.Status prevStatus);
@@ -71,6 +74,7 @@ namespace Apian
         void GetChainAccountBalance(string acctAddr);
 
         void RegisterSession(string sessionId, AnchorSessionInfo sessInfo);
+        void ReportEpoch(string sessionId, ApianEpochReport rpt);
 
 #if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
@@ -80,6 +84,7 @@ namespace Apian
         Task<int> GetChainAccountBalanceAsync(string acctAddr);
 
         Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo);
+        Task<string>  ReportEpochAsync(string sessionId, ApianEpochReport rpt);
 
 #endif
 
@@ -297,7 +302,10 @@ namespace Apian
                 if (groupInfo.AnchorAddr != null)
                     await apian.RegisterNewSessionAsync();
             } catch (Exception e) {
-                logger.Error(e.Message + " " + e.StackTrace);
+                //logger.Error(e.Message + " " + e.StackTrace);
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false, e.Message);
+                JoinGroupAsyncCompletionSources[groupInfo.GroupId].TrySetResult(joinData);
+                return joinData;
             }
 
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
@@ -616,10 +624,17 @@ namespace Apian
 
         public void  RegisterSession(string sessionId, AnchorSessionInfo sessInfo) =>  apianCrypto.RegisterSession(sessionId, sessInfo);
 
+        public void ReportEpoch(string sessionId, ApianEpochReport rpt) => apianCrypto.ReportEpoch(sessionId, rpt);
+
 #if !SINGLE_THREADED
 
         public async Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo)
             => await apianCrypto.RegisterSessionAsync(sessionId, sessInfo);
+
+
+        public async Task<string> ReportEpochAsync(string sessionId, ApianEpochReport rpt)
+            => await apianCrypto.ReportEpochAsync(sessionId, rpt);
+
 #endif
 
 
@@ -644,6 +659,12 @@ namespace Apian
         {
             logger.Info($"OnSessionRegistered() - session: {sessionId}, txHash: {txHash}");
             (client as IApianGameNetClient).OnSessionRegistered(sessionId, txHash);
+        }
+
+        public void OnEpochReported(string sessionId, long epochNum, string txHash)
+        {
+            logger.Info($"OnEpochReported() - session: {sessionId}, txHash: {txHash}");
+            (client as IApianGameNetClient).OnEpochReported(sessionId, epochNum, txHash);
         }
     }
 }

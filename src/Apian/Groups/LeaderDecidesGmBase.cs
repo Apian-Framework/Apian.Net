@@ -87,6 +87,13 @@ namespace Apian
             CheckpointOffsetMs = int.Parse(config["CheckpointOffsetMs"]);
         }
 
+        public override bool LocalPeerShouldPostEpochReports()
+        {
+            return  base.LocalPeerShouldPostEpochReports()  // GroupManagerBase checks "CreatorPosts"
+                ||  (LocalPeerAddr == GroupLeaderAddr && GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsLeader); //LeaderPosts
+
+        }
+
         public override void SetupNewGroup(ApianGroupInfo info)
         {
             Logger.Info($"{this.GetType().Name}.SetupNewGroup(): {info.GroupName}");
@@ -574,6 +581,8 @@ namespace Apian
             {
                Logger.Info($"{this.GetType().Name}.OnGroupCheckpointReport() Epoch: {rMsg?.Epoch}, Checkpoint Seq#: {rMsg.SeqNum}, Hash: {rMsg.StateHash}");
             }
+
+            ApianInst.OnGroupCheckpointReport(rMsg); // everybody should stash these to create EpochReports
 
         }
 

@@ -103,6 +103,7 @@ namespace Apian
         int ActivePlayerCount { get; }  // TODO: "player" is wrong word, but "participant" is too big... so "player"
         bool AppCorePaused {get; }
 
+        bool LocalPeerShouldPostEpochReports();
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
@@ -217,6 +218,16 @@ namespace Apian
         // Related to Epoch/Checkpoint/StateHash
 
         public virtual void OnNewEpoch() {}
+
+        public virtual bool LocalPeerShouldPostEpochReports()
+        {
+            // For the base GroupManager, the only valid report algoritm is "CreatorPosts"
+            // subclasses should override this if they support others (call this to check CreatorPosts)
+            if (LocalPeerAddr == GroupCreatorAddr && GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsCreator)
+                return true;
+
+            return false;
+        }
 
         // Pause/Resume App Core
 

@@ -13,21 +13,25 @@ namespace Apian
         public long EndTimeStamp;  //  Start of epoch
         public string StartStateHash; // hash before any commands
         public string EndStateHash;
+        public List<string> StartActiveMembers;
+        public List<string> EndActiveMembers;
         public string SerializedStateData;
 
-        public ApianEpoch(long epochNum, long startCmdSeqNum, long startTimeStamp,  string startHash)
+        public ApianEpoch(long epochNum, long startCmdSeqNum, long startTimeStamp,  string startHash, List<string> startActiveMembers)
         {
             EpochNum = epochNum;
             StartCmdSeqNumber = startCmdSeqNum;
             StartTimeStamp = startTimeStamp;
             StartStateHash = startHash;
+            StartActiveMembers = startActiveMembers;
         }
 
-        public void CloseEpoch(long lastSeqNum, long checkpointTimeStamp, string endStateHash, string serializedState)
+        public void CloseEpoch(long lastSeqNum, long checkpointTimeStamp, string endStateHash, List<string> endActiveMembers, string serializedState)
         {
             EndCmdSeqNumber = lastSeqNum;
             EndTimeStamp = checkpointTimeStamp;
             EndStateHash = endStateHash;
+            EndActiveMembers = endActiveMembers;
             SerializedStateData = serializedState;
         }
     }
