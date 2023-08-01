@@ -32,11 +32,11 @@ namespace Apian
     public interface IApianGameNetClient : IGameNetClient
     {
         // Callback results for single-threaded crypto chain calls
-        void OnChainId(int chainId);
-        void OnChainBlockNumber(int blockNumber);
-        void OnChainAcctBalance(string addr, int balance);
-        void OnSessionRegistered(string sessId, string txHash);
-        void OnEpochReported(string sessId, long epochNum, string txHash); // FIXME: Should have Epoch number
+        void OnChainId(int chainId, Exception ex);
+        void OnChainBlockNumber(int blockNumber, Exception ex);
+        void OnChainAcctBalance(string addr, int balance, Exception ex);
+        void OnSessionRegistered(string sessId, string txHash, Exception ex);
+        void OnEpochReported(string sessId, long epochNum, string txHash, Exception ex);
     }
 
 
@@ -235,12 +235,9 @@ namespace Apian
             // see comment above on how this func is resolved.
             DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
-            try {
-                if (groupInfo.AnchorAddr != null)
-                    apian.RegisterNewSession();
-            } catch (Exception e) {
-                logger.Error(e.Message + " " + e.StackTrace);
-            }
+            if (groupInfo.AnchorAddr != null)
+                apian.RegisterNewSession();
+
         }
 
         public void DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
@@ -639,32 +636,32 @@ namespace Apian
 
 
         // IApianCryptoClient API
-        public void OnChainId(int chainId)
+        public void OnChainId(int chainId, Exception ex)
         {
             logger.Info($"OnChainId() - Chain ID: {chainId}");
-            (client as IApianGameNetClient).OnChainId(chainId);
+            (client as IApianGameNetClient).OnChainId(chainId, ex);
         }
-        public void OnBlockNumber(int blockNumber)
+        public void OnBlockNumber(int blockNumber, Exception ex)
         {
             logger.Info($"OnBlockNumber() - Block Number: {blockNumber}");
-            (client as IApianGameNetClient).OnChainBlockNumber(blockNumber);
+            (client as IApianGameNetClient).OnChainBlockNumber(blockNumber, ex);
         }
-        public void OnBalance(string addr, int balance)
+        public void OnBalance(string addr, int balance, Exception ex)
         {
             logger.Info($"OnBalance() - Account: {addr}, Balance: {balance}");
-            (client as IApianGameNetClient).OnChainAcctBalance(addr, balance);
+            (client as IApianGameNetClient).OnChainAcctBalance(addr, balance, ex);
         }
 
-        public void OnSessionRegistered(string sessionId, string txHash)
+        public void OnSessionRegistered(string sessionId, string txHash, Exception ex)
         {
-            logger.Info($"OnSessionRegistered() - session: {sessionId}, txHash: {txHash}");
-            (client as IApianGameNetClient).OnSessionRegistered(sessionId, txHash);
+            logger.Info($"OnSessionRegistered() - session: {sessionId}, txHash: {txHash} Err: {(ex!=null?ex.Message:"None")}");
+            (client as IApianGameNetClient).OnSessionRegistered(sessionId, txHash, ex);
         }
 
-        public void OnEpochReported(string sessionId, long epochNum, string txHash)
+        public void OnEpochReported(string sessionId, long epochNum, string txHash, Exception ex)
         {
             logger.Info($"OnEpochReported() - session: {sessionId}, txHash: {txHash}");
-            (client as IApianGameNetClient).OnEpochReported(sessionId, epochNum, txHash);
+            (client as IApianGameNetClient).OnEpochReported(sessionId, epochNum, txHash, ex);
         }
     }
 }

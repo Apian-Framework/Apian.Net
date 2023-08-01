@@ -462,7 +462,7 @@ namespace Apian
 
             string txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
             Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
-            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash);
+            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, null);
         }
 
 #endif
