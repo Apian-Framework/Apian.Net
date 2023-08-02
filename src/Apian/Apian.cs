@@ -460,9 +460,15 @@ namespace Apian
             // TODO: AnchorSessionInfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
             AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
 
-            string txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+            Exception errEx = null;
+            string txHash = null;
+            try {
+                txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+            } catch (Exception ex) {
+                errEx = ex;
+            }
             Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
-            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, null);
+            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, errEx);
         }
 
 #endif
@@ -623,14 +629,17 @@ namespace Apian
                         Logger.Info($"ApianBase.UpdateEpochReports(): Posting report for epoch {epoch} to chain");
 
     #if !SINGLE_THREADED
+                       string txHash = null;
+                       Exception errEx = null;
                        try {
-                            string txHash =  await GameNet.ReportEpochAsync(rpt.SessionId,  rpt);
+                            txHash =  await GameNet.ReportEpochAsync(rpt.SessionId,  rpt);
                             Logger.Info($"ApianBase.UpdateEpochReports(): txHash for epoch {epoch}: {txHash}");
                             // TODO: This is just sorta leaving things hanging.
                             // The sync version at least ends notifying ApianApplication via a callback
                         } catch (Exception ex) {
-                            GameNet.Client.DisplayError(ex.Message);
+                            errEx = ex;
                         }
+                        GameNet.Client.OnEpochReported(rpt.SessionId, rpt.EpochNum, txHash, errEx);
      #else
                         GameNet.ReportEpoch(rpt.SessionId,  rpt);
     #endif

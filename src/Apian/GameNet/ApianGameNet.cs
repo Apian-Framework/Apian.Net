@@ -607,7 +607,7 @@ namespace Apian
         public void ConnectToBlockchain(string chainInfoJson)
         {
             BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
-            apianCrypto.Connect(bcInfo.RpcUrl, this);
+            apianCrypto.Connect(bcInfo.RpcUrl, bcInfo.ChainId, this);
         }
 
         public void DisconnectFromBlockchain()
