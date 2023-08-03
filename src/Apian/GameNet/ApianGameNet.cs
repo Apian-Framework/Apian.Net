@@ -69,12 +69,13 @@ namespace Apian
         //void CreateCryptoInstance(); // can be problematic in Unity (needs to happen on main thread)
         void ConnectToBlockchain(string chainInfoJson);
         void DisconnectFromBlockchain();
-        void GetChainId();
-        void GetChainBlockNumber();
-        void GetChainAccountBalance(string acctAddr);
 
-        void RegisterSession(string sessionId, AnchorSessionInfo sessInfo);
-        void ReportEpoch(string sessionId, ApianEpochReport rpt);
+        // TODO: cleanup the below funcs &&&&&&&&&&&&
+        //void GetChainId();
+        //void GetChainBlockNumber();
+        //void GetChainAccountBalance(string acctAddr);
+        //void RegisterSession(string sessionId, AnchorSessionInfo sessInfo);
+        //void ReportEpoch(string sessionId, ApianEpochReport rpt);
 
 #if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
@@ -615,13 +616,13 @@ namespace Apian
             apianCrypto.Disconnect();
         }
 
-        public void GetChainId() => apianCrypto.GetChainId();
-        public void GetChainBlockNumber() => apianCrypto.GetBlockNumber();
-        public void GetChainAccountBalance(string acctAddr) => apianCrypto.GetBalance(acctAddr);
+        // public void GetChainId() => apianCrypto.GetChainId();
+        // public void GetChainBlockNumber() => apianCrypto.GetBlockNumber();
+        // public void GetChainAccountBalance(string acctAddr) => apianCrypto.GetBalance(acctAddr);
 
-        public void  RegisterSession(string sessionId, AnchorSessionInfo sessInfo) =>  apianCrypto.RegisterSession(sessionId, sessInfo);
+        // public void  RegisterSession(string sessionId, AnchorSessionInfo sessInfo) =>  apianCrypto.RegisterSession(sessionId, sessInfo);
 
-        public void ReportEpoch(string sessionId, ApianEpochReport rpt) => apianCrypto.ReportEpoch(sessionId, rpt);
+        // public void ReportEpoch(string sessionId, ApianEpochReport rpt) => apianCrypto.ReportEpoch(sessionId, rpt);
 
 #if !SINGLE_THREADED
 

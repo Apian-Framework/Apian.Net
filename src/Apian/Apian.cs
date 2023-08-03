@@ -417,6 +417,8 @@ namespace Apian
 
         public virtual void RegisterNewSession()
         {
+            // TODO: Get rid of the sync contract stuff altogether
+
             // TODO: This and the async version below are basically copypasta in order to be able to implment
             // something and then, wih a better idea of the implications, go back and design a proper flow.
 
@@ -428,7 +430,7 @@ namespace Apian
             AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
 
             // calling this eventually results in a callback with the transaction hash
-            GameNet.RegisterSession( GroupInfo.SessionId, asi);
+           // GameNet.RegisterSession( GroupInfo.SessionId, asi);
         }
 
 #if !SINGLE_THREADED
