@@ -89,9 +89,13 @@ namespace Apian
 
         public override bool LocalPeerShouldPostEpochReports()
         {
-            return  base.LocalPeerShouldPostEpochReports()  // GroupManagerBase checks "CreatorPosts"
-                ||  (LocalPeerAddr == GroupLeaderAddr && GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsLeader); //LeaderPosts
+            if  ( !string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsLeader) && (LocalPeerAddr == GroupLeaderAddr)  ) //LeaderPosts
+            {
+               Logger.Info($"LocalPeerShouldPostEpochReports(): Algo is 'LeaderPosts' and local peer is leader.");
+               return true;
+            }
 
+            return  base.LocalPeerShouldPostEpochReports();  // GroupManagerBase checks "CreatorPosts"
         }
 
         public override void SetupNewGroup(ApianGroupInfo info)

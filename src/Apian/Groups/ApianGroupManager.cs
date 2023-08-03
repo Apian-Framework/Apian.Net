@@ -223,9 +223,11 @@ namespace Apian
         {
             // For the base GroupManager, the only valid report algoritm is "CreatorPosts"
             // subclasses should override this if they support others (call this to check CreatorPosts)
-            if (LocalPeerAddr == GroupCreatorAddr && GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsCreator)
+            if ( !string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (LocalPeerAddr == GroupCreatorAddr) && (GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsCreator))
+            {
+                Logger.Info($"LocalPeerShouldPostEpochReports(): Algo is 'CreatorPosts' and lLocal peer is Creator");
                 return true;
-
+            }
             return false;
         }
 
