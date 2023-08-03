@@ -1,4 +1,3 @@
-//#define SINGLE_THREADED
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -6,9 +5,7 @@ using GameNet;
 using P2pNet;
 using ApianCrypto;
 
-#if !SINGLE_THREADED
 using System.Threading.Tasks;
-#endif
 
 namespace Apian
 {
@@ -70,14 +67,6 @@ namespace Apian
         void ConnectToBlockchain(string chainInfoJson);
         void DisconnectFromBlockchain();
 
-        // TODO: cleanup the below funcs &&&&&&&&&&&&
-        //void GetChainId();
-        //void GetChainBlockNumber();
-        //void GetChainAccountBalance(string acctAddr);
-        //void RegisterSession(string sessionId, AnchorSessionInfo sessInfo);
-        //void ReportEpoch(string sessionId, ApianEpochReport rpt);
-
-#if !SINGLE_THREADED
         Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs);
         //Task ConnectToBlockchainAsync(string chainInfoJson);
         Task<int> GetChainIdAsync();
@@ -87,7 +76,6 @@ namespace Apian
         Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo);
         Task<string>  ReportEpochAsync(string sessionId, ApianEpochReport rpt);
 
-#endif
 
     }
 
@@ -114,9 +102,7 @@ namespace Apian
 
         protected Dictionary<string, Action<string, string, long, GameNetClientMessage>> _MsgDispatchers;
 
-#if !SINGLE_THREADED
         private Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>> JoinGroupAsyncCompletionSources;
-#endif
 
         public IApianCrypto apianCrypto;
 
@@ -137,9 +123,7 @@ namespace Apian
                 [ApianMessage.GroupMessage] = (f,t,s,m) => this.DispatchApianMessage(f,t,s,m),
             };
 
-#if !SINGLE_THREADED
             JoinGroupAsyncCompletionSources = new Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>>();
-#endif
         }
 
         //
@@ -171,9 +155,7 @@ namespace Apian
             base.InitNetJoinState();
             ApianInstances.Clear();
             Peers.Clear();
-#if !SINGLE_THREADED
             JoinGroupAsyncCompletionSources = new Dictionary<string, TaskCompletionSource<PeerJoinedGroupData>>();
-#endif
         }
 
         public override void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
@@ -217,7 +199,8 @@ namespace Apian
         // TODO: Current beam code is somewhat inconsistent in that the single-threaded version waits for BeamApplication.OnPeerJoinedGroup()
         // Maybe ought to change this?
 
-        public void JoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+
+        public void DoJoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             // see comment above on how this func is resolved.
 
@@ -231,14 +214,14 @@ namespace Apian
 
             apian.JoinGroup(localGroupData, joinAsValidator); // results in
         }
+
+        // Used in single-peer play
         public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             // see comment above on how this func is resolved.
             DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
-            if (groupInfo.AnchorAddr != null)
-                apian.RegisterNewSession();
-
+            // Don't ever need to register a single-peer sesion
         }
 
         public void DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
@@ -258,7 +241,6 @@ namespace Apian
         }
 
         // Async versions of the above group joining methods which return success/failure results
-#if !SINGLE_THREADED
         private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
         public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
         {
@@ -279,7 +261,7 @@ namespace Apian
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
 
-            JoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+            DoJoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
 
@@ -322,8 +304,6 @@ namespace Apian
             }
         }
 
-
-#endif
 
         public void LeaveGroup(string groupId)
         {
@@ -434,7 +414,6 @@ namespace Apian
         public void OnApianGroupMemberStatus( string groupId,  ApianGroupMember member, ApianGroupMember.Status prevStatus)
         {
 
-#if !SINGLE_THREADED
             //  For Async Join request, local application isn't told that it has "joined" a group until it is Active
             if (member.PeerAddr == LocalPeerAddr() && member.CurStatus == ApianGroupMember.Status.Active
             && JoinGroupAsyncCompletionSources.ContainsKey(groupId))
@@ -443,7 +422,6 @@ namespace Apian
                 PeerJoinedGroupData joinData = new PeerJoinedGroupData(member.PeerAddr, groupInfo, member.IsValidator, true);
                 JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
             }
-#endif
 
             Client.OnGroupMemberStatus( groupId, member.PeerAddr, member.CurStatus, prevStatus );
 
@@ -518,10 +496,8 @@ namespace Apian
 
             Client.OnGroupAnnounce(result); // Q: should this happen even on an async request? YES
 
-#if !SINGLE_THREADED
             if (GroupRequestResults != null)
                 GroupRequestResults[groupInfo.GroupId] = result;// RequestGroupsAsync was called
-#endif
         }
 
         //
@@ -574,7 +550,6 @@ namespace Apian
 
         public string EncodeUTF8AndEcRecover(string msg, string sig) => apianCrypto.EncodeUTF8AndEcRecover(msg, sig);
 
-#if !SINGLE_THREADED
         // public async Task ConnectToBlockchainAsync(string chainInfoJson)
         // {
         //     BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
@@ -602,8 +577,6 @@ namespace Apian
         {
             return await apianCrypto.GetBalanceAsync(acctAddr);
         }
-#endif
-
 
         public void ConnectToBlockchain(string chainInfoJson)
         {
@@ -616,25 +589,12 @@ namespace Apian
             apianCrypto.Disconnect();
         }
 
-        // public void GetChainId() => apianCrypto.GetChainId();
-        // public void GetChainBlockNumber() => apianCrypto.GetBlockNumber();
-        // public void GetChainAccountBalance(string acctAddr) => apianCrypto.GetBalance(acctAddr);
-
-        // public void  RegisterSession(string sessionId, AnchorSessionInfo sessInfo) =>  apianCrypto.RegisterSession(sessionId, sessInfo);
-
-        // public void ReportEpoch(string sessionId, ApianEpochReport rpt) => apianCrypto.ReportEpoch(sessionId, rpt);
-
-#if !SINGLE_THREADED
-
         public async Task<string> RegisterSessionAsync(string sessionId, AnchorSessionInfo sessInfo)
             => await apianCrypto.RegisterSessionAsync(sessionId, sessInfo);
 
 
         public async Task<string> ReportEpochAsync(string sessionId, ApianEpochReport rpt)
             => await apianCrypto.ReportEpochAsync(sessionId, rpt);
-
-#endif
-
 
         // IApianCryptoClient API
         public void OnChainId(int chainId, Exception ex)
@@ -661,7 +621,7 @@ namespace Apian
 
         public void OnEpochReported(string sessionId, long epochNum, string txHash, Exception ex)
         {
-            logger.Info($"OnEpochReported() - session: {sessionId}, txHash: {txHash}");
+            logger.Info($"OnEpochReported() - session: {sessionId}, txHash: {txHash} ex: {(ex!=null?ex.Message:"None")}");
             (client as IApianGameNetClient).OnEpochReported(sessionId, epochNum, txHash, ex);
         }
     }

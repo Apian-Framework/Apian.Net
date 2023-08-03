@@ -5,10 +5,8 @@ using P2pNet; // TODO: this is just for For PeerClockSyncInfo. Not sure I like t
 using UniLog;
 using static UniLog.UniLogger; // for SID()
 using ApianCrypto;
-
-#if !SINGLE_THREADED
 using System.Threading.Tasks;
-#endif
+
 
 namespace Apian
 {
@@ -34,11 +32,7 @@ namespace Apian
         void OnPeerClockSync(string remotePeerAddr, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs);
 
-        void  RegisterNewSession();
-
-#if!SINGLE_THREADED
         Task RegisterNewSessionAsync(); // with chain, typically
-#endif
 
     }
 
@@ -415,25 +409,25 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson, bool asValidator) => GroupMgr.JoinGroup(localMemberJson, asValidator);
 
-        public virtual void RegisterNewSession()
-        {
-            // TODO: Get rid of the sync contract stuff altogether
+        // old SINGLE_THREADED  code
+        // public virtual void RegisterNewSession()
+        // {
+        //     // TODO: Get rid of the sync contract stuff altogether
 
-            // TODO: This and the async version below are basically copypasta in order to be able to implment
-            // something and then, wih a better idea of the implications, go back and design a proper flow.
+        //     // TODO: This and the async version below are basically copypasta in order to be able to implment
+        //     // something and then, wih a better idea of the implications, go back and design a proper flow.
 
-            Logger.Info($"ApianBase.RegisterSession(): Generating Genesis hash and signature");
-            string serializedState = AppCore.DoCheckpointCoreState( 0, 0);
-            string hash = GameNet.HashString(serializedState);
+        //     Logger.Info($"ApianBase.RegisterSession(): Generating Genesis hash and signature");
+        //     string serializedState = AppCore.DoCheckpointCoreState( 0, 0);
+        //     string hash = GameNet.HashString(serializedState);
 
-            // TODO: AnchorSessionInnfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
-            AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
+        //     // TODO: AnchorSessionInnfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
+        //     AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
 
-            // calling this eventually results in a callback with the transaction hash
-           // GameNet.RegisterSession( GroupInfo.SessionId, asi);
-        }
+        //     // calling this eventually results in a callback with the transaction hash
+        //    // GameNet.RegisterSession( GroupInfo.SessionId, asi);
+        // }
 
-#if !SINGLE_THREADED
         public async virtual Task RegisterNewSessionAsync()
         {
             // NOTE: This is a generic Apian version. Int is expect to be overridden in a game-specific (and maybe
@@ -462,18 +456,21 @@ namespace Apian
             // TODO: AnchorSessionInfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
             AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
 
-            Exception errEx = null;
-            string txHash = null;
-            try {
-                txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
-            } catch (Exception ex) {
-                errEx = ex;
+            // Don't register if there's no anchor contract or if the post algo is "None"
+            if (!string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (GroupInfo.AnchorPostAlg != ApianGroupInfo.AnchorPostsNone))
+            {
+                Exception errEx = null;
+                string txHash = null;
+                try {
+                    txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+                } catch (Exception ex) {
+                    errEx = ex;
+                }
+                Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
+                (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, errEx);
             }
-            Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
-            (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, errEx);
         }
 
-#endif
 
         // checkpoints
 
@@ -582,11 +579,7 @@ namespace Apian
 
         Dictionary<long,ApianEpochReport> epochReports;
 
-#if !SINGLE_THREADED
         protected async void UpdateEpochReports(long updatedEpochNum = -1)
-#else
-        protected void UpdateEpochReports(long updatedEpochNum = -1)
-#endif
         {
             // Called with epoch number after receiving a new checkpoint msg for it
             // Also called occasionally without a parameter to manage the epoch reporting process
@@ -630,27 +623,21 @@ namespace Apian
                     {
                         Logger.Info($"ApianBase.UpdateEpochReports(): Posting report for epoch {epoch} to chain");
 
-    #if !SINGLE_THREADED
                        string txHash = null;
                        Exception errEx = null;
                        try {
                             txHash =  await GameNet.ReportEpochAsync(rpt.SessionId,  rpt);
                             Logger.Info($"ApianBase.UpdateEpochReports(): txHash for epoch {epoch}: {txHash}");
-                            // TODO: This is just sorta leaving things hanging.
-                            // The sync version at least ends notifying ApianApplication via a callback
                         } catch (Exception ex) {
                             errEx = ex;
                         }
                         GameNet.Client.OnEpochReported(rpt.SessionId, rpt.EpochNum, txHash, errEx);
-     #else
-                        GameNet.ReportEpoch(rpt.SessionId,  rpt);
-    #endif
 
                     }
                 }
             }
 
-            // Should also check to see if theere is an epoch with the same number of checkpoint reports as
+            // Should also check to see if there is an epoch with the same number of checkpoint reports as
             // end-of-epoch active members - which would make it complete without waiting for timeout
         }
 

@@ -5,9 +5,8 @@ using Newtonsoft.Json;
 using P2pNet;
 using UniLog;
 
-#if !SINGLE_THREADED
 using System.Threading.Tasks;
-#endif
+
 
 namespace GameNet
 {
@@ -29,10 +28,11 @@ namespace GameNet
         void AddClient(IGameNetClient _client);
         void SetupConnection( string localPeerAddress, string p2pConectionString );
         void TearDownConnection();
-        void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData);
-#if !SINGLE_THREADED
+
+        void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData); // TODO: get rid on synchonous/callback version?
+
         Task<PeerJoinedNetworkData> JoinNetworkAsync (P2pNetChannelInfo netP2pChannel, string netLocalData);
-#endif
+
         void LeaveNetwork();
         void AddChannel(P2pNetChannelInfo subChannel, string channelLocalData);
         void RemoveChannel(string subchannelId);
@@ -122,9 +122,7 @@ namespace GameNet
 
             IP2pNet ip2p = new P2pNetBase(this, carrier, localAddress);
 
-#if !SINGLE_THREADED
             JoinNetworkCompletion = null;
-#endif
 
             return ip2p;
         }
@@ -149,13 +147,13 @@ namespace GameNet
         {
             if ( CurrentNetworkId() != null)
                LeaveNetwork();
-#if !SINGLE_THREADED
+
             JoinNetworkCompletion = null;
-#endif
+
             p2p = null;
         }
 
-        public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData)
+        public virtual void JoinNetwork(P2pNetChannelInfo netP2pChannel, string netLocalData) // TODO: do we need this?
         {
             InitNetJoinState();
             if (netLocalData != null)
@@ -165,7 +163,6 @@ namespace GameNet
 
         }
 
-#if !SINGLE_THREADED
         private TaskCompletionSource<PeerJoinedNetworkData> JoinNetworkCompletion; // can only be one
         public async Task<PeerJoinedNetworkData> JoinNetworkAsync(P2pNetChannelInfo netP2pChannel, string netLocalData)
         {
@@ -181,7 +178,6 @@ namespace GameNet
             }
             return await JoinNetworkCompletion.Task.ContinueWith( t => {JoinNetworkCompletion=null; return t.Result;},  TaskScheduler.Default).ConfigureAwait(false);
         }
-#endif
 
         public virtual void LeaveNetwork()
         {
@@ -241,10 +237,9 @@ namespace GameNet
             if (channel == CurrentNetworkId())
             {
                 PeerJoinedNetworkData peerData = new PeerJoinedNetworkData(peerAddr, CurrentNetworkId(), helloData);
-#if !SINGLE_THREADED
+
                 if (peerAddr == LocalPeerAddr() && JoinNetworkCompletion != null)
                     JoinNetworkCompletion.TrySetResult(peerData);
-#endif
 
                 // TODO: This is the only callback that might come in on a p2pnet-owned thread, so care needs to be taken
                 // that it doesn;t end up calling a UNity frontend thing, for instance.
@@ -265,10 +260,9 @@ namespace GameNet
 
         public virtual void OnJoinRejected(string channelId, string failureReason)
         {
-#if !SINGLE_THREADED
+
                 if (channelId == CurrentNetworkId() && JoinNetworkCompletion != null)
                     JoinNetworkCompletion.SetCanceled();
-#endif
 
             client.OnJoinRejected(channelId, failureReason);
         }
