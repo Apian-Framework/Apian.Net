@@ -4,9 +4,6 @@ using Newtonsoft.Json;
 
 namespace Apian
 {
-    // ReSharper disable UnusedType.Global,NotAccessedFIeld.Global,FieldCanBeMadeReadOnly.Global,UnusedMember.Global
-    // (can;t be readonly because of NewtonSoft.JSON)
-
      public enum ApianConflictResult { Unaffected, Validated, Invalidated }
 
     // Parent class for the "Game messages"
@@ -36,6 +33,7 @@ namespace Apian
         public string DestGroupId; // Can be empty
         public string MsgType;
         protected ApianMessage(string gid, string typ) { DestGroupId = gid; MsgType = typ; }
+
         protected ApianMessage() {}
     }
 
