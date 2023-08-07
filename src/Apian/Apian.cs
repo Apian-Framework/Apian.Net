@@ -23,9 +23,13 @@ namespace Apian
     public interface IApianClientServices
     {
         // This is the interface that a client (almost certainly ApianGameNet) sees
+
+        // TODO: Consider removing synchronous request+callback methods in favor of async/await forms
+
         void SetupExistingGroup(ApianGroupInfo groupInfo);
         void SetupNewGroup(ApianGroupInfo groupInfo);
         void JoinGroup(string localGroupData, bool joinAsValidator); // There's no LeaveGroup
+
         void OnPeerLeftGroupChannel(string groupChannelId, string peerAddr);
         void OnPeerMissing(string groupChannelId, string peerAddr);
         void OnPeerReturned(string groupChannelId, string peerAddr);
@@ -409,7 +413,8 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson, bool asValidator) => GroupMgr.JoinGroup(localMemberJson, asValidator);
 
-        // old SINGLE_THREADED  code
+        // old SINGLE_THREADED code for Unity
+        // TODO: get rid of it
         // public virtual void RegisterNewSession()
         // {
         //     // TODO: Get rid of the sync contract stuff altogether
