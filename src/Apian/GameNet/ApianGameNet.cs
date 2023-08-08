@@ -200,7 +200,7 @@ namespace Apian
         // Maybe ought to change this?
 
 
-        public void DoJoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+        protected void _DoJoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             // see comment above on how this func is resolved.
 
@@ -219,12 +219,12 @@ namespace Apian
         public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             // see comment above on how this func is resolved.
-            DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+            _DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             // Don't ever need to register a single-peer sesion
         }
 
-        public void DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+        protected void _DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
 
             apian.SetupNewGroup(groupInfo); // create the group
@@ -261,7 +261,7 @@ namespace Apian
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
 
-            DoJoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+            _DoJoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
 
@@ -276,7 +276,7 @@ namespace Apian
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
-            DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
+            _DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             try {
                 if (groupInfo.AnchorAddr != null)
