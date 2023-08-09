@@ -215,15 +215,6 @@ namespace Apian
             apian.JoinGroup(localGroupData, joinAsValidator); // results in
         }
 
-        // Used in single-peer play
-        public void CreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
-        {
-            // see comment above on how this func is resolved.
-            _DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
-
-            // Don't ever need to register a single-peer sesion
-        }
-
         protected void _DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
 
@@ -276,6 +267,7 @@ namespace Apian
                 throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
 
             JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
+
             _DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
 
             try {
