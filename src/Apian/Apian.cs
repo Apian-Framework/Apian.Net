@@ -36,7 +36,7 @@ namespace Apian
         void OnPeerClockSync(string remotePeerAddr, long remoteClockOffset, long syncCount);
         void OnApianMessage(string fromAddr, string toAddr, ApianMessage msg, long lagMs);
 
-        Task RegisterNewSessionAsync(); // with chain, typically
+        Task<string> RegisterNewSessionAsync(); // with chain, typically
 
     }
 
@@ -413,27 +413,7 @@ namespace Apian
         public void SetupExistingGroup(ApianGroupInfo info) => GroupMgr.SetupExistingGroup(info);
         public void JoinGroup(string localMemberJson, bool asValidator) => GroupMgr.JoinGroup(localMemberJson, asValidator);
 
-        // old SINGLE_THREADED code for Unity
-        // TODO: get rid of it
-        // public virtual void RegisterNewSession()
-        // {
-        //     // TODO: Get rid of the sync contract stuff altogether
-
-        //     // TODO: This and the async version below are basically copypasta in order to be able to implment
-        //     // something and then, wih a better idea of the implications, go back and design a proper flow.
-
-        //     Logger.Info($"ApianBase.RegisterSession(): Generating Genesis hash and signature");
-        //     string serializedState = AppCore.DoCheckpointCoreState( 0, 0);
-        //     string hash = GameNet.HashString(serializedState);
-
-        //     // TODO: AnchorSessionInnfo/SessionInfo/GroupInfo <-- get it straight!!!! Make it make sense.
-        //     AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
-
-        //     // calling this eventually results in a callback with the transaction hash
-        //    // GameNet.RegisterSession( GroupInfo.SessionId, asi);
-        // }
-
-        public async virtual Task RegisterNewSessionAsync()
+        public async virtual Task<string> RegisterNewSessionAsync()
         {
             // NOTE: This is a generic Apian version. Int is expect to be overridden in a game-specific (and maybe
             // gameAndAgreement-specific) subclass.
@@ -462,18 +442,23 @@ namespace Apian
             AnchorSessionInfo asi = new AnchorSessionInfo(GroupInfo.SessionId, GroupInfo.GroupName, GroupInfo.GroupCreatorAddr, GroupInfo.GroupType, hash);
 
             // Don't register if there's no anchor contract or if the post algo is "None"
-            if (!string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (GroupInfo.AnchorPostAlg != ApianGroupInfo.AnchorPostsNone))
+            if (GroupMgr.LocalPeerShouldRegisterSession() )
             {
-                Exception errEx = null;
-                string txHash = null;
-                try {
-                    txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
-                } catch (Exception ex) {
-                    errEx = ex;
-                }
-                Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
-                (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, errEx);
+                string txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+                (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, null);
+                return txHash;
+
+                // Exception errEx = null;
+                // string txHash = null;
+                // try {
+                //     txHash = await GameNet.RegisterSessionAsync( GroupInfo.SessionId, asi);
+                // } catch (Exception ex) {
+                //     errEx = ex;
+                // }
+                // Logger.Info($"ApianBase.RegisterSessionAsync(): transaction hash: {txHash}");
+                // (GameNet as IApianCryptoClient).OnSessionRegistered( GroupInfo.SessionId, txHash, errEx);
             }
+            return null;
         }
 
 

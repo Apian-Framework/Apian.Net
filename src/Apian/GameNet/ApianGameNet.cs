@@ -199,40 +199,77 @@ namespace Apian
         // TODO: Current beam code is somewhat inconsistent in that the single-threaded version waits for BeamApplication.OnPeerJoinedGroup()
         // Maybe ought to change this?
 
+        private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
 
-        protected void _DoJoinExistingGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+// - - - - - - - - - - - - - - - - - - - - - -
+
+        private void _MakeSureNotAlreadyWaiting(ApianGroupInfo groupInfo)
         {
-            // see comment above on how this func is resolved.
+             if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
+                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
+        }
 
-            // Sets the groupMgr's "groupInfo" and open/join the p2pNet group channel
-            apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
+        private void  _WireUpAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+        {
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
             AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
-
             if (groupInfo.AnchorAddr != null)
                 apianCrypto.AddSessionAnchorService( groupInfo.SessionId,  groupInfo.AnchorAddr);
 
-            apian.JoinGroup(localGroupData, joinAsValidator); // results in
+            apian.JoinGroup(localGroupData, joinAsValidator);
         }
 
-        protected void _DoCreateAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
+
+        private async Task<PeerJoinedGroupData> _WaitForJoinGroupAsync(ApianGroupInfo groupInfo, int timeoutMs)
+        {
+            JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
+            _ = Task.Delay(timeoutMs).ContinueWith(t => ForceJoinGroupFail(groupInfo, "Timed Out.") );
+            return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
+                t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
+                ).ConfigureAwait(false);
+        }
+
+// - - - - - - - - - - - - - - - - - - - - - -
+
+
+        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
         {
 
-            apian.SetupNewGroup(groupInfo); // create the group
-            ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
-            AddChannel(groupInfo.GroupChannelInfo,  "Default local channel data"); // TODO: see above
-
-            if (groupInfo.AnchorAddr != null)
-                apianCrypto.AddSessionAnchorService( groupInfo.SessionId,  groupInfo.AnchorAddr);
-
-            apian.JoinGroup(localGroupData, joinAsValidator) ; //
-
-            GroupAnnounceMsg amsg = new GroupAnnounceMsg(groupInfo, apian.CurrentGroupStatus());
-            SendApianMessage( CurrentNetworkId() , amsg); // send announcement to  everyone
+            _MakeSureNotAlreadyWaiting(groupInfo);
+            apian.SetupExistingGroup(groupInfo); // initialize the groupMgr
+            _WireUpAndJoinGroup(groupInfo, apian, localGroupData, joinAsValidator);
+            return await _WaitForJoinGroupAsync(groupInfo, timeoutMs);
         }
 
-        // Async versions of the above group joining methods which return success/failure results
-        private Dictionary<string, GroupAnnounceResult> GroupRequestResults;
+        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
+        {
+            _MakeSureNotAlreadyWaiting(groupInfo);
+            apian.SetupNewGroup(groupInfo); // create the group
+            _WireUpAndJoinGroup(groupInfo, apian, localGroupData, joinAsValidator);
+            GroupAnnounceMsg amsg = new GroupAnnounceMsg(groupInfo, apian.CurrentGroupStatus());
+            SendApianMessage( CurrentNetworkId() , amsg); // send announcement to  everyone
+
+            try {
+                if (groupInfo.AnchorAddr != null)
+                    await apian.RegisterNewSessionAsync();
+            } catch (Exception e) {
+                // Fail with exception msg
+                return  new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false,  $"RegisterNewSession() Failed: {e.Message} {e.InnerException}");
+            }
+
+             return await _WaitForJoinGroupAsync(groupInfo, timeoutMs);
+        }
+
+        protected void ForceJoinGroupFail(ApianGroupInfo groupInfo, string reason)
+        {
+            string groupId = groupInfo.GroupId;
+            if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
+            {
+                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false, reason);
+                JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
+            }
+        }
+
         public async Task<Dictionary<string, GroupAnnounceResult>> RequestGroupsAsync(int timeoutMs)
         {
             // TODO: if results dict non-null then throw a "simultaneous requests not supported" exception
@@ -245,57 +282,6 @@ namespace Apian
             return results;
         }
 
-        public async Task<PeerJoinedGroupData> JoinExistingGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
-        {
-             if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
-                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
-
-            JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
-
-            _DoJoinExistingGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
-
-            _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
-
-            return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
-                t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
-                ).ConfigureAwait(false);
-        }
-
-        public async Task<PeerJoinedGroupData> CreateAndJoinGroupAsync(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, int timeoutMs, bool joinAsValidator)
-        {
-             if (JoinGroupAsyncCompletionSources.ContainsKey(groupInfo.GroupId))
-                throw new Exception($"Already waiting for JoinGroupAsync() for group {groupInfo.GroupFriendlyId}");
-
-            JoinGroupAsyncCompletionSources[groupInfo.GroupId] = new TaskCompletionSource<PeerJoinedGroupData>();
-
-            _DoCreateAndJoinGroup( groupInfo,  apian,  localGroupData, joinAsValidator);
-
-            try {
-                if (groupInfo.AnchorAddr != null)
-                    await apian.RegisterNewSessionAsync();
-            } catch (Exception e) {
-                //logger.Error(e.Message + " " + e.StackTrace);
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false, e.Message);
-                JoinGroupAsyncCompletionSources[groupInfo.GroupId].TrySetResult(joinData);
-                return joinData;
-            }
-
-            _ = Task.Delay(timeoutMs).ContinueWith(t => TimeoutJoinGroup(groupInfo) );
-            return await  JoinGroupAsyncCompletionSources[groupInfo.GroupId].Task.ContinueWith(
-                t => {  JoinGroupAsyncCompletionSources.Remove(groupInfo.GroupId); return t.Result;}, TaskScheduler.Default
-                ).ConfigureAwait(false);
-        }
-
-        protected void TimeoutJoinGroup(ApianGroupInfo groupInfo)
-        {
-            string groupId = groupInfo.GroupId;
-            if (JoinGroupAsyncCompletionSources.ContainsKey(groupId))
-            {
-                PeerJoinedGroupData joinData = new PeerJoinedGroupData(LocalPeerAddr(), groupInfo, false, false, "Timeout");
-                JoinGroupAsyncCompletionSources[groupId].TrySetResult(joinData);
-            }
-        }
-
 
         public void LeaveGroup(string groupId)
         {
@@ -304,6 +290,11 @@ namespace Apian
                 logger.Warn($"LeaveGroup() - No group: {groupId}");
             else {
                 RemoveChannel(groupId); // You don;t need to ask or anything. Just leave the net channel and clean up
+                // TODO: Shut P2p2Net channel above, but still needs some cleanup.
+                // Crypto?
+                // Do ApianInst and AppCore have mutual refs?
+                // AppCore.End() has been called by application - probably should happen here.
+                // Does there need to be a shutdown/cleanup call for an Apian inst?
                 ApianInstances.Remove(groupId);
             }
         }
