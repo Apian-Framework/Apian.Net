@@ -104,6 +104,7 @@ namespace Apian
         bool AppCorePaused {get; }
 
         bool LocalPeerShouldPostEpochReports();
+        bool LocalPeerShouldRegisterSession();
 
         void SetupNewGroup(ApianGroupInfo info); // does NOT imply join
         void SetupExistingGroup(ApianGroupInfo info);
@@ -219,13 +220,24 @@ namespace Apian
 
         public virtual void OnNewEpoch() {}
 
+        public virtual bool LocalPeerShouldRegisterSession()
+        {
+            // If it needs reporting it's always the creator
+            if ( !string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (LocalPeerAddr == GroupCreatorAddr) && (GroupInfo.AnchorPostAlg != ApianGroupInfo.AnchorPostsNone) )
+            {
+                Logger.Info($"LocalPeerShouldRegisterSession(): Local peer is Creator");
+                return true;
+            }
+            return false;
+        }
+
         public virtual bool LocalPeerShouldPostEpochReports()
         {
             // For the base GroupManager, the only valid report algoritm is "CreatorPosts"
             // subclasses should override this if they support others (call this to check CreatorPosts)
             if ( !string.IsNullOrEmpty(GroupInfo.AnchorAddr) && (LocalPeerAddr == GroupCreatorAddr) && (GroupInfo.AnchorPostAlg == ApianGroupInfo.AnchorPostsCreator))
             {
-                Logger.Info($"LocalPeerShouldPostEpochReports(): Algo is 'CreatorPosts' and lLocal peer is Creator");
+                Logger.Info($"LocalPeerShouldPostEpochReports(): Algo is 'CreatorPosts' and local peer is Creator");
                 return true;
             }
             return false;
