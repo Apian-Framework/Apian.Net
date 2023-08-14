@@ -212,10 +212,11 @@ namespace Apian
         private void  _WireUpAndJoinGroup(ApianGroupInfo groupInfo, ApianBase apian, string localGroupData, bool joinAsValidator)
         {
             ApianInstances[groupInfo.GroupId] = apian; // add the ApianCorePair
-            AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
-            if (groupInfo.AnchorAddr != null)
+            if ( apianCrypto.IsConnected && !string.IsNullOrEmpty(groupInfo.AnchorAddr) ) {
+                // TODO - test contract version and bail w/error if wrong
                 apianCrypto.AddSessionAnchorService( groupInfo.SessionId,  groupInfo.AnchorAddr);
-
+            }
+            AddChannel(groupInfo.GroupChannelInfo, "Default local channel data"); // TODO: Should put something useful here
             apian.JoinGroup(localGroupData, joinAsValidator);
         }
 
@@ -250,7 +251,7 @@ namespace Apian
             SendApianMessage( CurrentNetworkId() , amsg); // send announcement to  everyone
 
             try {
-                if (groupInfo.AnchorAddr != null)
+                if (apianCrypto.IsConnected && !string.IsNullOrEmpty(groupInfo.AnchorAddr))
                     await apian.RegisterNewSessionAsync();
             } catch (Exception e) {
                 // Fail with exception msg
@@ -563,8 +564,11 @@ namespace Apian
 
         public void ConnectToBlockchain(string chainInfoJson)
         {
-            BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
-            apianCrypto.Connect(bcInfo.RpcUrl, bcInfo.ChainId, this);
+            if ( apianCrypto.IsConnected && !string.IsNullOrEmpty(chainInfoJson))
+            {
+                BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
+                apianCrypto.Connect(bcInfo.RpcUrl, bcInfo.ChainId, this);
+            }
         }
 
         public void DisconnectFromBlockchain()

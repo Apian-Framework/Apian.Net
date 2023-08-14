@@ -124,7 +124,7 @@ namespace Apian
 
         public override void JoinGroup(string localMemberJson, bool joinAsValidator)
         {
-            if (localMemberJson == null)
+            if ( string.IsNullOrEmpty(localMemberJson))
                 localMemberJson = LocalMemberJoinData;
             else
                 LocalMemberJoinData = localMemberJson;

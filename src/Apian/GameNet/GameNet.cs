@@ -145,7 +145,7 @@ namespace GameNet
 
         public virtual void TearDownConnection()
         {
-            if ( CurrentNetworkId() != null)
+            if ( !string.IsNullOrEmpty( CurrentNetworkId() ) )
                LeaveNetwork();
 
             JoinNetworkCompletion = null;
@@ -181,7 +181,7 @@ namespace GameNet
 
         public virtual void LeaveNetwork()
         {
-            p2p.Leave(); // gently leaves all channels
+            p2p?.Leave(); // gently leaves all channels
 
             // Get rid of any pending incoming messages
             InitNetJoinState();
