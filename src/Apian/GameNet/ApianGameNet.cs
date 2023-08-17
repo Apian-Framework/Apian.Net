@@ -564,11 +564,13 @@ namespace Apian
 
         public void ConnectToBlockchain(string chainInfoJson)
         {
-            if ( apianCrypto.IsConnected && !string.IsNullOrEmpty(chainInfoJson))
+            if ( !string.IsNullOrEmpty(chainInfoJson))
             {
                 BlockchainInfo bcInfo = JsonConvert.DeserializeObject<BlockchainInfo>(chainInfoJson);
                 apianCrypto.Connect(bcInfo.RpcUrl, bcInfo.ChainId, this);
             }
+            else
+                logger.Warn("ConnectToBlockchain() - No chain info provided");
         }
 
         public void DisconnectFromBlockchain()
